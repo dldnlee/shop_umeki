@@ -9,7 +9,6 @@ export default async function Home() {
   const { data: products, error } = await supabase
     .from('umeki_products')
     .select('*')
-    .order('id', { ascending: true });
 
   if (error) {
     console.error('Error fetching products:', error);
@@ -26,7 +25,7 @@ export default async function Home() {
           </h1>
         </header>
 
-        <section className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        <section className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {productList.map((p) => (
             <Link
               href={`/product/${p.id}`}

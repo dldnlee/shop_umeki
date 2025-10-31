@@ -6,9 +6,14 @@ import { formatKRW, formatUSD } from "@/lib/utils";
 import Link from "next/link";
 
 export default function CartPage() {
-  const [cartItems, setCartItems] = useState<CartItem[]>(() => getCart());
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
 
   useEffect(() => {
+    // Load cart from localStorage on mount (client-side only)
+    const currentCart = getCart();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setCartItems(currentCart);
+
     // Listen for cart updates
     const handleCartUpdate = (event: CustomEvent) => {
       setCartItems(event.detail);

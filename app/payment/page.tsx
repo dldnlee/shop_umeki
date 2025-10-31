@@ -12,7 +12,7 @@ type DeliveryMethod = "국내배송" | "해외배송" | "직접수령";
 const JUSO_API_KEY = process.env.NEXT_PUBLIC_JUSO_API_KEY || "YOUR_API_KEY_HERE";
 
 export default function PaymentPage() {
-  const [cartItems, setCartItems] = useState<CartItem[]>(() => getCart());
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
@@ -21,6 +21,12 @@ export default function PaymentPage() {
   const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>("국내배송");
 
   useEffect(() => {
+    // Load cart from localStorage on mount (client-side only)
+    const currentCart = getCart();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setCartItems(currentCart);
+
+    // Listen for cart updates
     const handleCartUpdate = (event: CustomEvent) => {
       setCartItems(event.detail);
     };
