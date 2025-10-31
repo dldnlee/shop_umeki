@@ -48,13 +48,22 @@ export function AddressSearch({ onSelectAddress, apiKey }: AddressSearchProps) {
     setError("");
 
     try {
+      // Use the Search API endpoint
       const response = await fetch(
         `https://business.juso.go.kr/addrlink/addrLinkApi.do?confmKey=${apiKey}&currentPage=1&countPerPage=10&keyword=${encodeURIComponent(
           searchKeyword
-        )}&resultType=json`
+        )}&resultType=json`,
+        {
+          method: 'GET',
+        }
       );
 
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const data = await response.json();
+      console.log("Juso API response:", data);
 
       if (data.results.common.errorCode !== "0") {
         setError(data.results.common.errorMessage || "주소 검색에 실패했습니다");

@@ -1,9 +1,21 @@
-import { mockProducts } from "@/mock_data";
 import Link from "next/link";
 import { formatKRW } from "@/lib/utils";
+import { supabase } from "@/lib/supabase";
+import { Product } from "@/mock_data";
 
 
-export default function Home() {
+export default async function Home() {
+  // Fetch products from Supabase
+  const { data: products, error } = await supabase
+    .from('umeki_products')
+    .select('*')
+    .order('id', { ascending: true });
+
+  if (error) {
+    console.error('Error fetching products:', error);
+  }
+
+  const productList = (products || []) as Product[];
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-black font-sans text-foreground">
@@ -15,9 +27,9 @@ export default function Home() {
         </header>
 
         <section className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {mockProducts.map((p, i) => (
+          {productList.map((p) => (
             <Link
-              href={`/product/${i}`}
+              href={`/product/${p.id}`}
               key={p.id}
               className="rounded-lg border border-black/6 bg-white dark:bg-[#0b0b0b] shadow-sm overflow-hidden"
             >

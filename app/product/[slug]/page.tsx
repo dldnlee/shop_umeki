@@ -16,14 +16,6 @@ export default function ProductDetailPage({
   const [selectedOption, setSelectedOption] = useState(product?.options[0] || "");
   const [quantity, setQuantity] = useState(1);
 
-  if (!product) {
-    return (
-      <div className="min-h-screen bg-zinc-50 dark:bg-black flex items-center justify-center">
-        <p className="text-zinc-600 dark:text-zinc-400">Product not found</p>
-      </div>
-    );
-  }
-
   const handleQuantityChange = (delta: number) => {
     setQuantity((prev) => Math.max(1, prev + delta));
   };

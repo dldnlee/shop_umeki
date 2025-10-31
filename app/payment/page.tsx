@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { getCart, getCartTotal, type CartItem } from "@/lib/cart";
 import { formatKRW } from "@/lib/utils";
 import Link from "next/link";
-import { AddressSearchPopup } from "@/components/AddressSearchPopup";
+import { AddressSearch } from "@/components/AddressSearch";
 
 type DeliveryMethod = "국내배송" | "해외배송" | "직접수령";
 
@@ -34,14 +34,10 @@ export default function PaymentPage() {
 
   const handleAddressSelect = (
     selectedAddress: string,
-    selectedZipCode: string,
-    detailAddr?: string
+    selectedZipCode: string
   ) => {
     setAddress(selectedAddress);
     setZipCode(selectedZipCode);
-    if (detailAddr) {
-      setAddressDetail(detailAddr);
-    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -109,6 +105,9 @@ export default function PaymentPage() {
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-black font-sans text-foreground">
       <main className="max-w-4xl mx-auto p-8">
+        <Link href="..">
+          {'< Back'}
+        </Link>
         <h1 className="text-3xl font-semibold text-black dark:text-white mb-8">
           Payment
         </h1>
@@ -254,9 +253,9 @@ export default function PaymentPage() {
                 <div className="mb-6 space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-black dark:text-white mb-2">
-                      주소 검색 <span className="text-red-500">*</span>
+                      주소 검색
                     </label>
-                    <AddressSearchPopup
+                    <AddressSearch
                       onSelectAddress={handleAddressSelect}
                       apiKey={JUSO_API_KEY}
                     />
@@ -265,12 +264,13 @@ export default function PaymentPage() {
                   {zipCode && (
                     <div>
                       <label className="block text-sm font-medium text-black dark:text-white mb-2">
-                        우편번호
+                        우편번호 <span className="text-red-500">*</span>
                       </label>
                       <input
                         type="text"
                         value={zipCode}
                         readOnly
+                        disabled
                         className="w-full px-4 py-2 bg-zinc-100 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded-md text-black dark:text-white"
                       />
                     </div>
@@ -288,6 +288,7 @@ export default function PaymentPage() {
                       id="address"
                       value={address}
                       readOnly
+                      disabled
                       className="w-full px-4 py-2 bg-zinc-100 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded-md text-black dark:text-white"
                       placeholder="주소 검색 버튼을 클릭하세요"
                       required
