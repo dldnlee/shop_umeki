@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>주소 검색</title>
+    <style>
+        body {
+            padding: 20px;
+            text-align: center;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+    </style>
+</head>
+<body>
+    <p>주소 검색 중...</p>
+
+    <form id="form" name="form" method="post">
+        <input type="hidden" id="confmKey" name="confmKey" value=""/>
+        <input type="hidden" id="returnUrl" name="returnUrl" value=""/>
+        <input type="hidden" id="resultType" name="resultType" value=""/>
+    </form>
+
+    <script type="text/javascript">
+        function getUrlParameter(name) {
+            name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
+            var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
+            var results = regex.exec(location.search);
+            return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
+        }
+
+        function init() {
+            var confmKey = getUrlParameter('confmKey');
+            var inputYn = getUrlParameter('inputYn');
+
+            if (inputYn !== 'Y') {
+                // Initial call - submit to Juso API
+                var currentUrl = window.location.href.split('?')[0] + '?confmKey=' + encodeURIComponent(confmKey);
+
+                document.form.confmKey.value = confmKey;
+                document.form.returnUrl.value = currentUrl;
+                document.form.resultType.value = '4';
+                document.form.action = 'https://business.juso.go.kr/addrlink/addrLinkUrl.do';
+                document.form.submit();
+            } else {
+                // Callback from Juso - send data to parent window
+                if (window.opener && window.opener.jusoCallBack) {
+                    window.opener.jusoCallBack(
+                        getUrlParameter('roadFullAddr'),
+                        getUrlParameter('roadAddrPart1'),
+                        getUrlParameter('addrDetail'),
+                        getUrlParameter('roadAddrPart2'),
+                        getUrlParameter('engAddr'),
+                        getUrlParameter('jibunAddr'),
+                        getUrlParameter('zipNo'),
+                        getUrlParameter('admCd'),
+                        getUrlParameter('rnMgtSn'),
+                        getUrlParameter('bdMgtSn'),
+                        getUrlParameter('detBdNmList'),
+                        getUrlParameter('bdNm'),
+                        getUrlParameter('bdKdcd'),
+                        getUrlParameter('siNm'),
+                        getUrlParameter('sggNm'),
+                        getUrlParameter('emdNm'),
+                        getUrlParameter('liNm'),
+                        getUrlParameter('rn'),
+                        getUrlParameter('udrtYn'),
+                        getUrlParameter('buldMnnm'),
+                        getUrlParameter('buldSlno'),
+                        getUrlParameter('mtYn'),
+                        getUrlParameter('lnbrMnnm'),
+                        getUrlParameter('lnbrSlno'),
+                        getUrlParameter('emdNo')
+                    );
+                    window.close();
+                } else {
+                    alert('오류가 발생했습니다. 팝업을 닫고 다시 시도해주세요.');
+                }
+            }
+        }
+
+        // Run on page load
+        window.onload = init;
+    </script>
+</body>
+</html>
