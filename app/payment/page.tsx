@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getCart, getCartTotal, type CartItem } from "@/lib/cart";
+import { getCart, getCartTotal, clearCart, type CartItem } from "@/lib/cart";
 import { formatKRW } from "@/lib/utils";
 import Link from "next/link";
 import { AddressSearch } from "@/components/AddressSearch";
+import { createOrder } from "@/lib/orders";
 
 type DeliveryMethod = "국내배송" | "해외배송" | "직접수령";
 
@@ -14,16 +15,17 @@ const JUSO_API_KEY = process.env.NEXT_PUBLIC_JUSO_API_KEY || "YOUR_API_KEY_HERE"
 export default function PaymentPage() {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [addressDetail, setAddressDetail] = useState("");
   const [zipCode, setZipCode] = useState("");
   const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>("국내배송");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     // Load cart from localStorage on mount (client-side only)
     const currentCart = getCart();
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCartItems(currentCart);
 
     // Listen for cart updates
@@ -46,12 +48,16 @@ export default function PaymentPage() {
     setZipCode(selectedZipCode);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     // Validation
     if (!name.trim()) {
       alert("이름을 입력해주세요");
+      return;
+    }
+    if(!email.trim()){
+      alert("이메일을 입력해주세요")
       return;
     }
     if (!phone.trim()) {
@@ -63,22 +69,47 @@ export default function PaymentPage() {
       return;
     }
 
-    // Process payment
-    const fullAddress = addressDetail
-      ? `${address}, ${addressDetail}`
-      : address;
+    setIsSubmitting(true);
 
-    console.log("Processing payment:", {
-      name,
-      phone,
-      address: fullAddress,
-      zipCode,
-      deliveryMethod,
-      items: cartItems,
-      total: getCartTotal(),
-    });
+    try {
+      // Prepare address string (combine all address fields)
+      const fullAddress = deliveryMethod !== "직접수령"
+        ? `[${zipCode}] ${address} ${addressDetail}`.trim()
+        : null;
 
-    alert("결제가 완료되었습니다!");
+      // Create order in database
+      const orderData = {
+        name: name,
+        email: email,
+        phone_num: phone,
+        address: fullAddress,
+        delivery_method: deliveryMethod,
+        total_amount: finalTotal,
+        easy_pay_id: null,
+      };
+
+      const result = await createOrder(orderData, cartItems);
+
+      if (result.success) {
+        // Clear cart after successful order
+        clearCart();
+
+        alert(`결제가 완료되었습니다!\n주문번호: ${result.data?.order.id}`);
+
+        // Optionally redirect to order confirmation page
+        // window.location.href = `/order/${result.data?.order.id}`;
+      } else {
+        const errorMessage = result.error && typeof result.error === 'object' && 'message' in result.error
+          ? String(result.error.message)
+          : "주문 생성 중 오류가 발생했습니다";
+        throw new Error(errorMessage);
+      }
+    } catch (error) {
+      console.error("Payment error:", error);
+      alert(error instanceof Error ? error.message : "결제 처리 중 오류가 발생했습니다. 다시 시도해주세요.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const total = getCartTotal();
@@ -190,7 +221,25 @@ export default function PaymentPage() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   className="w-full px-4 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-md text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-zinc-400"
-                  placeholder="Enter your name"
+                  placeholder="홍길동"
+                  required
+                />
+              </div>
+              {/* Email */}
+              <div className="mb-6">
+                <label
+                  htmlFor="name"
+                  className="block text-sm font-medium text-black dark:text-white mb-2"
+                >
+                  Email <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="email"
+                  id="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full px-4 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-md text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-zinc-400"
+                  placeholder="honggildong@gmail.com"
                   required
                 />
               </div>
@@ -323,9 +372,10 @@ export default function PaymentPage() {
               {/* Submit Button */}
               <button
                 type="submit"
-                className="w-full py-3 px-6 bg-black dark:bg-white text-white dark:text-black rounded-md font-medium text-lg hover:opacity-90 transition-opacity"
+                disabled={isSubmitting}
+                className="w-full py-3 px-6 bg-black dark:bg-white text-white dark:text-black rounded-md font-medium text-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Complete Payment
+                {isSubmitting ? "Processing..." : "Complete Payment"}
               </button>
             </form>
           </div>

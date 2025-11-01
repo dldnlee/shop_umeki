@@ -184,7 +184,7 @@ export default function CartPage() {
             >
               Continue Shopping
             </Link>
-            <Link href="/payment" className="flex-1 py-3 px-6 bg-black dark:bg-white text-white dark:text-black rounded-md font-medium hover:opacity-90 transition-opacity">
+            <Link href="/payment" className="flex-1 py-3 px-6 bg-black dark:bg-white text-white dark:text-black rounded-md font-medium hover:opacity-90 transition-opacity text-center">
               Checkout
             </Link>
           </div>
