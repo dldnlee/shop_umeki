@@ -40,6 +40,55 @@ export default function PaymentPage() {
     };
   }, []);
 
+  const requestPayment = async () => {
+    try {
+      // setPaying(true);
+      // setPayResult(null);
+      const deviceType = typeof window !== 'undefined' && window.innerWidth < 640 ? 'mobile' : 'pc';
+      const webpayPath = 'https://pgapi.easypay.co.kr/api/ep9/trades/webpay';
+      const now = new Date();
+      const yyyy = now.getFullYear();
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const dd = String(now.getDate()).padStart(2, '0');
+      const shopOrderNo = `${yyyy}${mm}${dd}${Math.floor(Math.random()*1e9)}`;
+      const webpayRes = await fetch(webpayPath, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Charset': 'UTF-8'
+        },
+        body: JSON.stringify({
+          mallId: "GD003712",
+          shopOrderNo: shopOrderNo,
+          amount: total,
+          payMethodTypeCode: 11,
+          currency: "00",
+          returnUrl: "http://localhost:3000/payment",
+          deviceTypeCode: deviceType,
+          clientTypeCode: "00",
+          orderInfo: {
+            goodsName: "굿즈",
+          }
+        }),
+      });
+      const webpayData = await webpayRes.json();
+      if (!webpayRes.ok || webpayData?.resCd !== '0000' || !webpayData?.authPageUrl) {
+        throw new Error(webpayData?.resMsg || 'webpay_failed');
+      }
+      
+      // open payment in popup, fallback to redirect if blocked
+      const features = 'width=600,height=680,menubar=no,toolbar=no,location=no,status=no,scrollbars=yes,resizable=yes';
+      const win = typeof window !== 'undefined' ? window.open(webpayData.authPageUrl as string, 'easypay_payment', features) : null;
+      if (!win) {
+        window.location.href = webpayData.authPageUrl as string;
+        return;
+      }
+    } catch (e : any) {
+      alert(`결제창 요청 실패: ${e?.message || e}`);
+    }
+    return;
+	};
+
   const handleAddressSelect = (
     selectedAddress: string,
     selectedZipCode: string
@@ -71,7 +120,9 @@ export default function PaymentPage() {
 
     setIsSubmitting(true);
 
+    
     try {
+      requestPayment();
       // Prepare address string (combine all address fields)
       const fullAddress = deliveryMethod !== "직접수령"
         ? `[${zipCode}] ${address} ${addressDetail}`.trim()
@@ -92,7 +143,7 @@ export default function PaymentPage() {
 
       if (result.success) {
         // Clear cart after successful order
-        clearCart();
+        // clearCart();
 
         alert(`결제가 완료되었습니다!\n주문번호: ${result.data?.order.id}`);
 
