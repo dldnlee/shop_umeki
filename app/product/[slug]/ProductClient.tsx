@@ -1,9 +1,20 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { Product } from "@/models";
 import { addToCart } from "@/lib/cart";
 import { formatKRW } from "@/lib/utils";
+import { Swiper, SwiperSlide } from "swiper/react";
+import { Navigation, Pagination, Thumbs, FreeMode } from "swiper/modules";
+import type { Swiper as SwiperType } from "swiper";
+
+// Import Swiper styles
+import "swiper/css";
+import "swiper/css/navigation";
+import "swiper/css/pagination";
+import "swiper/css/thumbs";
+import "swiper/css/free-mode";
 
 interface ProductClientProps {
   product: Product;
@@ -13,6 +24,7 @@ interface ProductClientProps {
 export default function ProductClient({ product, slug }: ProductClientProps) {
   const [selectedOption, setSelectedOption] = useState(product?.options?.[0] || "");
   const [quantity, setQuantity] = useState(1);
+  const [thumbsSwiper, setThumbsSwiper] = useState<SwiperType | null>(null);
 
   const handleQuantityChange = (delta: number) => {
     setQuantity((prev) => Math.max(1, prev + delta));
@@ -32,9 +44,75 @@ export default function ProductClient({ product, slug }: ProductClientProps) {
 
   return (
     <div className="bg-white dark:bg-[#0b0b0b] rounded-lg border border-black/6 shadow-sm overflow-hidden">
-      {/* Product Image */}
-      <div className="w-full h-96 bg-gray-100 dark:bg-gray-900 flex items-center justify-center text-zinc-400">
-        <span className="select-none text-lg">Product Image</span>
+      {/* Product Image Gallery */}
+      <div className="w-full">
+        {product.image_urls && product.image_urls.length > 0 ? (
+          <div className="space-y-4 p-4">
+            {/* Main Swiper */}
+            <Swiper
+              modules={[Navigation, Pagination, Thumbs]}
+              navigation
+              pagination={{ clickable: true }}
+              thumbs={{ swiper: thumbsSwiper && !thumbsSwiper.destroyed ? thumbsSwiper : null }}
+              className="w-full h-96 rounded-lg overflow-hidden"
+              spaceBetween={10}
+            >
+              {product.image_urls.map((url, index) => (
+                <SwiperSlide key={index}>
+                  <div className="relative w-full h-full bg-gray-100 dark:bg-gray-900">
+                    <Image
+                      src={url}
+                      alt={`${product.name} - Image ${index + 1}`}
+                      fill
+                      className="object-contain"
+                      priority={index === 0}
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    />
+                  </div>
+                </SwiperSlide>
+              ))}
+            </Swiper>
+
+            {/* Thumbnail Swiper */}
+            {product.image_urls.length > 1 && (
+              <Swiper
+                onSwiper={setThumbsSwiper}
+                modules={[Thumbs, FreeMode]}
+                watchSlidesProgress
+                freeMode
+                slidesPerView={4}
+                spaceBetween={10}
+                className="w-full h-24"
+                breakpoints={{
+                  640: {
+                    slidesPerView: 5,
+                  },
+                  768: {
+                    slidesPerView: 6,
+                  },
+                }}
+              >
+                {product.image_urls.map((url, index) => (
+                  <SwiperSlide key={index} className="cursor-pointer">
+                    <div className="relative w-full h-full rounded-md overflow-hidden border-2 border-transparent hover:border-black dark:hover:border-white transition-colors">
+                      <Image
+                        src={url}
+                        alt={`${product.name} - Thumbnail ${index + 1}`}
+                        fill
+                        className="object-cover"
+                        sizes="100px"
+                      />
+                    </div>
+                  </SwiperSlide>
+                ))}
+              </Swiper>
+            )}
+          </div>
+        ) : (
+          <div className="w-full h-96 bg-gray-100 dark:bg-gray-900 flex items-center justify-center text-zinc-400">
+            <span className="select-none text-lg">No Images Available</span>
+          </div>
+        )}
       </div>
 
       {/* Product Details */}
