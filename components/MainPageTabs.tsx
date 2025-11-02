@@ -50,8 +50,14 @@ export default function MainPageTabs({ products }: MainPageTabsProps) {
   return (
     <div>
       {activeTab === 'goods' && (
-        <section className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
-          {products.map((p) => (
+        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+          <div className="text-black">
+            <img src="/goods_info.jpg" alt="Fanmeeting info" className='w-full' />
+            {/* Add fanmeeting information here */}
+          </div>
+        </div>
+        // <section className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
+          /* {products.map((p) => (
             <button
               key={p.id}
               onClick={() => handleProductClick(p)}
@@ -83,8 +89,8 @@ export default function MainPageTabs({ products }: MainPageTabsProps) {
                 </div>
               </div>
             </button>
-          ))}
-        </section>
+          ))} */
+        /* </section> */
       )}
 
       {activeTab === 'fanmeeting' && (
