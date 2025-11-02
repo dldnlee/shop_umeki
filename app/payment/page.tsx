@@ -59,8 +59,14 @@ export default function PaymentPage() {
 
         // Payment successful - verify and create order
         try {
-          const pendingOrderData = sessionStorage.getItem('pendingOrder');
-          const storedShopOrderNo = sessionStorage.getItem('currentShopOrderNo');
+          // Try to get from sessionStorage first, then localStorage as fallback
+          let pendingOrderData = sessionStorage.getItem('pendingOrder');
+          let storedShopOrderNo = sessionStorage.getItem('currentShopOrderNo');
+
+          if (!pendingOrderData) {
+            pendingOrderData = localStorage.getItem('pendingOrder');
+            storedShopOrderNo = localStorage.getItem('currentShopOrderNo');
+          }
 
           if (!pendingOrderData || shopOrderNo !== storedShopOrderNo) {
             throw new Error('주문 정보가 일치하지 않습니다.');
@@ -85,7 +91,20 @@ export default function PaymentPage() {
           console.log('Approval response:', approvalData);
 
           if (!approvalData.success) {
-            throw new Error(approvalData.message || '결제 확인 실패');
+            // Enhanced error message for R102 and other errors
+            let errorMessage = approvalData.message || '결제 확인 실패';
+
+            // If there's troubleshooting info, log it
+            if (approvalData.troubleshooting) {
+              console.error('Troubleshooting info:', approvalData.troubleshooting);
+            }
+
+            // Add error code to message if available
+            if (approvalData.code) {
+              errorMessage = `[${approvalData.code}] ${errorMessage}`;
+            }
+
+            throw new Error(errorMessage);
           }
 
           // Create order
@@ -101,9 +120,11 @@ export default function PaymentPage() {
             throw new Error(errorMessage);
           }
 
-          // Success - clear storage and cart
+          // Success - clear storage from both session and local storage
           sessionStorage.removeItem('pendingOrder');
           sessionStorage.removeItem('currentShopOrderNo');
+          localStorage.removeItem('pendingOrder');
+          localStorage.removeItem('currentShopOrderNo');
 
           const { clearCart } = await import('@/lib/cart');
           clearCart();
@@ -116,6 +137,8 @@ export default function PaymentPage() {
           alert(error instanceof Error ? error.message : '결제 처리 중 오류가 발생했습니다.');
           sessionStorage.removeItem('pendingOrder');
           sessionStorage.removeItem('currentShopOrderNo');
+          localStorage.removeItem('pendingOrder');
+          localStorage.removeItem('currentShopOrderNo');
         }
 
       } else if (type === 'PAYMENT_SUCCESS') {
@@ -126,6 +149,8 @@ export default function PaymentPage() {
         alert(`결제 실패: ${message || '알 수 없는 오류'}`);
         sessionStorage.removeItem('pendingOrder');
         sessionStorage.removeItem('currentShopOrderNo');
+        localStorage.removeItem('pendingOrder');
+        localStorage.removeItem('currentShopOrderNo');
       }
     };
 
@@ -163,13 +188,15 @@ export default function PaymentPage() {
       });
 
       const registrationData = await registrationRes.json();
+      console.log(registrationData.message);
 
       if (!registrationData.success || !registrationData.authPageUrl) {
         throw new Error(registrationData.message || 'Payment registration failed');
       }
 
-      // Store the shop order number for later verification
+      // Store the shop order number for later verification in both storages
       sessionStorage.setItem('currentShopOrderNo', registrationData.shopOrderNo);
+      localStorage.setItem('currentShopOrderNo', registrationData.shopOrderNo);
 
       // Open payment window in popup, fallback to redirect if blocked
       const features = 'width=600,height=680,menubar=no,toolbar=no,location=no,status=no,scrollbars=yes,resizable=yes';
@@ -241,11 +268,14 @@ export default function PaymentPage() {
         easy_pay_id: null,
       };
 
-      // Store order data in sessionStorage for use after payment success
-      sessionStorage.setItem('pendingOrder', JSON.stringify({
+      // Store order data in both sessionStorage and localStorage for use after payment success
+      // sessionStorage for popup flow, localStorage as fallback for redirect flow
+      const pendingOrderJson = JSON.stringify({
         orderData,
         cartItems
-      }));
+      });
+      sessionStorage.setItem('pendingOrder', pendingOrderJson);
+      localStorage.setItem('pendingOrder', pendingOrderJson);
 
       // Request payment - order will be created in callback after successful payment
       await requestPayment();
@@ -253,6 +283,9 @@ export default function PaymentPage() {
       console.error("Payment error:", error);
       alert(error instanceof Error ? error.message : "결제 처리 중 오류가 발생했습니다. 다시 시도해주세요.");
       sessionStorage.removeItem('pendingOrder');
+      sessionStorage.removeItem('currentShopOrderNo');
+      localStorage.removeItem('pendingOrder');
+      localStorage.removeItem('currentShopOrderNo');
     } finally {
       setIsSubmitting(false);
     }
