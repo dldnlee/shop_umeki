@@ -1,11 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getCart, getCartTotal, clearCart, type CartItem } from "@/lib/cart";
+import { getCart, getCartTotal, type CartItem } from "@/lib/cart";
 import { formatKRW } from "@/lib/utils";
 import Link from "next/link";
 import { AddressSearch } from "@/components/AddressSearch";
-import { createOrder } from "@/lib/orders";
 
 type DeliveryMethod = "국내배송" | "해외배송" | "직접수령";
 
@@ -35,10 +34,164 @@ export default function PaymentPage() {
 
     window.addEventListener("cartUpdated", handleCartUpdate as EventListener);
 
+    // Listen for messages from payment popup
+    const handleMessage = async (event: MessageEvent) => {
+      // Verify origin for security
+      if (event.origin !== window.location.origin) return;
+
+      const { type, orderId, message, data } = event.data;
+
+      console.log('Received message from popup:', event.data);
+
+      if (type === 'PAYMENT_CALLBACK') {
+        // EasyPay callback received via POST
+        const { resCd, resMsg, shopOrderNo, ordNo, authorizationId } = data || {};
+
+        console.log('Processing payment callback:', { resCd, resMsg, shopOrderNo, authorizationId });
+
+        if (resCd !== '0000') {
+          // Payment failed
+          alert(`결제 실패: ${resMsg || '알 수 없는 오류'}`);
+          sessionStorage.removeItem('pendingOrder');
+          sessionStorage.removeItem('currentShopOrderNo');
+          return;
+        }
+
+        // Payment successful - verify and create order
+        try {
+          const pendingOrderData = sessionStorage.getItem('pendingOrder');
+          const storedShopOrderNo = sessionStorage.getItem('currentShopOrderNo');
+
+          if (!pendingOrderData || shopOrderNo !== storedShopOrderNo) {
+            throw new Error('주문 정보가 일치하지 않습니다.');
+          }
+
+          const { orderData, cartItems } = JSON.parse(pendingOrderData);
+
+          // Verify payment with approval API
+          const approvalRes = await fetch('/api/payment/approve', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              shopOrderNo: shopOrderNo,
+              amount: orderData.total_amount,
+              authorizationId: authorizationId, // Pass authorizationId to approval API
+            }),
+          });
+
+          const approvalData = await approvalRes.json();
+          console.log('Approval response:', approvalData);
+
+          if (!approvalData.success) {
+            throw new Error(approvalData.message || '결제 확인 실패');
+          }
+
+          // Create order
+          orderData.easy_pay_id = approvalData.data?.paymentId || ordNo || shopOrderNo;
+
+          const { createOrder } = await import('@/lib/orders');
+          const result = await createOrder(orderData, cartItems);
+
+          if (!result.success) {
+            const errorMessage = result.error && typeof result.error === 'object' && 'message' in result.error
+              ? String(result.error.message)
+              : "주문 생성 중 오류가 발생했습니다";
+            throw new Error(errorMessage);
+          }
+
+          // Success - clear storage and cart
+          sessionStorage.removeItem('pendingOrder');
+          sessionStorage.removeItem('currentShopOrderNo');
+
+          const { clearCart } = await import('@/lib/cart');
+          clearCart();
+
+          // Redirect to complete page
+          window.location.href = `/payment/complete?orderId=${result.data?.order.id}`;
+
+        } catch (error) {
+          console.error('Payment processing error:', error);
+          alert(error instanceof Error ? error.message : '결제 처리 중 오류가 발생했습니다.');
+          sessionStorage.removeItem('pendingOrder');
+          sessionStorage.removeItem('currentShopOrderNo');
+        }
+
+      } else if (type === 'PAYMENT_SUCCESS') {
+        // Payment successful - redirect to complete page
+        window.location.href = `/payment/complete?orderId=${orderId}`;
+      } else if (type === 'PAYMENT_FAILED' || type === 'PAYMENT_ERROR') {
+        // Payment failed - show error message
+        alert(`결제 실패: ${message || '알 수 없는 오류'}`);
+        sessionStorage.removeItem('pendingOrder');
+        sessionStorage.removeItem('currentShopOrderNo');
+      }
+    };
+
+    window.addEventListener("message", handleMessage);
+
     return () => {
       window.removeEventListener("cartUpdated", handleCartUpdate as EventListener);
+      window.removeEventListener("message", handleMessage);
     };
   }, []);
+
+  // Note: Payment callback is now handled by /payment/callback page
+  // which communicates with this page via postMessage for popup flow
+
+  const requestPayment = async () => {
+    try {
+      // Calculate goods name from cart items
+      const goodsName = cartItems.length === 1
+        ? cartItems[0].productName
+        : `${cartItems[0].productName} 외 ${cartItems.length - 1}건`;
+
+      // Call our server-side payment registration API
+      const registrationRes = await fetch('/api/payment/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Charset': 'UTF-8'
+        },
+        body: JSON.stringify({
+          amount: finalTotal,
+          orderInfo: {
+            goodsName: goodsName,
+          },
+        }),
+      });
+
+      const registrationData = await registrationRes.json();
+
+      if (!registrationData.success || !registrationData.authPageUrl) {
+        throw new Error(registrationData.message || 'Payment registration failed');
+      }
+
+      // Store the shop order number for later verification
+      sessionStorage.setItem('currentShopOrderNo', registrationData.shopOrderNo);
+
+      // Open payment window in popup, fallback to redirect if blocked
+      const features = 'width=600,height=680,menubar=no,toolbar=no,location=no,status=no,scrollbars=yes,resizable=yes';
+      const win = typeof window !== 'undefined'
+        ? window.open(registrationData.authPageUrl, 'easypay_payment', features)
+        : null;
+
+      if (!win) {
+        // Popup blocked, redirect to payment page
+        window.location.href = registrationData.authPageUrl;
+        return;
+      }
+
+      // Payment window opened successfully
+      // The window will send a postMessage back when EasyPay redirects to our callback
+      console.log('Payment window opened successfully');
+    } catch (e) {
+      const errorMessage = e instanceof Error ? e.message : String(e);
+      alert(`결제창 요청 실패: ${errorMessage}`);
+      throw e;
+    }
+  };
 
   const handleAddressSelect = (
     selectedAddress: string,
@@ -77,7 +230,7 @@ export default function PaymentPage() {
         ? `[${zipCode}] ${address} ${addressDetail}`.trim()
         : null;
 
-      // Create order in database
+      // Prepare order data (but don't create in DB yet)
       const orderData = {
         name: name,
         email: email,
@@ -88,25 +241,18 @@ export default function PaymentPage() {
         easy_pay_id: null,
       };
 
-      const result = await createOrder(orderData, cartItems);
+      // Store order data in sessionStorage for use after payment success
+      sessionStorage.setItem('pendingOrder', JSON.stringify({
+        orderData,
+        cartItems
+      }));
 
-      if (result.success) {
-        // Clear cart after successful order
-        clearCart();
-
-        alert(`결제가 완료되었습니다!\n주문번호: ${result.data?.order.id}`);
-
-        // Optionally redirect to order confirmation page
-        // window.location.href = `/order/${result.data?.order.id}`;
-      } else {
-        const errorMessage = result.error && typeof result.error === 'object' && 'message' in result.error
-          ? String(result.error.message)
-          : "주문 생성 중 오류가 발생했습니다";
-        throw new Error(errorMessage);
-      }
+      // Request payment - order will be created in callback after successful payment
+      await requestPayment();
     } catch (error) {
       console.error("Payment error:", error);
       alert(error instanceof Error ? error.message : "결제 처리 중 오류가 발생했습니다. 다시 시도해주세요.");
+      sessionStorage.removeItem('pendingOrder');
     } finally {
       setIsSubmitting(false);
     }
