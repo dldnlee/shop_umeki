@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 
 /**
@@ -13,7 +13,7 @@ import { useSearchParams } from "next/navigation";
  * 3. Closing the popup window (if opened in popup)
  * 4. Redirecting parent window to purchase complete page
  */
-export default function PaymentCallbackPage() {
+function PaymentCallbackContent() {
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<'processing' | 'success' | 'error'>('processing');
   const [message, setMessage] = useState('결제 처리 중...');
@@ -247,5 +247,24 @@ export default function PaymentCallbackPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function PaymentCallbackPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-zinc-50 dark:bg-black font-sans text-foreground flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white dark:bg-[#0b0b0b] rounded-lg border border-black/6 shadow-sm p-8 text-center">
+          <div className="mb-4">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black dark:border-white mx-auto"></div>
+          </div>
+          <h2 className="text-xl font-semibold text-black dark:text-white mb-2">
+            로딩 중...
+          </h2>
+        </div>
+      </div>
+    }>
+      <PaymentCallbackContent />
+    </Suspense>
   );
 }
