@@ -1,7 +1,8 @@
 import Link from "next/link";
+import Image from "next/image";
 import { formatKRW } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
-import { Product } from "@/mock_data";
+import { Product } from "@/models";
 
 
 export default async function Home() {
@@ -30,10 +31,22 @@ export default async function Home() {
             <Link
               href={`/product/${p.id}`}
               key={p.id}
-              className="rounded-lg border border-black/6 bg-white dark:bg-[#0b0b0b] shadow-sm overflow-hidden"
+              className="rounded-lg border border-black/6 bg-white dark:bg-[#0b0b0b] shadow-sm overflow-hidden hover:shadow-md transition-shadow"
             >
-              <div className="h-40 bg-gray-100 dark:bg-gray-900 flex items-center justify-center text-zinc-400">
-                <span className="select-none">Image</span>
+              <div className="relative h-40 bg-gray-100 dark:bg-gray-900">
+                {p.image_urls && p.image_urls.length > 0 ? (
+                  <Image
+                    src={p.image_urls[0]}
+                    alt={p.name}
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
+                  />
+                ) : (
+                  <div className="h-full flex items-center justify-center text-zinc-400">
+                    <span className="select-none">No Image</span>
+                  </div>
+                )}
               </div>
               <div className="p-4">
                 <h3 className="text-base font-medium text-black dark:text-zinc-50">

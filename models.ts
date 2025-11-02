@@ -2,7 +2,7 @@ export type Product = {
   id: number;
   name: string;
   price: number;
-  image_url: string;
+  image_urls: string[]; // Array of image URLs
   options?: string[];
   inventory: number;
 };
