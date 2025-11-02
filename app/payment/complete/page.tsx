@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 
@@ -9,7 +9,7 @@ import Link from "next/link";
  *
  * Displays order confirmation after successful payment.
  */
-export default function PurchaseCompletePage() {
+function PurchaseCompleteContent() {
   const searchParams = useSearchParams();
   const [orderId, setOrderId] = useState<string | null>(null);
 
@@ -118,5 +118,20 @@ export default function PurchaseCompletePage() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function PurchaseCompletePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-zinc-50 dark:bg-black font-sans text-foreground flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black dark:border-white mx-auto mb-4"></div>
+          <p className="text-zinc-600 dark:text-zinc-400">로딩 중...</p>
+        </div>
+      </div>
+    }>
+      <PurchaseCompleteContent />
+    </Suspense>
   );
 }
