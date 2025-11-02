@@ -5,16 +5,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { getCart } from "@/lib/cart";
 import { useCartModal } from "@/components/CartModalProvider";
-import { useTab } from "@/components/TabProvider";
 
 export default function Header() {
   const [itemCount, setItemCount] = useState(0);
   const { openCart } = useCartModal();
-  const { activeTab, setActiveTab } = useTab();
   const pathname = usePathname();
-
-  // Only show tabs on home page
-  const isHomePage = pathname === '/';
 
   // Hide header on payment pages
   const shouldHideHeader = pathname?.startsWith('/payment');
@@ -52,8 +47,8 @@ export default function Header() {
 
   return (
     <header className="sticky top-0 z-40 bg-[#8DCFDD] border-b border-white/20 w-full flex flex-col items-center py-2 sm:py-3">
-      <div className="max-w-6xl w-full pt-2 sm:pt-4">
-        <div className="flex items-center justify-between mb-2 sm:mb-4 px-3 sm:px-8">
+      <div className="max-w-6xl w-full">
+        <div className="flex items-center justify-between px-3 sm:px-8">
           {/* Logo/Brand */}
           <Link href="/" className="text-base sm:text-xl md:text-2xl font-semibold text-black hover:opacity-80 transition-opacity">
             유메키 팬미팅
@@ -89,32 +84,6 @@ export default function Header() {
             )}
           </button>
         </div>
-
-        {/* Tab Navigation - Only show on home page */}
-        {isHomePage && (
-          <div className="flex gap-1 sm:gap-2 rounded-full border-2 border-gray-200 transition-all p-1 sm:p-2 mx-2 sm:mx-4">
-            <button
-              onClick={() => setActiveTab('fanmeeting')}
-              className={`px-3 py-1.5 sm:px-6 sm:py-2 font-medium text-sm sm:text-base md:text-lg transition-all rounded-full w-full ${
-                activeTab === 'fanmeeting'
-                  ? 'text-black bg-white'
-                  : 'text-black/60 hover:text-black/80'
-              }`}
-            >
-              팬미팅 정보
-            </button>
-            <button
-              onClick={() => setActiveTab('goods')}
-              className={`px-3 py-1.5 sm:px-6 sm:py-2 font-medium text-sm sm:text-base md:text-lg transition-all rounded-full w-full ${
-                activeTab === 'goods'
-                  ? 'text-black bg-white'
-                  : 'text-black/60 hover:text-black/80'
-              }`}
-            >
-              굿즈 정보
-            </button>
-          </div>
-        )}
       </div>
     </header>
   );
