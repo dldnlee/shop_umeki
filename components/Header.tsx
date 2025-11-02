@@ -16,14 +16,17 @@ export default function Header() {
   // Only show tabs on home page
   const isHomePage = pathname === '/';
 
-  useEffect(() => {
-    // Initialize cart count on mount (number of unique items, not total quantity)
-    setItemCount(getCart().length);
+  // Hide header on payment pages
+  const shouldHideHeader = pathname?.startsWith('/payment');
 
+  useEffect(() => {
     // Listen for cart updates
     const handleCartUpdate = () => {
       setItemCount(getCart().length);
     };
+
+    // Initialize cart count on mount
+    handleCartUpdate();
 
     window.addEventListener("cartUpdated", handleCartUpdate);
 
@@ -41,6 +44,11 @@ export default function Header() {
       window.removeEventListener("storage", handleStorageChange);
     };
   }, []);
+
+  // Don't render header on payment pages
+  if (shouldHideHeader) {
+    return null;
+  }
 
   return (
     <header className="sticky top-0 z-40 bg-[#8DCFDD] border-b border-white/20 w-full flex flex-col items-center py-2 sm:py-3">
