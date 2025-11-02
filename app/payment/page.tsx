@@ -307,7 +307,7 @@ export default function PaymentPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Order Summary */}
-          <div className="order-2 lg:order-1">
+          <div className="order-1 lg:order-1">
             <h2 className="text-xl font-semibold text-black mb-4">
               Order Summary
             </h2>
@@ -358,7 +358,7 @@ export default function PaymentPage() {
           </div>
 
           {/* Payment Form */}
-          <div className="order-1 lg:order-2">
+          <div className="order-2 lg:order-2">
             <h2 className="text-xl font-semibold text-black mb-4">
               Delivery Information
             </h2>
@@ -462,17 +462,21 @@ export default function PaymentPage() {
               {/* Address */}
               {deliveryMethod !== "직접수령" && (
                 <div className="mb-6 space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-black mb-2">
-                      주소 검색
-                    </label>
-                    <AddressSearch
-                      onSelectAddress={handleAddressSelect}
-                      apiKey={JUSO_API_KEY}
-                    />
-                  </div>
+                  {/* Only show address search for domestic delivery */}
+                  {deliveryMethod === "국내배송" && (
+                    <div>
+                      <label className="block text-sm font-medium text-black mb-2">
+                        주소 검색
+                      </label>
+                      <AddressSearch
+                        onSelectAddress={handleAddressSelect}
+                        apiKey={JUSO_API_KEY}
+                      />
+                    </div>
+                  )}
 
-                  {zipCode && (
+                  {/* Show postal code field when address is selected or for international shipping */}
+                  {(zipCode || deliveryMethod === "해외배송") && (
                     <div>
                       <label className="block text-sm font-medium text-black mb-2">
                         우편번호 <span className="text-red-500">*</span>
@@ -480,9 +484,16 @@ export default function PaymentPage() {
                       <input
                         type="text"
                         value={zipCode}
-                        readOnly
-                        disabled
-                        className="w-full px-4 py-2 bg-zinc-100 border border-zinc-300 rounded-md text-black"
+                        onChange={(e) => setZipCode(e.target.value)}
+                        readOnly={deliveryMethod === "국내배송"}
+                        disabled={deliveryMethod === "국내배송"}
+                        className={`w-full px-4 py-2 border border-zinc-300 rounded-md text-black ${
+                          deliveryMethod === "국내배송"
+                            ? "bg-zinc-100"
+                            : "bg-white focus:outline-none focus:ring-2 focus:ring-zinc-400"
+                        }`}
+                        placeholder={deliveryMethod === "해외배송" ? "우편번호를 입력하세요" : ""}
+                        required
                       />
                     </div>
                   )}
@@ -498,10 +509,15 @@ export default function PaymentPage() {
                       type="text"
                       id="address"
                       value={address}
-                      readOnly
-                      disabled
-                      className="w-full px-4 py-2 bg-zinc-100 border border-zinc-300 rounded-md text-black"
-                      placeholder="주소 검색 버튼을 클릭하세요"
+                      onChange={(e) => setAddress(e.target.value)}
+                      readOnly={deliveryMethod === "국내배송"}
+                      disabled={deliveryMethod === "국내배송"}
+                      className={`w-full px-4 py-2 border border-zinc-300 rounded-md text-black ${
+                        deliveryMethod === "국내배송"
+                          ? "bg-zinc-100"
+                          : "bg-white focus:outline-none focus:ring-2 focus:ring-zinc-400"
+                      }`}
+                      placeholder={deliveryMethod === "국내배송" ? "주소 검색 버튼을 클릭하세요" : "주소를 입력하세요"}
                       required
                     />
                   </div>
