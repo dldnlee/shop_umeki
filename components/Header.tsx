@@ -54,13 +54,13 @@ export default function Header() {
             유메키 팬미팅
           </Link>
 
-          {/* Cart Button */}
+          {/* Cart Button
           <button
             onClick={openCart}
             className="relative text-white border rounded-full w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center hover:scale-105 transition-all duration-200"
             aria-label="View cart"
           >
-            {/* Shopping Cart Icon */}
+            Shopping Cart Icon
             <svg
               xmlns="http://www.w3.org/2000/svg"
               className="h-5 w-5 sm:h-6 sm:w-6"
@@ -76,13 +76,13 @@ export default function Header() {
               />
             </svg>
 
-            {/* Item Count Badge */}
+            Item Count Badge
             {itemCount > 0 && (
               <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center">
                 {itemCount > 99 ? "99+" : itemCount}
               </span>
             )}
-          </button>
+          </button> */}
         </div>
       </div>
     </header>

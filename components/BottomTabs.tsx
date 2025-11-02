@@ -1,12 +1,15 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useTab } from "@/components/TabProvider";
+import { useCartModal } from "@/components/CartModalProvider";
 import { useRef, useEffect, useState } from "react";
 
 export default function BottomTabs() {
   const { activeTab, setActiveTab } = useTab();
   const pathname = usePathname();
+  const router = useRouter();
+  const { openCart } = useCartModal();
   const fanmeetingRef = useRef<HTMLButtonElement>(null);
   const goodsRef = useRef<HTMLButtonElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -17,6 +20,17 @@ export default function BottomTabs() {
 
   // Only show tabs on home page
   const isHomePage = pathname === '/';
+
+  // Handle floating action button click
+  const handleActionButtonClick = () => {
+    if (activeTab === 'fanmeeting') {
+      // Redirect to fanmeeting URL - update this URL as needed
+      router.push('/fanmeeting');
+    } else {
+      // Open cart modal for goods tab
+      openCart();
+    }
+  };
 
   // Update indicator position when active tab changes
   useEffect(() => {
@@ -41,6 +55,7 @@ export default function BottomTabs() {
     <div className="fixed bottom-12 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-4">
       {/* Floating Action Button */}
       <button
+        onClick={handleActionButtonClick}
         className={`bg-[#8DCFDD] ${activeTab === 'fanmeeting' ? 'bg-[#8DCFDD] text-white' : 'bg-white text-black'} px-8 py-3 sm:px-10 sm:py-3 rounded-full text-base sm:text-lg shadow-xl hover:shadow-2xl hover:scale-105 active:scale-95 transition-all duration-200 whitespace-nowrap w-[200px]`}
       >
         {activeTab === 'fanmeeting' ? '티케팅 하기' : '구매하기'}
