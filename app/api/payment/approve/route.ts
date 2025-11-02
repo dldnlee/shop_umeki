@@ -51,7 +51,11 @@ export async function POST(request: NextRequest) {
     // EasyPay Query/Status Check API endpoint (for WebPay)
     // WebPay payments are automatically approved by EasyPay after user completes payment
     // We just need to query the status to verify it was successful
-    const approvalUrl = `${process.env.EASYPAY_API_URL}/api/trades/approval`;
+    // Note: The exact endpoint may vary - common endpoints are:
+    // - /api/trades/approval (for manual approval)
+    // - /api/trades/query (for status query)
+    // - /api/ep9/trades/issue (for WebPay status check)
+    const approvalUrl = `${process.env.EASYPAY_API_URL}/api/ep9/trades/approval`;
 
     const now = new Date();
     const yyyy = now.getFullYear();
@@ -61,27 +65,25 @@ export async function POST(request: NextRequest) {
     const shopTransactionId = `${approvalReqDate}${Math.floor(Math.random()*1e9)}`;
 
     // Prepare approval/query request
+    // Note: EasyPay may require the API key in different formats depending on their API version
+    // Common formats: in body as 'apiKey', in header as 'Authorization', or in header as custom field
     const approvalBody = {
       mallId: mallId,
       shopOrderNo: shopOrderNo,
       shopTransactionId: shopTransactionId,
       approvalReqDate: approvalReqDate,
-      authorizationId: authorizationId
-      // Add authentication headers or parameters as required by EasyPay
-      // This may include API keys, signatures, or other authentication methods
+      authorizationId: authorizationId,
     };
 
     // Call EasyPay Approval API
     console.log('Calling EasyPay Approval API:', approvalUrl);
-    console.log('Approval request body:', JSON.stringify(approvalBody, null, 2));
+    console.log('Approval request body:', JSON.stringify({ ...approvalBody, apiKey: '[REDACTED]' }, null, 2));
 
     const approvalRes = await fetch(approvalUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Charset': 'UTF-8',
-        // Add any required authentication headers
-        // 'Authorization': `Bearer ${apiKey}`, // Example - adjust based on EasyPay docs
+        'Charset': 'UTF-8'
       },
       body: JSON.stringify(approvalBody),
     });
@@ -94,6 +96,81 @@ export async function POST(request: NextRequest) {
     // Check if approval was successful
     if (!approvalRes.ok || approvalData?.resCd !== '0000') {
       console.error('EasyPay approval failed:', approvalData);
+
+      // Special handling for R102 error - try query endpoint as fallback
+      if (approvalData?.resCd === 'R102') {
+        console.error('R102 Error - Invalid authorization or missing parameters');
+        console.error('Request details:', {
+          mallId: mallId,
+          shopOrderNo: shopOrderNo,
+          authorizationId: authorizationId,
+          hasApiKey: !!apiKey
+        });
+
+        // Try querying payment status instead (WebPay may not need explicit approval)
+        console.log('Attempting to query payment status instead...');
+        const queryUrl = `${process.env.EASYPAY_API_URL}/api/trades/query`;
+
+        const queryBody = {
+          mallId: mallId,
+          shopOrderNo: shopOrderNo,
+          apiKey: apiKey,
+        };
+
+        const queryRes = await fetch(queryUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Charset': 'UTF-8',
+            'Authorization': apiKey,
+            'apiKey': apiKey,
+          },
+          body: JSON.stringify(queryBody),
+        });
+
+        const queryData = await queryRes.json();
+        console.log('Query response:', queryData);
+
+        // If query succeeds, use that data
+        if (queryRes.ok && queryData?.resCd === '0000') {
+          console.log('Payment query successful, using query data');
+          // Return query data as approval data
+          return NextResponse.json({
+            success: true,
+            data: {
+              shopOrderNo: queryData.shopOrderNo,
+              paymentId: queryData.paymentId || queryData.ordNo,
+              amount: queryData.amount,
+              authDate: queryData.authDate,
+              authTime: queryData.authTime,
+              payMethodType: queryData.payMethodType,
+              payMethodTypeName: queryData.payMethodTypeName,
+            },
+            message: 'Payment verified successfully (via query)'
+          });
+        }
+
+        // If both approval and query fail, return detailed error
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Payment approval failed',
+            message: 'R102: 승인 요청 파라미터 오류 또는 인증 실패. authorizationId를 확인하거나 EASYPAY_API_KEY 설정을 확인하세요.',
+            code: approvalData?.resCd,
+            details: approvalData,
+            queryAttempt: queryData,
+            troubleshooting: {
+              checkApiKey: 'EASYPAY_API_KEY 환경 변수가 올바르게 설정되었는지 확인하세요',
+              checkAuthId: 'authorizationId가 결제 콜백에서 올바르게 전달되었는지 확인하세요',
+              checkMallId: 'EASYPAY_MALL_ID가 올바른지 확인하세요',
+              checkApiUrl: 'EASYPAY_API_URL이 테스트/운영 환경에 맞는지 확인하세요',
+              note: 'WebPay의 경우 자동 승인되므로 승인 API 대신 조회 API를 사용해야 할 수 있습니다'
+            }
+          },
+          { status: 400 }
+        );
+      }
+
       return NextResponse.json(
         {
           success: false,

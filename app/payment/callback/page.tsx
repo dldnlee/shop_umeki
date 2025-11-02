@@ -75,9 +75,17 @@ function PaymentCallbackContent() {
           return;
         }
 
-        // Retrieve pending order data from sessionStorage
-        const pendingOrderData = sessionStorage.getItem('pendingOrder');
-        const storedShopOrderNo = sessionStorage.getItem('currentShopOrderNo');
+        // Retrieve pending order data from sessionStorage or localStorage
+        // sessionStorage works for popup flow (when callback is in same window context)
+        // localStorage works as fallback for redirect flow or when popup loses session
+        let pendingOrderData = sessionStorage.getItem('pendingOrder');
+        let storedShopOrderNo = sessionStorage.getItem('currentShopOrderNo');
+
+        // Fallback to localStorage if not in sessionStorage
+        if (!pendingOrderData) {
+          pendingOrderData = localStorage.getItem('pendingOrder');
+          storedShopOrderNo = localStorage.getItem('currentShopOrderNo');
+        }
 
         if (!pendingOrderData || shopOrderNo !== storedShopOrderNo) {
           setStatus('error');
@@ -118,9 +126,16 @@ function PaymentCallbackContent() {
 
         if (!approvalData.success) {
           const errorMsg = approvalData.message || '결제 승인 실패';
+          const errorCode = approvalData.code ? `[${approvalData.code}] ` : '';
+
+          // Log troubleshooting info if available
+          if (approvalData.troubleshooting) {
+            console.error('Troubleshooting info:', approvalData.troubleshooting);
+          }
+
           const errorDetails = approvalData.details ? JSON.stringify(approvalData.details) : '';
-          console.error('Payment approval failed:', errorMsg, errorDetails);
-          throw new Error(`${errorMsg}${errorDetails ? ' - ' + errorDetails : ''}`);
+          console.error('Payment approval failed:', errorCode + errorMsg, errorDetails);
+          throw new Error(`${errorCode}${errorMsg}${errorDetails ? ' - ' + errorDetails : ''}`);
         }
 
         // Create order
@@ -137,9 +152,11 @@ function PaymentCallbackContent() {
           throw new Error(errorMessage);
         }
 
-        // Success - clear storage
+        // Success - clear storage from both session and local storage
         sessionStorage.removeItem('pendingOrder');
         sessionStorage.removeItem('currentShopOrderNo');
+        localStorage.removeItem('pendingOrder');
+        localStorage.removeItem('currentShopOrderNo');
 
         // Clear cart
         const { clearCart } = await import('@/lib/cart');
@@ -171,9 +188,11 @@ function PaymentCallbackContent() {
         setStatus('error');
         setMessage(error instanceof Error ? error.message : '결제 처리 중 오류가 발생했습니다.');
 
-        // Clean up
+        // Clean up from both storages
         sessionStorage.removeItem('pendingOrder');
         sessionStorage.removeItem('currentShopOrderNo');
+        localStorage.removeItem('pendingOrder');
+        localStorage.removeItem('currentShopOrderNo');
 
         if (window.opener) {
           window.opener.postMessage({

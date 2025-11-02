@@ -41,7 +41,6 @@ export async function POST(request: NextRequest) {
       authTime,
       payMethodType,
       authorizationId, // Authorization ID from EasyPay
-      // Add other fields that EasyPay sends in the callback
     } = body;
 
     console.log('Extracted values:', { shopOrderNo, resCd, resMsg, authorizationId });
@@ -70,6 +69,17 @@ export async function POST(request: NextRequest) {
 
     console.log('Payment callback data:', paymentData);
 
+    // Function to safely convert object values to strings for URLSearchParams
+    function toStringParams(obj) {
+      const result = {};
+      for (const key in obj) {
+        if (obj[key] !== null && obj[key] !== undefined) {
+          result[key] = String(obj[key]);
+        }
+      }
+      return result;
+    }
+
     if (window.opener) {
       // Send message to parent window
       window.opener.postMessage({
@@ -83,7 +93,7 @@ export async function POST(request: NextRequest) {
       }, 1000);
     } else {
       // Not in popup, redirect to callback page with parameters
-      const params = new URLSearchParams(paymentData);
+      const params = new URLSearchParams(toStringParams(paymentData));
       window.location.href = '/payment/callback?' + params.toString();
     }
   </script>
