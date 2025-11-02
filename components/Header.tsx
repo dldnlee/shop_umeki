@@ -5,25 +5,23 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { getCart } from "@/lib/cart";
 import { useCartModal } from "@/components/CartModalProvider";
-import { useTab } from "@/components/TabProvider";
 
 export default function Header() {
   const [itemCount, setItemCount] = useState(0);
   const { openCart } = useCartModal();
-  const { activeTab, setActiveTab } = useTab();
   const pathname = usePathname();
 
-  // Only show tabs on home page
-  const isHomePage = pathname === '/';
+  // Hide header on payment pages
+  const shouldHideHeader = pathname?.startsWith('/payment');
 
   useEffect(() => {
-    // Initialize cart count on mount (number of unique items, not total quantity)
-    setItemCount(getCart().length);
-
     // Listen for cart updates
     const handleCartUpdate = () => {
       setItemCount(getCart().length);
     };
+
+    // Initialize cart count on mount
+    handleCartUpdate();
 
     window.addEventListener("cartUpdated", handleCartUpdate);
 
@@ -42,25 +40,30 @@ export default function Header() {
     };
   }, []);
 
+  // Don't render header on payment pages
+  if (shouldHideHeader) {
+    return null;
+  }
+
   return (
-    <header className="sticky top-0 z-40 bg-[#8DCFDD] border-b border-white/20 w-full flex flex-col items-center py-3">
-      <div className="max-w-6xl w-full pt-4">
-        <div className="flex items-center justify-between mb-4 px-8">
+    <header className="sticky top-0 z-40 bg-[#8DCFDD] border-b border-white/20 w-full flex flex-col items-center py-2 sm:py-3">
+      <div className="max-w-6xl w-full">
+        <div className="flex items-center justify-between px-3 sm:px-8">
           {/* Logo/Brand */}
-          <Link href="/" className="text-2xl font-semibold text-black hover:opacity-80 transition-opacity">
+          <Link href="/" className="text-base sm:text-xl md:text-2xl font-semibold text-black hover:opacity-80 transition-opacity">
             유메키 팬미팅
           </Link>
 
-          {/* Cart Button */}
+          {/* Cart Button
           <button
             onClick={openCart}
-            className="relative text-white border rounded-full w-12 h-12 flex items-center justify-center hover:scale-105 transition-all duration-200"
+            className="relative text-white border rounded-full w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center hover:scale-105 transition-all duration-200"
             aria-label="View cart"
           >
-            {/* Shopping Cart Icon */}
+            Shopping Cart Icon
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              className="h-6 w-6"
+              className="h-5 w-5 sm:h-6 sm:w-6"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -73,40 +76,14 @@ export default function Header() {
               />
             </svg>
 
-            {/* Item Count Badge */}
+            Item Count Badge
             {itemCount > 0 && (
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center">
                 {itemCount > 99 ? "99+" : itemCount}
               </span>
             )}
-          </button>
+          </button> */}
         </div>
-
-        {/* Tab Navigation - Only show on home page */}
-        {isHomePage && (
-          <div className="flex gap-2 rounded-full border-2 border-gray-200 transition-all p-2 mx-4">
-            <button
-              onClick={() => setActiveTab('fanmeeting')}
-              className={`px-6 py-2 font-medium text-lg transition-all rounded-full w-full ${
-                activeTab === 'fanmeeting'
-                  ? 'text-black bg-white'
-                  : 'text-black/60 hover:text-black/80'
-              }`}
-            >
-              팬미팅 정보
-            </button>
-            <button
-              onClick={() => setActiveTab('goods')}
-              className={`px-6 py-3 font-medium text-lg transition-all rounded-full w-full ${
-                activeTab === 'goods'
-                  ? 'text-black bg-white'
-                  : 'text-black/60 hover:text-black/80'
-              }`}
-            >
-              굿즈 정보
-            </button>
-          </div>
-        )}
       </div>
     </header>
   );

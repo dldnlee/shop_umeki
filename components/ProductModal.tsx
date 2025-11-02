@@ -77,7 +77,7 @@ export default function ProductModal({ product, isOpen, onClose }: ProductModalP
       price: product.price,
       option: selectedOption,
       quantity,
-      slug: product.id,
+      slug: product.id.toString(),
     });
     alert(`Added ${quantity}x ${product.name} (${selectedOption}) to cart!`);
   };
@@ -90,14 +90,14 @@ export default function ProductModal({ product, isOpen, onClose }: ProductModalP
 
   return (
     <div
-      className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto"
+      className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-2 sm:p-4 overflow-y-auto"
       onClick={handleBackdropClick}
     >
-      <div className="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto relative my-8">
+      <div className="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto relative my-4 sm:my-8">
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="sticky top-4 right-4 float-right z-10 w-10 h-10 bg-white hover:bg-gray-100 rounded-full shadow-md flex items-center justify-center text-2xl text-black transition-colors"
+          className="sticky top-3 right-3 sm:top-4 sm:right-4 float-right z-10 w-8 h-8 sm:w-10 sm:h-10 bg-white hover:bg-gray-100 rounded-full shadow-md flex items-center justify-center text-xl sm:text-2xl text-black transition-colors"
           aria-label="Close modal"
         >
           ×
@@ -107,14 +107,14 @@ export default function ProductModal({ product, isOpen, onClose }: ProductModalP
           {/* Product Image Gallery */}
           <div className="w-full">
             {product.image_urls && product.image_urls.length > 0 ? (
-              <div className="space-y-4 p-4">
+              <div className="space-y-2 sm:space-y-4 p-2 sm:p-4">
                 {/* Main Swiper */}
                 <Swiper
                   modules={[Navigation, Pagination, Thumbs]}
                   navigation
                   pagination={{ clickable: true }}
                   thumbs={{ swiper: thumbsSwiper && !thumbsSwiper.destroyed ? thumbsSwiper : null }}
-                  className="w-full h-96 rounded-lg overflow-hidden"
+                  className="w-full h-64 sm:h-80 md:h-96 rounded-lg overflow-hidden"
                   spaceBetween={10}
                 >
                   {product.image_urls.map((url, index) => (
@@ -141,14 +141,16 @@ export default function ProductModal({ product, isOpen, onClose }: ProductModalP
                     watchSlidesProgress
                     freeMode
                     slidesPerView={4}
-                    spaceBetween={10}
-                    className="w-full h-24"
+                    spaceBetween={8}
+                    className="w-full h-16 sm:h-20 md:h-24"
                     breakpoints={{
                       640: {
                         slidesPerView: 5,
+                        spaceBetween: 10,
                       },
                       768: {
                         slidesPerView: 6,
+                        spaceBetween: 10,
                       },
                     }}
                   >
@@ -169,28 +171,28 @@ export default function ProductModal({ product, isOpen, onClose }: ProductModalP
                 )}
               </div>
             ) : (
-              <div className="w-full h-96 bg-gray-100 flex items-center justify-center text-zinc-400">
-                <span className="select-none text-lg">No Images Available</span>
+              <div className="w-full h-64 sm:h-80 md:h-96 bg-gray-100 flex items-center justify-center text-zinc-400">
+                <span className="select-none text-base sm:text-lg">No Images Available</span>
               </div>
             )}
           </div>
 
           {/* Product Details */}
-          <div className="p-8">
-            <h1 className="text-3xl font-semibold text-black mb-2">
+          <div className="p-4 sm:p-6 md:p-8">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-semibold text-black mb-2">
               {product.name}
             </h1>
 
-            <p className="text-2xl font-bold text-black mb-6">
+            <p className="text-lg sm:text-xl md:text-2xl font-bold text-black mb-4 sm:mb-6">
               {formatKRW(product.price)}
             </p>
 
             {/* Option Dropdown */}
             {product.options && product.options.length > 0 && (
-              <div className="mb-6">
+              <div className="mb-4 sm:mb-6">
                 <label
                   htmlFor="option-select"
-                  className="block text-sm font-medium text-black mb-2"
+                  className="block text-xs sm:text-sm font-medium text-black mb-2"
                 >
                   Select Option
                 </label>
@@ -198,7 +200,7 @@ export default function ProductModal({ product, isOpen, onClose }: ProductModalP
                   id="option-select"
                   value={selectedOption}
                   onChange={(e) => setSelectedOption(e.target.value)}
-                  className="w-full px-4 py-2 bg-white border border-zinc-300 rounded-md text-black focus:outline-none focus:ring-2 focus:ring-zinc-400"
+                  className="w-full px-3 py-2 sm:px-4 bg-white border border-zinc-300 rounded-md text-sm sm:text-base text-black focus:outline-none focus:ring-2 focus:ring-zinc-400"
                 >
                   {product.options.map((option: string) => (
                     <option key={option} value={option}>
@@ -210,24 +212,24 @@ export default function ProductModal({ product, isOpen, onClose }: ProductModalP
             )}
 
             {/* Quantity Selector */}
-            <div className="mb-8">
-              <label className="block text-sm font-medium text-black mb-2">
+            <div className="mb-6 sm:mb-8">
+              <label className="block text-xs sm:text-sm font-medium text-black mb-2">
                 Quantity
               </label>
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3 sm:gap-4">
                 <button
                   onClick={() => handleQuantityChange(-1)}
-                  className="w-10 h-10 rounded-md bg-[#8DCFDD] text-white font-semibold hover:bg-[#7BBFCF] transition-colors"
+                  className="w-9 h-9 sm:w-10 sm:h-10 rounded-md bg-[#8DCFDD] text-white text-sm sm:text-base font-semibold hover:bg-[#7BBFCF] transition-colors"
                   aria-label="Decrease quantity"
                 >
                   -
                 </button>
-                <span className="text-xl font-medium text-black min-w-[3ch] text-center">
+                <span className="text-lg sm:text-xl font-medium text-black min-w-[3ch] text-center">
                   {quantity}
                 </span>
                 <button
                   onClick={() => handleQuantityChange(1)}
-                  className="w-10 h-10 rounded-md bg-[#8DCFDD] text-white font-semibold hover:bg-[#7BBFCF] transition-colors"
+                  className="w-9 h-9 sm:w-10 sm:h-10 rounded-md bg-[#8DCFDD] text-white text-sm sm:text-base font-semibold hover:bg-[#7BBFCF] transition-colors"
                   aria-label="Increase quantity"
                 >
                   +
@@ -238,7 +240,7 @@ export default function ProductModal({ product, isOpen, onClose }: ProductModalP
             {/* Add to Cart Button */}
             <button
               onClick={handleAddToCart}
-              className="w-full py-3 px-6 bg-[#8DCFDD] text-white rounded-md font-medium text-lg hover:opacity-90 transition-opacity"
+              className="w-full py-2.5 px-4 sm:py-3 sm:px-6 bg-[#8DCFDD] text-white rounded-md font-medium text-base sm:text-lg hover:opacity-90 transition-opacity"
             >
               Add to Cart
             </button>

@@ -50,8 +50,14 @@ export default function MainPageTabs({ products }: MainPageTabsProps) {
   return (
     <div>
       {activeTab === 'goods' && (
-        <section className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {products.map((p) => (
+        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+          <div className="text-black">
+            <img src="/goods_info.jpg" alt="Fanmeeting info" className='w-full' />
+            {/* Add fanmeeting information here */}
+          </div>
+        </div>
+        // <section className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
+          /* {products.map((p) => (
             <button
               key={p.id}
               onClick={() => handleProductClick(p)}
@@ -68,23 +74,23 @@ export default function MainPageTabs({ products }: MainPageTabsProps) {
                   />
                 ) : (
                   <div className="h-full flex items-center justify-center text-zinc-400">
-                    <span className="select-none">No Image</span>
+                    <span className="select-none text-xs sm:text-sm">No Image</span>
                   </div>
                 )}
               </div>
-              <div className="p-4">
-                <h3 className="text-base font-medium text-black">
+              <div className="p-2 sm:p-3 md:p-4">
+                <h3 className="text-xs sm:text-sm md:text-base font-medium text-black line-clamp-2">
                   {p.name}
                 </h3>
-                <div className="mt-4 flex items-center justify-between">
-                  <span className="text-lg font-semibold text-black">
+                <div className="mt-2 sm:mt-3 md:mt-4 flex items-center justify-between">
+                  <span className="text-sm sm:text-base md:text-lg font-semibold text-black">
                     {formatKRW(p.price)}
                   </span>
                 </div>
               </div>
             </button>
-          ))}
-        </section>
+          ))} */
+        /* </section> */
       )}
 
       {activeTab === 'fanmeeting' && (
