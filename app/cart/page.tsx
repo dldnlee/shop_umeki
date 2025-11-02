@@ -42,7 +42,7 @@ export default function CartPage() {
 
   if (cartItems.length === 0) {
     return (
-      <div className="min-h-screen bg-zinc-50 dark:bg-black font-sans text-foreground">
+      <div className="min-h-screen bg-zinc-50 font-sans text-foreground">
         <main className="max-w-4xl mx-auto p-8">
           <h1 className="text-3xl font-semibold text-black dark:text-white mb-8">
             Shopping Cart
@@ -66,7 +66,7 @@ export default function CartPage() {
   const total = getCartTotal();
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-black font-sans text-foreground">
+    <div className="min-h-screen bg-[#8DCFDD] font-sans text-foreground">
       <main className="max-w-4xl mx-auto p-8">
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-3xl font-semibold text-black dark:text-white">
@@ -84,19 +84,19 @@ export default function CartPage() {
           {cartItems.map((item) => (
             <div
               key={`${item.productId}-${item.option || "default"}`}
-              className="bg-white dark:bg-[#0b0b0b] rounded-lg border border-black/6 shadow-sm p-6"
+              className="bg-white rounded-lg border border-black/6 shadow-sm p-6"
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-black dark:text-white mb-1">
+                  <h3 className="text-lg font-semibold text-black mb-1">
                     {item.productName}
                   </h3>
                   {item.option && (
-                    <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-2">
+                    <p className="text-sm text-gray-600 mb-2">
                       Option: {item.option}
                     </p>
                   )}
-                  <p className="text-base font-medium text-black dark:text-white">
+                  <p className="text-base font-medium text-black">
                     {formatKRW(item.price)}
                   </p>
                 </div>
@@ -112,12 +112,12 @@ export default function CartPage() {
                           item.option
                         )
                       }
-                      className="w-8 h-8 rounded-md bg-zinc-200 dark:bg-zinc-800 text-black dark:text-white font-semibold hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-colors"
+                      className="w-8 h-8 rounded-md bg-[#8DCFDD] text-white font-semibold hover:bg-zinc-300 transition-colors"
                       aria-label="Decrease quantity"
                     >
                       -
                     </button>
-                    <span className="text-base font-medium text-black dark:text-white min-w-[2ch] text-center">
+                    <span className="text-base font-medium text-black min-w-[2ch] text-center">
                       {item.quantity}
                     </span>
                     <button
@@ -128,7 +128,7 @@ export default function CartPage() {
                           item.option
                         )
                       }
-                      className="w-8 h-8 rounded-md bg-zinc-200 dark:bg-zinc-800 text-black dark:text-white font-semibold hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-colors"
+                      className="w-8 h-8 rounded-md bg-[#8DCFDD] text-white font-semibold hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-colors"
                       aria-label="Increase quantity"
                     >
                       +
@@ -168,23 +168,23 @@ export default function CartPage() {
         </div>
 
         {/* Cart Summary */}
-        <div className="mt-8 bg-white dark:bg-[#0b0b0b] rounded-lg border border-black/6 shadow-sm p-6">
+        <div className="mt-8 bg-white rounded-lg border border-black/6 shadow-sm p-6">
           <div className="flex items-center justify-between mb-6">
             <span className="text-xl font-semibold text-black dark:text-white">
               Total
             </span>
-            <span className="text-2xl font-bold text-black dark:text-white">
+            <span className="text-2xl font-bold text-black">
               {formatKRW(total)}
             </span>
           </div>
           <div className="flex gap-4">
             <Link
               href="/"
-              className="flex-1 py-3 px-6 bg-zinc-200 dark:bg-zinc-800 text-black dark:text-white rounded-md font-medium text-center hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-colors"
+              className="flex-1 py-3 px-6 bg-zinc-200 dark:bg-zinc-800 text-white rounded-md font-medium text-center hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-colors"
             >
               Continue Shopping
             </Link>
-            <Link href="/payment" className="flex-1 py-3 px-6 bg-black dark:bg-white text-white dark:text-black rounded-md font-medium hover:opacity-90 transition-opacity text-center">
+            <Link href="/payment" className="flex-1 py-3 px-6 bg-black text-white rounded-md font-medium hover:opacity-90 transition-opacity text-center">
               Checkout
             </Link>
           </div>

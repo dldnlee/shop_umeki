@@ -43,7 +43,7 @@ export default function ProductClient({ product, slug }: ProductClientProps) {
   };
 
   return (
-    <div className="bg-white dark:bg-[#0b0b0b] rounded-lg border border-black/6 shadow-sm overflow-hidden">
+    <div className="bg-white text-black rounded-lg border border-black/6 shadow-sm overflow-hidden">
       {/* Product Image Gallery */}
       <div className="w-full">
         {product.image_urls && product.image_urls.length > 0 ? (
@@ -59,7 +59,7 @@ export default function ProductClient({ product, slug }: ProductClientProps) {
             >
               {product.image_urls.map((url, index) => (
                 <SwiperSlide key={index}>
-                  <div className="relative w-full h-full bg-gray-100 dark:bg-gray-900">
+                  <div className="relative w-full h-full bg-gray-100 ">
                     <Image
                       src={url}
                       alt={`${product.name} - Image ${index + 1}`}
@@ -94,7 +94,7 @@ export default function ProductClient({ product, slug }: ProductClientProps) {
               >
                 {product.image_urls.map((url, index) => (
                   <SwiperSlide key={index} className="cursor-pointer">
-                    <div className="relative w-full h-full rounded-md overflow-hidden border-2 border-transparent hover:border-black dark:hover:border-white transition-colors">
+                    <div className="relative w-full h-full rounded-md overflow-hidden border-2 border-[#8DCFDD] hover:border-black transition-colors">
                       <Image
                         src={url}
                         alt={`${product.name} - Thumbnail ${index + 1}`}
@@ -117,11 +117,11 @@ export default function ProductClient({ product, slug }: ProductClientProps) {
 
       {/* Product Details */}
       <div className="p-8">
-        <h1 className="text-3xl font-semibold text-black dark:text-white mb-2">
+        <h1 className="text-3xl font-semibold text-black mb-2">
           {product.name}
         </h1>
 
-        <p className="text-2xl font-bold text-black dark:text-white mb-6">
+        <p className="text-2xl font-bold text-black mb-6">
           {formatKRW(product.price)}
         </p>
 
@@ -130,7 +130,7 @@ export default function ProductClient({ product, slug }: ProductClientProps) {
           <div className="mb-6">
             <label
               htmlFor="option-select"
-              className="block text-sm font-medium text-black dark:text-white mb-2"
+              className="block text-sm font-medium text-black mb-2"
             >
               Select Option
             </label>
@@ -138,7 +138,7 @@ export default function ProductClient({ product, slug }: ProductClientProps) {
               id="option-select"
               value={selectedOption}
               onChange={(e) => setSelectedOption(e.target.value)}
-              className="w-full px-4 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-md text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-zinc-400"
+              className="w-full px-4 py-2 bg-white border border-zinc-300  rounded-md text-black focus:outline-none focus:ring-2 focus:ring-zinc-400"
             >
               {product.options.map((option: string) => (
                 <option key={option} value={option}>
@@ -151,23 +151,23 @@ export default function ProductClient({ product, slug }: ProductClientProps) {
 
         {/* Quantity Selector */}
         <div className="mb-8">
-          <label className="block text-sm font-medium text-black dark:text-white mb-2">
+          <label className="block text-sm font-medium text-black mb-2">
             Quantity
           </label>
           <div className="flex items-center gap-4">
             <button
               onClick={() => handleQuantityChange(-1)}
-              className="w-10 h-10 rounded-md bg-zinc-200 dark:bg-zinc-800 text-black dark:text-white font-semibold hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-colors"
+              className="w-10 h-10 rounded-md bg-[#8DCFDD] text-white font-semibold hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-colors"
               aria-label="Decrease quantity"
             >
               -
             </button>
-            <span className="text-xl font-medium text-black dark:text-white min-w-[3ch] text-center">
+            <span className="text-xl font-medium text-black min-w-[3ch] text-center">
               {quantity}
             </span>
             <button
               onClick={() => handleQuantityChange(1)}
-              className="w-10 h-10 rounded-md bg-zinc-200 dark:bg-zinc-800 text-black dark:text-white font-semibold hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-colors"
+              className="w-10 h-10 rounded-md bg-[#8DCFDD] text-white dark:text-white font-semibold hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-colors"
               aria-label="Increase quantity"
             >
               +
@@ -178,7 +178,7 @@ export default function ProductClient({ product, slug }: ProductClientProps) {
         {/* Add to Cart Button */}
         <button
           onClick={handleAddToCart}
-          className="w-full py-3 px-6 bg-black dark:bg-white text-white dark:text-black rounded-md font-medium text-lg hover:opacity-90 transition-opacity"
+          className="w-full py-3 px-6 bg-[#8DCFDD] text-white rounded-md font-medium text-lg hover:opacity-90 transition-opacity"
         >
           Add to Cart
         </button>

@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { getCart } from "@/lib/cart";
+import { useCartModal } from "@/components/CartModalProvider";
 
 export default function FloatingCartButton() {
   const [itemCount, setItemCount] = useState(0);
+  const { openCart } = useCartModal();
 
   useEffect(() => {
     // Initialize cart count on mount (number of unique items, not total quantity)
@@ -34,8 +35,8 @@ export default function FloatingCartButton() {
   }, []);
 
   return (
-    <Link
-      href="/cart"
+    <button
+      onClick={openCart}
       className="fixed bottom-6 right-6 bg-black dark:bg-white text-white dark:text-black rounded-full w-16 h-16 flex items-center justify-center shadow-lg hover:scale-110 transition-transform duration-200 z-50"
       aria-label="View cart"
     >
@@ -63,6 +64,6 @@ export default function FloatingCartButton() {
           </span>
         )}
       </div>
-    </Link>
+    </button>
   );
 }
