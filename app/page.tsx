@@ -18,10 +18,10 @@ export default async function Home() {
   const productList = (products || []) as Product[];
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-black font-sans text-foreground">
+    <div className="min-h-screen bg-[#8DCFDD] font-sans text-foreground">
       <main className="max-w-6xl mx-auto p-8">
         <header className="mb-8">
-          <h1 className="text-3xl font-semibold text-black dark:text-white">
+          <h1 className="text-3xl font-semibold text-black text-center dark:text-white">
             유메키 팬미팅 굿즈
           </h1>
         </header>
@@ -31,9 +31,9 @@ export default async function Home() {
             <Link
               href={`/product/${p.id}`}
               key={p.id}
-              className="rounded-lg border border-black/6 bg-white dark:bg-[#0b0b0b] shadow-sm overflow-hidden hover:shadow-md transition-shadow"
+              className="rounded-lg bg-white shadow-md hover:scale-103 transition-all overflow-hidden hover:shadow-lg"
             >
-              <div className="relative h-40 bg-gray-100 dark:bg-gray-900">
+              <div className="relative aspect-square bg-[#9CE5F4]">
                 {p.image_urls && p.image_urls.length > 0 ? (
                   <Image
                     src={p.image_urls[0]}
@@ -49,11 +49,11 @@ export default async function Home() {
                 )}
               </div>
               <div className="p-4">
-                <h3 className="text-base font-medium text-black dark:text-zinc-50">
+                <h3 className="text-base font-medium text-black">
                   {p.name}
                 </h3>
                 <div className="mt-4 flex items-center justify-between">
-                  <span className="text-lg font-semibold text-black dark:text-white">
+                  <span className="text-lg font-semibold text-black">
                     {formatKRW(p.price)}
                   </span>
                 </div>

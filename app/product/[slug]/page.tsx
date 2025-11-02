@@ -25,7 +25,7 @@ export default async function ProductDetailPage({
   const typedProduct = product as Product;
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-black font-sans text-foreground">
+    <div className="min-h-screen bg-[#8DCFDD] font-sans text-foreground">
       <main className="max-w-4xl mx-auto p-8">
         <Link href="..">
           {'<'} Back
