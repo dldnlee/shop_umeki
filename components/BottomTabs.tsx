@@ -25,7 +25,7 @@ export default function BottomTabs() {
   const handleActionButtonClick = () => {
     if (activeTab === 'fanmeeting') {
       // Redirect to fanmeeting URL - update this URL as needed
-      router.push('/fanmeeting');
+      window.open('https://www.hypetown.kr/event/mguchc1l-z86g');
     } else {
       // Open cart modal for goods tab
       openCart();

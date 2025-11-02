@@ -48,7 +48,7 @@ export default function MainPageTabs({ products }: MainPageTabsProps) {
   };
 
   return (
-    <div>
+    <div className='pb-40'>
       {activeTab === 'goods' && (
         <div className="bg-white rounded-lg shadow-lg overflow-hidden">
           <div className="text-black">

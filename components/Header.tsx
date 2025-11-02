@@ -46,12 +46,12 @@ export default function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-40 bg-[#8DCFDD] border-b border-white/20 w-full flex flex-col items-center py-2 sm:py-3">
+    <header className="fixed top-0 z-40 bg-black/20 backdrop-blur-2xl border-b border-white/20 w-full flex flex-col items-center py-2 sm:py-3">
       <div className="max-w-6xl w-full">
-        <div className="flex items-center justify-between px-3 sm:px-8">
+        <div className="flex items-center justify-center px-3 sm:px-8">
           {/* Logo/Brand */}
-          <Link href="/" className="text-base sm:text-xl md:text-2xl font-semibold text-black hover:opacity-80 transition-opacity">
-            유메키 팬미팅
+          <Link href="/" className=" sm:text-xl md:text-2xl font-semibold text-white transition-opacity">
+            {"유메키 팬미팅 <YOU MAKE IT>"}
           </Link>
 
           {/* Cart Button

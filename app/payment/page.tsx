@@ -264,18 +264,18 @@ export default function PaymentPage() {
 
   if (cartItems.length === 0) {
     return (
-      <div className="min-h-screen bg-zinc-50 dark:bg-black font-sans text-foreground">
+      <div className="min-h-screen bg-zinc-50 font-sans text-foreground">
         <main className="max-w-4xl mx-auto p-8">
-          <h1 className="text-3xl font-semibold text-black dark:text-white mb-8">
+          <h1 className="text-3xl font-semibold text-black mb-8">
             Payment
           </h1>
-          <div className="bg-white dark:bg-[#0b0b0b] rounded-lg border border-black/6 shadow-sm p-12 text-center">
-            <p className="text-zinc-600 dark:text-zinc-400 mb-6">
+          <div className="bg-white rounded-lg border border-black/6 shadow-sm p-12 text-center">
+            <p className="text-zinc-600 mb-6">
               Your cart is empty
             </p>
             <Link
               href="/"
-              className="inline-block px-6 py-3 bg-black dark:bg-white text-white dark:text-black rounded-md font-medium hover:opacity-90 transition-opacity"
+              className="inline-block px-6 py-3 bg-black text-white rounded-md font-medium hover:opacity-90 transition-opacity"
             >
               Continue Shopping
             </Link>
@@ -286,22 +286,32 @@ export default function PaymentPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-black font-sans text-foreground">
+    <div className="min-h-screen bg-zinc-50 font-sans text-foreground">
       <main className="max-w-4xl mx-auto p-8">
-        <Link href="..">
-          {'< Back'}
+        <Link href=".." className="inline-flex items-center gap-2 text-zinc-700 hover:text-black transition-colors mb-6">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth={2}
+            stroke="currentColor"
+            className="w-5 h-5"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+          </svg>
+          <span className="font-medium">Back</span>
         </Link>
-        <h1 className="text-3xl font-semibold text-black dark:text-white mb-8">
+        <h1 className="text-3xl font-semibold text-black mb-8">
           Payment
         </h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Order Summary */}
-          <div className="order-2 lg:order-1">
-            <h2 className="text-xl font-semibold text-black dark:text-white mb-4">
+          <div className="order-1 lg:order-1">
+            <h2 className="text-xl font-semibold text-black mb-4">
               Order Summary
             </h2>
-            <div className="bg-white dark:bg-[#0b0b0b] rounded-lg border border-black/6 shadow-sm p-6">
+            <div className="bg-white rounded-lg border border-black/6 shadow-sm p-6">
               <div className="space-y-4 mb-6">
                 {cartItems.map((item) => (
                   <div
@@ -309,55 +319,55 @@ export default function PaymentPage() {
                     className="flex justify-between items-start gap-4"
                   >
                     <div className="flex-1">
-                      <h3 className="text-base font-medium text-black dark:text-white">
+                      <h3 className="text-base font-medium text-black">
                         {item.productName}
                       </h3>
                       {item.option && (
-                        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                        <p className="text-sm text-zinc-600">
                           {item.option}
                         </p>
                       )}
-                      <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                      <p className="text-sm text-zinc-600">
                         Qty: {item.quantity}
                       </p>
                     </div>
-                    <p className="text-base font-medium text-black dark:text-white">
+                    <p className="text-base font-medium text-black">
                       {formatKRW(item.price * item.quantity)}
                     </p>
                   </div>
                 ))}
               </div>
 
-              <div className="border-t border-zinc-200 dark:border-zinc-800 pt-4 space-y-2">
+              <div className="border-t border-zinc-200 pt-4 space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span className="text-zinc-600 dark:text-zinc-400">Subtotal</span>
-                  <span className="text-black dark:text-white">{formatKRW(total)}</span>
+                  <span className="text-zinc-600">Subtotal</span>
+                  <span className="text-black">{formatKRW(total)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-zinc-600 dark:text-zinc-400">Delivery Fee</span>
-                  <span className="text-black dark:text-white">
+                  <span className="text-zinc-600">Delivery Fee</span>
+                  <span className="text-black">
                     {deliveryFee === 0 ? "Free" : formatKRW(deliveryFee)}
                   </span>
                 </div>
-                <div className="flex justify-between text-lg font-semibold pt-2 border-t border-zinc-200 dark:border-zinc-800">
-                  <span className="text-black dark:text-white">Total</span>
-                  <span className="text-black dark:text-white">{formatKRW(finalTotal)}</span>
+                <div className="flex justify-between text-lg font-semibold pt-2 border-t border-zinc-200">
+                  <span className="text-black">Total</span>
+                  <span className="text-black">{formatKRW(finalTotal)}</span>
                 </div>
               </div>
             </div>
           </div>
 
           {/* Payment Form */}
-          <div className="order-1 lg:order-2">
-            <h2 className="text-xl font-semibold text-black dark:text-white mb-4">
+          <div className="order-2 lg:order-2">
+            <h2 className="text-xl font-semibold text-black mb-4">
               Delivery Information
             </h2>
-            <form onSubmit={handleSubmit} className="bg-white dark:bg-[#0b0b0b] rounded-lg border border-black/6 shadow-sm p-6">
+            <form onSubmit={handleSubmit} className="bg-white rounded-lg border border-black/6 shadow-sm p-6">
               {/* Name */}
               <div className="mb-6">
                 <label
                   htmlFor="name"
-                  className="block text-sm font-medium text-black dark:text-white mb-2"
+                  className="block text-sm font-medium text-black mb-2"
                 >
                   Name <span className="text-red-500">*</span>
                 </label>
@@ -366,7 +376,7 @@ export default function PaymentPage() {
                   id="name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full px-4 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-md text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-zinc-400"
+                  className="w-full px-4 py-2 bg-white border border-zinc-300 rounded-md text-black focus:outline-none focus:ring-2 focus:ring-zinc-400"
                   placeholder="홍길동"
                   required
                 />
@@ -375,7 +385,7 @@ export default function PaymentPage() {
               <div className="mb-6">
                 <label
                   htmlFor="name"
-                  className="block text-sm font-medium text-black dark:text-white mb-2"
+                  className="block text-sm font-medium text-black mb-2"
                 >
                   Email <span className="text-red-500">*</span>
                 </label>
@@ -384,7 +394,7 @@ export default function PaymentPage() {
                   id="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-4 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-md text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-zinc-400"
+                  className="w-full px-4 py-2 bg-white border border-zinc-300 rounded-md text-black focus:outline-none focus:ring-2 focus:ring-zinc-400"
                   placeholder="honggildong@gmail.com"
                   required
                 />
@@ -394,7 +404,7 @@ export default function PaymentPage() {
               <div className="mb-6">
                 <label
                   htmlFor="phone"
-                  className="block text-sm font-medium text-black dark:text-white mb-2"
+                  className="block text-sm font-medium text-black mb-2"
                 >
                   Phone Number <span className="text-red-500">*</span>
                 </label>
@@ -403,7 +413,7 @@ export default function PaymentPage() {
                   id="phone"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="w-full px-4 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-md text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-zinc-400"
+                  className="w-full px-4 py-2 bg-white border border-zinc-300 rounded-md text-black focus:outline-none focus:ring-2 focus:ring-zinc-400"
                   placeholder="010-1234-5678"
                   required
                 />
@@ -411,14 +421,14 @@ export default function PaymentPage() {
 
               {/* Delivery Method */}
               <div className="mb-6">
-                <label className="block text-sm font-medium text-black dark:text-white mb-2">
+                <label className="block text-sm font-medium text-black mb-2">
                   Delivery Method <span className="text-red-500">*</span>
                 </label>
                 <div className="space-y-2">
                   {(["국내배송", "해외배송", "직접수령"] as DeliveryMethod[]).map((method) => (
                     <label
                       key={method}
-                      className="flex items-center gap-3 p-3 rounded-md border border-zinc-300 dark:border-zinc-700 cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors"
+                      className="flex items-center gap-3 p-3 rounded-md border border-zinc-300 cursor-pointer hover:bg-zinc-50 transition-colors"
                     >
                       <input
                         type="radio"
@@ -426,21 +436,21 @@ export default function PaymentPage() {
                         value={method}
                         checked={deliveryMethod === method}
                         onChange={(e) => setDeliveryMethod(e.target.value as DeliveryMethod)}
-                        className="w-4 h-4 text-black dark:text-white"
+                        className="w-4 h-4 text-black"
                       />
-                      <span className="text-black dark:text-white">{method}</span>
+                      <span className="text-black">{method}</span>
                       {method === "해외배송" && (
-                        <span className="ml-auto text-sm text-zinc-600 dark:text-zinc-400">
+                        <span className="ml-auto text-sm text-zinc-600">
                           +{formatKRW(12000)}
                         </span>
                       )}
                       {method === "국내배송" && (
-                        <span className="ml-auto text-sm text-zinc-600 dark:text-zinc-400">
+                        <span className="ml-auto text-sm text-zinc-600">
                           +{formatKRW(3000)}
                         </span>
                       )}
                       {method === "직접수령" && (
-                        <span className="ml-auto text-sm text-zinc-600 dark:text-zinc-400">
+                        <span className="ml-auto text-sm text-zinc-600">
                           무료
                         </span>
                       )}
@@ -452,27 +462,38 @@ export default function PaymentPage() {
               {/* Address */}
               {deliveryMethod !== "직접수령" && (
                 <div className="mb-6 space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-black dark:text-white mb-2">
-                      주소 검색
-                    </label>
-                    <AddressSearch
-                      onSelectAddress={handleAddressSelect}
-                      apiKey={JUSO_API_KEY}
-                    />
-                  </div>
-
-                  {zipCode && (
+                  {/* Only show address search for domestic delivery */}
+                  {deliveryMethod === "국내배송" && (
                     <div>
-                      <label className="block text-sm font-medium text-black dark:text-white mb-2">
+                      <label className="block text-sm font-medium text-black mb-2">
+                        주소 검색
+                      </label>
+                      <AddressSearch
+                        onSelectAddress={handleAddressSelect}
+                        apiKey={JUSO_API_KEY}
+                      />
+                    </div>
+                  )}
+
+                  {/* Show postal code field when address is selected or for international shipping */}
+                  {(zipCode || deliveryMethod === "해외배송") && (
+                    <div>
+                      <label className="block text-sm font-medium text-black mb-2">
                         우편번호 <span className="text-red-500">*</span>
                       </label>
                       <input
                         type="text"
                         value={zipCode}
-                        readOnly
-                        disabled
-                        className="w-full px-4 py-2 bg-zinc-100 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded-md text-black dark:text-white"
+                        onChange={(e) => setZipCode(e.target.value)}
+                        readOnly={deliveryMethod === "국내배송"}
+                        disabled={deliveryMethod === "국내배송"}
+                        className={`w-full px-4 py-2 border border-zinc-300 rounded-md text-black ${
+                          deliveryMethod === "국내배송"
+                            ? "bg-zinc-100"
+                            : "bg-white focus:outline-none focus:ring-2 focus:ring-zinc-400"
+                        }`}
+                        placeholder={deliveryMethod === "해외배송" ? "우편번호를 입력하세요" : ""}
+                        required
                       />
                     </div>
                   )}
@@ -480,7 +501,7 @@ export default function PaymentPage() {
                   <div>
                     <label
                       htmlFor="address"
-                      className="block text-sm font-medium text-black dark:text-white mb-2"
+                      className="block text-sm font-medium text-black mb-2"
                     >
                       도로명 주소 <span className="text-red-500">*</span>
                     </label>
@@ -488,10 +509,15 @@ export default function PaymentPage() {
                       type="text"
                       id="address"
                       value={address}
-                      readOnly
-                      disabled
-                      className="w-full px-4 py-2 bg-zinc-100 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded-md text-black dark:text-white"
-                      placeholder="주소 검색 버튼을 클릭하세요"
+                      onChange={(e) => setAddress(e.target.value)}
+                      readOnly={deliveryMethod === "국내배송"}
+                      disabled={deliveryMethod === "국내배송"}
+                      className={`w-full px-4 py-2 border border-zinc-300 rounded-md text-black ${
+                        deliveryMethod === "국내배송"
+                          ? "bg-zinc-100"
+                          : "bg-white focus:outline-none focus:ring-2 focus:ring-zinc-400"
+                      }`}
+                      placeholder={deliveryMethod === "국내배송" ? "주소 검색 버튼을 클릭하세요" : "주소를 입력하세요"}
                       required
                     />
                   </div>
@@ -499,7 +525,7 @@ export default function PaymentPage() {
                   <div>
                     <label
                       htmlFor="addressDetail"
-                      className="block text-sm font-medium text-black dark:text-white mb-2"
+                      className="block text-sm font-medium text-black mb-2"
                     >
                       상세 주소
                     </label>
@@ -508,7 +534,7 @@ export default function PaymentPage() {
                       id="addressDetail"
                       value={addressDetail}
                       onChange={(e) => setAddressDetail(e.target.value)}
-                      className="w-full px-4 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-md text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-zinc-400"
+                      className="w-full px-4 py-2 bg-white border border-zinc-300 rounded-md text-black focus:outline-none focus:ring-2 focus:ring-zinc-400"
                       placeholder="상세 주소를 입력하세요 (예: 101동 101호)"
                     />
                   </div>
@@ -519,7 +545,7 @@ export default function PaymentPage() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full py-3 px-6 bg-black dark:bg-white text-white dark:text-black rounded-md font-medium text-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full py-3 px-6 bg-black text-white rounded-md font-medium text-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? "Processing..." : "Complete Payment"}
               </button>
