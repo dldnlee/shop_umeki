@@ -43,24 +43,24 @@ export default function Header() {
   }, []);
 
   return (
-    <header className="sticky top-0 z-40 bg-[#8DCFDD] border-b border-white/20 w-full flex flex-col items-center py-3">
-      <div className="max-w-6xl w-full pt-4">
-        <div className="flex items-center justify-between mb-4 px-8">
+    <header className="sticky top-0 z-40 bg-[#8DCFDD] border-b border-white/20 w-full flex flex-col items-center py-2 sm:py-3">
+      <div className="max-w-6xl w-full pt-2 sm:pt-4">
+        <div className="flex items-center justify-between mb-2 sm:mb-4 px-3 sm:px-8">
           {/* Logo/Brand */}
-          <Link href="/" className="text-2xl font-semibold text-black hover:opacity-80 transition-opacity">
+          <Link href="/" className="text-base sm:text-xl md:text-2xl font-semibold text-black hover:opacity-80 transition-opacity">
             유메키 팬미팅
           </Link>
 
           {/* Cart Button */}
           <button
             onClick={openCart}
-            className="relative text-white border rounded-full w-12 h-12 flex items-center justify-center hover:scale-105 transition-all duration-200"
+            className="relative text-white border rounded-full w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center hover:scale-105 transition-all duration-200"
             aria-label="View cart"
           >
             {/* Shopping Cart Icon */}
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              className="h-6 w-6"
+              className="h-5 w-5 sm:h-6 sm:w-6"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -75,7 +75,7 @@ export default function Header() {
 
             {/* Item Count Badge */}
             {itemCount > 0 && (
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center">
                 {itemCount > 99 ? "99+" : itemCount}
               </span>
             )}
@@ -84,10 +84,10 @@ export default function Header() {
 
         {/* Tab Navigation - Only show on home page */}
         {isHomePage && (
-          <div className="flex gap-2 rounded-full border-2 border-gray-200 transition-all p-2 mx-4">
+          <div className="flex gap-1 sm:gap-2 rounded-full border-2 border-gray-200 transition-all p-1 sm:p-2 mx-2 sm:mx-4">
             <button
               onClick={() => setActiveTab('fanmeeting')}
-              className={`px-6 py-2 font-medium text-lg transition-all rounded-full w-full ${
+              className={`px-3 py-1.5 sm:px-6 sm:py-2 font-medium text-sm sm:text-base md:text-lg transition-all rounded-full w-full ${
                 activeTab === 'fanmeeting'
                   ? 'text-black bg-white'
                   : 'text-black/60 hover:text-black/80'
@@ -97,7 +97,7 @@ export default function Header() {
             </button>
             <button
               onClick={() => setActiveTab('goods')}
-              className={`px-6 py-3 font-medium text-lg transition-all rounded-full w-full ${
+              className={`px-3 py-1.5 sm:px-6 sm:py-2 font-medium text-sm sm:text-base md:text-lg transition-all rounded-full w-full ${
                 activeTab === 'goods'
                   ? 'text-black bg-white'
                   : 'text-black/60 hover:text-black/80'

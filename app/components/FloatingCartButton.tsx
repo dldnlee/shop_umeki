@@ -37,14 +37,14 @@ export default function FloatingCartButton() {
   return (
     <button
       onClick={openCart}
-      className="fixed bottom-6 right-6 bg-black dark:bg-white text-white dark:text-black rounded-full w-16 h-16 flex items-center justify-center shadow-lg hover:scale-110 transition-transform duration-200 z-50"
+      className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 bg-black dark:bg-white text-white dark:text-black rounded-full w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center shadow-lg hover:scale-110 transition-transform duration-200 z-50"
       aria-label="View cart"
     >
       <div className="relative">
         {/* Shopping Cart Icon */}
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          className="h-7 w-7"
+          className="h-6 w-6 sm:h-7 sm:w-7"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -59,7 +59,7 @@ export default function FloatingCartButton() {
 
         {/* Item Count Badge */}
         {itemCount > 0 && (
-          <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+          <span className="absolute -top-1.5 -right-1.5 sm:-top-2 sm:-right-2 bg-red-500 text-white text-xs font-bold rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center">
             {itemCount > 99 ? "99+" : itemCount}
           </span>
         )}

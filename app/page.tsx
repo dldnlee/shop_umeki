@@ -17,7 +17,7 @@ export default async function Home() {
 
   return (
     <div className="min-h-screen bg-[#8DCFDD] font-sans text-foreground">
-      <main className="max-w-6xl mx-auto p-8">
+      <main className="max-w-6xl mx-auto p-3 sm:p-6 md:p-8">
         <MainPageTabs products={productList} />
       </main>
     </div>
