@@ -12,7 +12,7 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { shopOrderNo, amount } = body;
+    const { shopOrderNo, amount, authorizationId } = body;
 
     // Validate required fields
     if (!shopOrderNo) {
@@ -29,6 +29,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (!authorizationId) {
+      return NextResponse.json(
+        { error: 'Missing authorization ID' },
+        { status: 400 }
+      );
+    }
+
     // Get EasyPay configuration
     const mallId = process.env.EASYPAY_MALL_ID;
     const apiKey = process.env.EASYPAY_API_KEY;
@@ -41,19 +48,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // EasyPay Approval API endpoint
+    // EasyPay Query/Status Check API endpoint (for WebPay)
+    // WebPay payments are automatically approved by EasyPay after user completes payment
+    // We just need to query the status to verify it was successful
     const approvalUrl = `${process.env.EASYPAY_API_URL}/api/trades/approval`;
 
-    // Prepare approval request
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    const approvalReqDate = `${yyyy}${mm}${dd}`;
+    const shopTransactionId = `${approvalReqDate}${Math.floor(Math.random()*1e9)}`;
+
+    // Prepare approval/query request
     const approvalBody = {
       mallId: mallId,
       shopOrderNo: shopOrderNo,
-      amount: amount,
+      shopTransactionId: shopTransactionId,
+      approvalReqDate: approvalReqDate,
+      authorizationId: authorizationId
       // Add authentication headers or parameters as required by EasyPay
       // This may include API keys, signatures, or other authentication methods
     };
 
     // Call EasyPay Approval API
+    console.log('Calling EasyPay Approval API:', approvalUrl);
+    console.log('Approval request body:', JSON.stringify(approvalBody, null, 2));
+
     const approvalRes = await fetch(approvalUrl, {
       method: 'POST',
       headers: {
@@ -67,6 +88,9 @@ export async function POST(request: NextRequest) {
 
     const approvalData = await approvalRes.json();
 
+    console.log('EasyPay approval response status:', approvalRes.status);
+    console.log('EasyPay approval response data:', JSON.stringify(approvalData, null, 2));
+
     // Check if approval was successful
     if (!approvalRes.ok || approvalData?.resCd !== '0000') {
       console.error('EasyPay approval failed:', approvalData);
@@ -75,7 +99,8 @@ export async function POST(request: NextRequest) {
           success: false,
           error: 'Payment approval failed',
           message: approvalData?.resMsg || 'Unknown error',
-          code: approvalData?.resCd
+          code: approvalData?.resCd,
+          details: approvalData
         },
         { status: 400 }
       );

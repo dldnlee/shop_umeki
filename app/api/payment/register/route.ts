@@ -44,8 +44,9 @@ export async function POST(request: NextRequest) {
     const shopOrderNo = `${yyyy}${mm}${dd}${Math.floor(Math.random() * 1e9)}`;
 
     // Get base URL for return URL
+    // IMPORTANT: EasyPay sends data back via POST to this URL, not GET with query params
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
-    const returnUrl = `${baseUrl}/payment/callback`;
+    const returnUrl = `${baseUrl}/api/payment/callback`;
 
     // Prepare request to EasyPay WebPay API
     const webpayPath = `${process.env.EASYPAY_API_URL}/api/ep9/trades/webpay`;
@@ -53,7 +54,7 @@ export async function POST(request: NextRequest) {
     const requestBody = {
       mallId: mallId,
       shopOrderNo: shopOrderNo,
-      amount: 1,
+      amount: amount,
       payMethodTypeCode: 11, // 11 = Credit card, adjust based on your needs
       currency: "00", // 00 = KRW
       returnUrl: returnUrl,
@@ -66,6 +67,9 @@ export async function POST(request: NextRequest) {
     };
 
     // Call EasyPay WebPay API
+    console.log('Calling EasyPay WebPay API:', webpayPath);
+    console.log('Request body:', JSON.stringify(requestBody, null, 2));
+
     const webpayRes = await fetch(webpayPath, {
       method: 'POST',
       headers: {
@@ -77,13 +81,17 @@ export async function POST(request: NextRequest) {
 
     const webpayData = await webpayRes.json();
 
+    console.log('EasyPay response status:', webpayRes.status);
+    console.log('EasyPay response data:', JSON.stringify(webpayData, null, 2));
+
     // Check if the request was successful
     if (!webpayRes.ok || webpayData?.resCd !== '0000' || !webpayData?.authPageUrl) {
       console.error('EasyPay WebPay API error:', webpayData);
       return NextResponse.json(
         {
           error: 'Failed to register payment',
-          message: webpayData?.resMsg || 'Unknown error'
+          message: webpayData?.resMsg || 'Unknown error',
+          details: webpayData
         },
         { status: 400 }
       );

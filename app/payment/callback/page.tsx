@@ -19,12 +19,42 @@ export default function PaymentCallbackPage() {
   const [message, setMessage] = useState('결제 처리 중...');
 
   useEffect(() => {
+    // Check if there's POST data (EasyPay might use form submission)
+    console.log('=== Page Loaded ===');
+    console.log('window.location.href:', window.location.href);
+    console.log('window.location.search:', window.location.search);
+    console.log('document.referrer:', document.referrer);
+    console.log('==================');
     const handlePaymentCallback = async () => {
       try {
         // Get payment result from URL parameters
         const resCd = searchParams.get('resCd');
         const resMsg = searchParams.get('resMsg');
         const shopOrderNo = searchParams.get('shopOrderNo');
+        const authorizationId = searchParams.get('authorizationId')
+
+        // Debug: Log all URL parameters
+        console.log('=== Callback Page URL Parameters ===');
+        console.log('Full URL:', window.location.href);
+        console.log('Search params:', window.location.search);
+        console.log('resCd:', resCd);
+        console.log('resMsg:', resMsg);
+        console.log('shopOrderNo:', shopOrderNo);
+
+        // Log all parameters
+        const allParams: { [key: string]: string } = {};
+        searchParams.forEach((value, key) => {
+          allParams[key] = value;
+        });
+        console.log('All parameters:', allParams);
+        console.log('===================================');
+
+        // If no parameters at all, show a specific error
+        if (!resCd && !resMsg && !shopOrderNo && searchParams.toString() === '') {
+          setStatus('error');
+          setMessage('결제 결과 정보가 전달되지 않았습니다. EasyPay 콜백 설정을 확인해주세요.');
+          return;
+        }
 
         // Check if payment was successful
         if (resCd !== '0000') {
@@ -78,13 +108,19 @@ export default function PaymentCallbackPage() {
           body: JSON.stringify({
             shopOrderNo: shopOrderNo,
             amount: orderData.total_amount,
+            authorizationId: authorizationId
           }),
         });
 
         const approvalData = await approvalRes.json();
 
+        console.log('Approval response:', approvalData);
+
         if (!approvalData.success) {
-          throw new Error(approvalData.message || '결제 승인 실패');
+          const errorMsg = approvalData.message || '결제 승인 실패';
+          const errorDetails = approvalData.details ? JSON.stringify(approvalData.details) : '';
+          console.error('Payment approval failed:', errorMsg, errorDetails);
+          throw new Error(`${errorMsg}${errorDetails ? ' - ' + errorDetails : ''}`);
         }
 
         // Create order
