@@ -109,14 +109,14 @@ export function AddressSearch({ onSelectAddress, apiKey }: AddressSearchProps) {
           value={searchKeyword}
           onChange={(e) => setSearchKeyword(e.target.value)}
           onKeyPress={handleKeyPress}
-          className="flex-1 px-4 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-md text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-zinc-400"
+          className="w-full px-4 py-2 bg-zinc-100 border border-zinc-300 rounded-md text-black"
           placeholder="도로명 또는 지번 주소를 입력하세요"
         />
         <button
           type="button"
           onClick={handleSearch}
           disabled={isSearching}
-          className="px-4 py-2 bg-zinc-700 dark:bg-zinc-600 text-white rounded-md hover:bg-zinc-800 dark:hover:bg-zinc-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+          className="px-4 py-2 bg-zinc-700 text-white rounded-md hover:bg-zinc-800 dark:hover:bg-zinc-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
         >
           {isSearching ? "검색중..." : "주소 검색"}
         </button>
@@ -127,21 +127,21 @@ export function AddressSearch({ onSelectAddress, apiKey }: AddressSearchProps) {
       )}
 
       {showResults && results.length > 0 && (
-        <div className="absolute z-10 w-full mt-1 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-md shadow-lg max-h-60 overflow-y-auto">
+        <div className="absolute z-10 w-full mt-1 bg-white border border-zinc-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
           {results.map((result, index) => (
             <button
               key={index}
               type="button"
               onClick={() => handleSelectAddress(result)}
-              className="w-full text-left px-4 py-3 hover:bg-zinc-100 dark:hover:bg-zinc-800 border-b border-zinc-200 dark:border-zinc-700 last:border-b-0 transition-colors"
+              className="w-full text-left px-4 py-3 hover:bg-zinc-100 border-b border-zinc-200 last:border-b-0 transition-colors"
             >
-              <p className="text-sm font-medium text-black dark:text-white">
+              <p className="text-sm font-medium text-black">
                 {result.roadAddrPart1}
               </p>
-              <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1">
+              <p className="text-xs text-zinc-600 mt-1">
                 (지번) {result.jibunAddr}
               </p>
-              <p className="text-xs text-zinc-500 dark:text-zinc-500 mt-1">
+              <p className="text-xs text-zinc-500 mt-1">
                 우편번호: {result.zipNo}
               </p>
             </button>
