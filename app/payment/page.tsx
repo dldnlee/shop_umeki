@@ -120,6 +120,46 @@ export default function PaymentPage() {
             throw new Error(errorMessage);
           }
 
+          // Send order confirmation email
+          if (result.data?.order && result.data?.items) {
+            try {
+              const { sendOrderConfirmationEmail } = await import('@/lib/email');
+
+              // Format order date
+              const orderDate = new Date(result.data.order.created_at).toLocaleString('ko-KR', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+              });
+
+              // Prepare email data
+              await sendOrderConfirmationEmail({
+                orderId: result.data.order.id,
+                customerName: result.data.order.name,
+                customerEmail: result.data.order.email,
+                orderDate: orderDate,
+                items: result.data.items.map((item) => ({
+                  productName: `상품 ID: ${item.product_id}`,
+                  productOption: item.option,
+                  quantity: item.quantity,
+                  totalPrice: item.total_price,
+                })),
+                totalAmount: result.data.order.total_amount,
+                deliveryMethod: result.data.order.delivery_method,
+                address: result.data.order.address,
+                phoneNum: result.data.order.phone_num,
+              });
+
+              console.log('Order confirmation email sent successfully');
+            } catch (emailError) {
+              // Log email error but don't fail the order
+              console.error('Failed to send order confirmation email:', emailError);
+              // Order was created successfully, so we continue even if email fails
+            }
+          }
+
           // Success - clear storage from both session and local storage
           sessionStorage.removeItem('pendingOrder');
           sessionStorage.removeItem('currentShopOrderNo');
