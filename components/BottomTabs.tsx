@@ -38,7 +38,15 @@ export default function BottomTabs() {
   }
 
   return (
-    <div className="fixed bottom-12 left-1/2 -translate-x-1/2 z-50">
+    <div className="fixed bottom-12 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-4">
+      {/* Floating Action Button */}
+      <button
+        className={`bg-[#8DCFDD] ${activeTab === 'fanmeeting' ? 'bg-[#8DCFDD] text-white' : 'bg-white text-black'} px-8 py-3 sm:px-10 sm:py-3 rounded-full text-base sm:text-lg shadow-xl hover:shadow-2xl hover:scale-105 active:scale-95 transition-all duration-200 whitespace-nowrap w-[200px]`}
+      >
+        {activeTab === 'fanmeeting' ? '티케팅 하기' : '구매하기'}
+      </button>
+
+      {/* Bottom Tabs */}
       <div ref={containerRef} className="relative flex gap-2 rounded-full bg-black/20 backdrop-blur-xl shadow-lg p-1.5 sm:p-2">
         {/* Sliding background indicator */}
         <div
