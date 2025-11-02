@@ -66,14 +66,14 @@ function PurchaseCompleteContent() {
 
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            {orderId && (
+            {/* {orderId && (
               <Link
                 href={`/order/${orderId}`}
                 className="px-6 py-3 bg-black dark:bg-white text-white dark:text-black rounded-md font-medium hover:opacity-90 transition-opacity"
               >
                 주문 상세보기
               </Link>
-            )}
+            )} */}
             <Link
               href="/"
               className="px-6 py-3 bg-zinc-200 dark:bg-zinc-800 text-black dark:text-white rounded-md font-medium hover:opacity-90 transition-opacity"
@@ -112,7 +112,7 @@ function PurchaseCompleteContent() {
           {/* Support Info */}
           <div className="mt-8 p-4 bg-zinc-50 dark:bg-zinc-900 rounded-md">
             <p className="text-xs text-zinc-500 dark:text-zinc-500">
-              문의사항이 있으시면 고객센터로 연락해주세요
+              문의사항이 있으시면 고객센터로 연락해주세요 <span className="text-white">1500-2000</span>
             </p>
           </div>
         </div>
