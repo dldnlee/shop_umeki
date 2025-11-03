@@ -115,7 +115,7 @@ export default function AdminDashboard() {
         <div className="flex-1">
           <input
             type="text"
-            placeholder="이름, 이메일, 전화번호로 검색..."
+            placeholder="주문번호, 이름, 이메일, 전화번호로 검색..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"

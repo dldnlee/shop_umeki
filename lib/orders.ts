@@ -144,7 +144,7 @@ export async function getOrderById(orderId: string) {
 /**
  * Get all orders filtered by status
  * @param status - Order status to filter by (optional)
- * @param searchQuery - Search by name, email, or phone number (optional)
+ * @param searchQuery - Search by order ID, name, email, or phone number (optional)
  * @param sortOrder - Sort order by created_at: 'asc' or 'desc' (optional, default: 'desc')
  * @returns List of orders with their items
  */
@@ -166,7 +166,7 @@ export async function getAllOrders(
     if (searchQuery && searchQuery.trim()) {
       const searchTerm = searchQuery.trim();
       query = query.or(
-        `name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,phone_num.ilike.%${searchTerm}%`
+        `id.ilike.%${searchTerm}%,name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,phone_num.ilike.%${searchTerm}%`
       );
     }
 
@@ -179,17 +179,28 @@ export async function getAllOrders(
       return { success: false, error: ordersError };
     }
 
-    // Get items for all orders
+    // Get items for all orders with product information
     const ordersWithItems = await Promise.all(
       orders.map(async (order) => {
         const { data: items } = await supabase
           .from("umeki_order_items")
-          .select("*")
+          .select(`
+            *,
+            umeki_products (
+              name
+            )
+          `)
           .eq("order_id", order.id);
+
+        // Map items to include product name from joined table
+        const mappedItems = items?.map(item => ({
+          ...item,
+          product_name: item.umeki_products?.name || `상품 #${item.product_id}`,
+        })) || [];
 
         return {
           ...order,
-          items: items || [],
+          items: mappedItems,
         };
       })
     );
