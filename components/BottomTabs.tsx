@@ -18,9 +18,6 @@ export default function BottomTabs() {
     left: 0,
   });
 
-  // Only show tabs on home page
-  const isHomePage = pathname === '/';
-
   // Handle floating action button click
   const handleActionButtonClick = () => {
     if (activeTab === 'fanmeeting') {
@@ -46,10 +43,6 @@ export default function BottomTabs() {
       });
     }
   }, [activeTab]);
-
-  if (!isHomePage) {
-    return null;
-  }
 
   return (
     <div className="fixed bottom-12 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-4">

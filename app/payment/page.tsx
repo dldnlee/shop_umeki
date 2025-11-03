@@ -7,9 +7,16 @@ import Link from "next/link";
 import { AddressSearch } from "@/components/AddressSearch";
 
 type DeliveryMethod = "국내배송" | "해외배송" | "직접수령";
+type PaymentMethod = "card" | "paypal";
 
 // Replace this with your actual API key
 const JUSO_API_KEY = process.env.NEXT_PUBLIC_JUSO_API_KEY || "YOUR_API_KEY_HERE";
+
+// Payment method display mapping
+const PAYMENT_METHODS: { value: PaymentMethod; label: string }[] = [
+  { value: "card", label: "신용카드" },
+  { value: "paypal", label: "PayPal" },
+];
 
 export default function PaymentPage() {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -20,7 +27,9 @@ export default function PaymentPage() {
   const [addressDetail, setAddressDetail] = useState("");
   const [zipCode, setZipCode] = useState("");
   const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>("국내배송");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   useEffect(() => {
     // Load cart from localStorage on mount (client-side only)
@@ -123,8 +132,6 @@ export default function PaymentPage() {
           // Send order confirmation email
           if (result.data?.order && result.data?.items) {
             try {
-              const { sendOrderConfirmationEmail } = await import('@/lib/email');
-
               // Format order date
               const orderDate = new Date(result.data.order.created_at).toLocaleString('ko-KR', {
                 year: 'numeric',
@@ -134,25 +141,36 @@ export default function PaymentPage() {
                 minute: '2-digit',
               });
 
-              // Prepare email data
-              await sendOrderConfirmationEmail({
-                orderId: result.data.order.id,
-                customerName: result.data.order.name,
-                customerEmail: result.data.order.email,
-                orderDate: orderDate,
-                items: result.data.items.map((item) => ({
-                  productName: `상품 ID: ${item.product_id}`,
-                  productOption: item.option,
-                  quantity: item.quantity,
-                  totalPrice: item.total_price,
-                })),
-                totalAmount: result.data.order.total_amount,
-                deliveryMethod: result.data.order.delivery_method,
-                address: result.data.order.address,
-                phoneNum: result.data.order.phone_num,
+              // Send email via API route
+              const emailRes = await fetch('/api/email/send-order-confirmation', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  orderId: result.data.order.id,
+                  customerName: result.data.order.name,
+                  customerEmail: result.data.order.email,
+                  orderDate: orderDate,
+                  items: result.data.items.map((item) => ({
+                    productName: `상품 ID: ${item.product_id}`,
+                    productOption: item.option,
+                    quantity: item.quantity,
+                    totalPrice: item.total_price,
+                  })),
+                  totalAmount: result.data.order.total_amount,
+                  deliveryMethod: result.data.order.delivery_method,
+                  address: result.data.order.address,
+                  phoneNum: result.data.order.phone_num,
+                }),
               });
 
-              console.log('Order confirmation email sent successfully');
+              const emailData = await emailRes.json();
+              if (emailData.success) {
+                console.log('Order confirmation email sent successfully');
+              } else {
+                console.error('Failed to send email:', emailData.error);
+              }
             } catch (emailError) {
               // Log email error but don't fail the order
               console.error('Failed to send order confirmation email:', emailError);
@@ -268,6 +286,89 @@ export default function PaymentPage() {
     setZipCode(selectedZipCode);
   };
 
+  const handlePayPalPayment = async (orderData: {
+    name: string;
+    email: string;
+    phone_num: string;
+    address: string | null;
+    delivery_method: DeliveryMethod;
+    payment_method: PaymentMethod;
+    total_amount: number;
+    easy_pay_id: string | null;
+  }) => {
+    try {
+      // For PayPal, create order directly and go to complete page
+      const { createOrder } = await import('@/lib/orders');
+      const result = await createOrder(orderData, cartItems);
+
+      if (!result.success) {
+        const errorMessage = result.error && typeof result.error === 'object' && 'message' in result.error
+          ? String(result.error.message)
+          : "주문 생성 중 오류가 발생했습니다";
+        throw new Error(errorMessage);
+      }
+
+      // Send PayPal pending payment email
+      if (result.data?.order && result.data?.items) {
+        try {
+          // Format order date
+          const orderDate = new Date(result.data.order.created_at).toLocaleString('ko-KR', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          });
+
+          // Send PayPal pending email via API route
+          const emailRes = await fetch('/api/email/send-paypal-pending', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              orderId: result.data.order.id,
+              customerName: result.data.order.name,
+              customerEmail: result.data.order.email,
+              orderDate: orderDate,
+              items: result.data.items.map((item) => ({
+                productName: `상품 ID: ${item.product_id}`,
+                productOption: item.option,
+                quantity: item.quantity,
+                totalPrice: item.total_price,
+              })),
+              totalAmount: result.data.order.total_amount,
+              deliveryMethod: result.data.order.delivery_method,
+              address: result.data.order.address,
+              phoneNum: result.data.order.phone_num,
+              paypalEmail: 'tkay@grigoent.co.kr',
+            }),
+          });
+
+          const emailData = await emailRes.json();
+          if (emailData.success) {
+            console.log('PayPal pending payment email sent successfully');
+          } else {
+            console.error('Failed to send email:', emailData.error);
+          }
+        } catch (emailError) {
+          // Log email error but don't fail the order
+          console.error('Failed to send PayPal pending payment email:', emailError);
+        }
+      }
+
+      // Clear cart
+      const { clearCart } = await import('@/lib/cart');
+      clearCart();
+
+      // Redirect to complete page
+      window.location.href = `/payment/complete?orderId=${result.data?.order.id}`;
+    } catch (error) {
+      console.error('PayPal payment error:', error);
+      throw error;
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -288,6 +389,10 @@ export default function PaymentPage() {
       alert("주소를 입력해주세요");
       return;
     }
+    if (!agreedToTerms) {
+      alert("개인정보 수집 및 이용, 결제 진행에 동의해주세요");
+      return;
+    }
 
     setIsSubmitting(true);
 
@@ -297,28 +402,36 @@ export default function PaymentPage() {
         ? `[${zipCode}] ${address} ${addressDetail}`.trim()
         : null;
 
-      // Prepare order data (but don't create in DB yet)
+      // Prepare order data
       const orderData = {
         name: name,
         email: email,
         phone_num: phone,
         address: fullAddress,
         delivery_method: deliveryMethod,
+        payment_method: paymentMethod,
         total_amount: finalTotal,
         easy_pay_id: null,
       };
 
-      // Store order data in both sessionStorage and localStorage for use after payment success
-      // sessionStorage for popup flow, localStorage as fallback for redirect flow
-      const pendingOrderJson = JSON.stringify({
-        orderData,
-        cartItems
-      });
-      sessionStorage.setItem('pendingOrder', pendingOrderJson);
-      localStorage.setItem('pendingOrder', pendingOrderJson);
+      // Route based on payment method
+      if (paymentMethod === "paypal") {
+        // PayPal: Create order directly and go to complete page
+        await handlePayPalPayment(orderData);
+      } else {
+        // Card: Use Easy Pay flow
+        // Store order data in both sessionStorage and localStorage for use after payment success
+        // sessionStorage for popup flow, localStorage as fallback for redirect flow
+        const pendingOrderJson = JSON.stringify({
+          orderData,
+          cartItems
+        });
+        sessionStorage.setItem('pendingOrder', pendingOrderJson);
+        localStorage.setItem('pendingOrder', pendingOrderJson);
 
-      // Request payment - order will be created in callback after successful payment
-      await requestPayment();
+        // Request payment - order will be created in callback after successful payment
+        await requestPayment();
+      }
     } catch (error) {
       console.error("Payment error:", error);
       alert(error instanceof Error ? error.message : "결제 처리 중 오류가 발생했습니다. 다시 시도해주세요.");
@@ -334,6 +447,20 @@ export default function PaymentPage() {
   const total = getCartTotal();
   const deliveryFee = deliveryMethod === "해외배송" ? 12000 : deliveryMethod === "국내배송" ? 3000 : 0;
   const finalTotal = total + deliveryFee;
+
+  // Check if all required fields are filled
+  const isFormValid = () => {
+    if (!name.trim() || !email.trim() || !phone.trim()) {
+      return false;
+    }
+    if (deliveryMethod !== "직접수령" && !address.trim()) {
+      return false;
+    }
+    if (!agreedToTerms) {
+      return false;
+    }
+    return true;
+  };
 
   if (cartItems.length === 0) {
     return (
@@ -614,10 +741,73 @@ export default function PaymentPage() {
                 </div>
               )}
 
+              {/* Payment Method */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-black mb-2">
+                  Payment Method <span className="text-red-500">*</span>
+                </label>
+                <div className="space-y-2">
+                  {PAYMENT_METHODS.map((method) => (
+                    <label
+                      key={method.value}
+                      className="flex items-center gap-3 p-3 rounded-md border border-zinc-300 cursor-pointer hover:bg-zinc-50 transition-colors"
+                    >
+                      <input
+                        type="radio"
+                        name="paymentMethod"
+                        value={method.value}
+                        checked={paymentMethod === method.value}
+                        onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
+                        className="w-4 h-4 text-black"
+                      />
+                      {method.value === "card" ? (
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          strokeWidth={1.5}
+                          stroke="currentColor"
+                          className="w-5 h-5 text-zinc-700"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
+                        </svg>
+                      ) : (
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          strokeWidth={1.5}
+                          stroke="currentColor"
+                          className="w-5 h-5 text-zinc-700"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 21v-8.25M15.75 21v-8.25M8.25 21v-8.25M3 9l9-6 9 6m-1.5 12V10.332A48.36 48.36 0 0012 9.75c-2.551 0-5.056.2-7.5.582V21M3 21h18M12 6.75h.008v.008H12V6.75z" />
+                        </svg>
+                      )}
+                      <span className="text-black">{method.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Agreement Checkbox */}
+              <div className="mb-6">
+                <label className="flex items-start gap-3 p-4 rounded-md border border-zinc-300 cursor-pointer hover:bg-zinc-50 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={agreedToTerms}
+                    onChange={(e) => setAgreedToTerms(e.target.checked)}
+                    className="w-5 h-5 mt-0.5 text-black rounded focus:ring-2 focus:ring-zinc-400"
+                  />
+                  <span className="text-sm text-black flex-1">
+                    개인정보 수집 및 이용, 결제 진행에 동의합니다. <span className="text-red-500">*</span>
+                  </span>
+                </label>
+              </div>
+
               {/* Submit Button */}
               <button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={isSubmitting || !isFormValid()}
                 className="w-full py-3 px-6 bg-black text-white rounded-md font-medium text-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? "Processing..." : "Complete Payment"}
