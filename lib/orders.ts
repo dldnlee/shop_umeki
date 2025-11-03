@@ -140,3 +140,74 @@ export async function getOrderById(orderId: string) {
     return { success: false, error };
   }
 }
+
+/**
+ * Get all orders filtered by status
+ * @param status - Order status to filter by (optional)
+ * @returns List of orders with their items
+ */
+export async function getAllOrders(status?: string) {
+  try {
+    let query = supabase
+      .from("umeki_orders")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (status) {
+      query = query.eq("order_status", status);
+    }
+
+    const { data: orders, error: ordersError } = await query;
+
+    if (ordersError) {
+      return { success: false, error: ordersError };
+    }
+
+    // Get items for all orders
+    const ordersWithItems = await Promise.all(
+      orders.map(async (order) => {
+        const { data: items } = await supabase
+          .from("umeki_order_items")
+          .select("*")
+          .eq("order_id", order.id);
+
+        return {
+          ...order,
+          items: items || [],
+        };
+      })
+    );
+
+    return {
+      success: true,
+      data: ordersWithItems,
+    };
+  } catch (error) {
+    return { success: false, error };
+  }
+}
+
+/**
+ * Update order status
+ * @param orderId - Order ID
+ * @param status - New status
+ * @returns Updated order
+ */
+export async function updateOrderStatus(orderId: string, status: string) {
+  try {
+    const { data, error } = await supabase
+      .from("umeki_orders")
+      .update({ order_status: status, updated_at: new Date().toISOString() })
+      .eq("id", orderId)
+      .select()
+      .single();
+
+    if (error) {
+      return { success: false, error };
+    }
+
+    return { success: true, data };
+  } catch (error) {
+    return { success: false, error };
+  }
+}
