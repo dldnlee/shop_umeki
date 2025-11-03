@@ -7,9 +7,16 @@ import Link from "next/link";
 import { AddressSearch } from "@/components/AddressSearch";
 
 type DeliveryMethod = "국내배송" | "해외배송" | "직접수령";
+type PaymentMethod = "card" | "paypal";
 
 // Replace this with your actual API key
 const JUSO_API_KEY = process.env.NEXT_PUBLIC_JUSO_API_KEY || "YOUR_API_KEY_HERE";
+
+// Payment method display mapping
+const PAYMENT_METHODS: { value: PaymentMethod; label: string }[] = [
+  { value: "card", label: "신용카드" },
+  { value: "paypal", label: "PayPal" },
+];
 
 export default function PaymentPage() {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -20,6 +27,7 @@ export default function PaymentPage() {
   const [addressDetail, setAddressDetail] = useState("");
   const [zipCode, setZipCode] = useState("");
   const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>("국내배송");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -268,6 +276,79 @@ export default function PaymentPage() {
     setZipCode(selectedZipCode);
   };
 
+  const handlePayPalPayment = async (orderData: {
+    name: string;
+    email: string;
+    phone_num: string;
+    address: string | null;
+    delivery_method: DeliveryMethod;
+    payment_method: PaymentMethod;
+    total_amount: number;
+    easy_pay_id: string | null;
+  }) => {
+    try {
+      // For PayPal, create order directly and go to complete page
+      const { createOrder } = await import('@/lib/orders');
+      const result = await createOrder(orderData, cartItems);
+
+      if (!result.success) {
+        const errorMessage = result.error && typeof result.error === 'object' && 'message' in result.error
+          ? String(result.error.message)
+          : "주문 생성 중 오류가 발생했습니다";
+        throw new Error(errorMessage);
+      }
+
+      // Send order confirmation email
+      if (result.data?.order && result.data?.items) {
+        try {
+          const { sendOrderConfirmationEmail } = await import('@/lib/email');
+
+          // Format order date
+          const orderDate = new Date(result.data.order.created_at).toLocaleString('ko-KR', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          });
+
+          // Prepare email data
+          await sendOrderConfirmationEmail({
+            orderId: result.data.order.id,
+            customerName: result.data.order.name,
+            customerEmail: result.data.order.email,
+            orderDate: orderDate,
+            items: result.data.items.map((item) => ({
+              productName: `상품 ID: ${item.product_id}`,
+              productOption: item.option,
+              quantity: item.quantity,
+              totalPrice: item.total_price,
+            })),
+            totalAmount: result.data.order.total_amount,
+            deliveryMethod: result.data.order.delivery_method,
+            address: result.data.order.address,
+            phoneNum: result.data.order.phone_num,
+          });
+
+          console.log('Order confirmation email sent successfully');
+        } catch (emailError) {
+          // Log email error but don't fail the order
+          console.error('Failed to send order confirmation email:', emailError);
+        }
+      }
+
+      // Clear cart
+      const { clearCart } = await import('@/lib/cart');
+      clearCart();
+
+      // Redirect to complete page
+      window.location.href = `/payment/complete?orderId=${result.data?.order.id}`;
+    } catch (error) {
+      console.error('PayPal payment error:', error);
+      throw error;
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -297,28 +378,36 @@ export default function PaymentPage() {
         ? `[${zipCode}] ${address} ${addressDetail}`.trim()
         : null;
 
-      // Prepare order data (but don't create in DB yet)
+      // Prepare order data
       const orderData = {
         name: name,
         email: email,
         phone_num: phone,
         address: fullAddress,
         delivery_method: deliveryMethod,
+        payment_method: paymentMethod,
         total_amount: finalTotal,
         easy_pay_id: null,
       };
 
-      // Store order data in both sessionStorage and localStorage for use after payment success
-      // sessionStorage for popup flow, localStorage as fallback for redirect flow
-      const pendingOrderJson = JSON.stringify({
-        orderData,
-        cartItems
-      });
-      sessionStorage.setItem('pendingOrder', pendingOrderJson);
-      localStorage.setItem('pendingOrder', pendingOrderJson);
+      // Route based on payment method
+      if (paymentMethod === "paypal") {
+        // PayPal: Create order directly and go to complete page
+        await handlePayPalPayment(orderData);
+      } else {
+        // Card: Use Easy Pay flow
+        // Store order data in both sessionStorage and localStorage for use after payment success
+        // sessionStorage for popup flow, localStorage as fallback for redirect flow
+        const pendingOrderJson = JSON.stringify({
+          orderData,
+          cartItems
+        });
+        sessionStorage.setItem('pendingOrder', pendingOrderJson);
+        localStorage.setItem('pendingOrder', pendingOrderJson);
 
-      // Request payment - order will be created in callback after successful payment
-      await requestPayment();
+        // Request payment - order will be created in callback after successful payment
+        await requestPayment();
+      }
     } catch (error) {
       console.error("Payment error:", error);
       alert(error instanceof Error ? error.message : "결제 처리 중 오류가 발생했습니다. 다시 시도해주세요.");
@@ -613,6 +702,31 @@ export default function PaymentPage() {
                   </div>
                 </div>
               )}
+
+              {/* Payment Method */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-black mb-2">
+                  Payment Method <span className="text-red-500">*</span>
+                </label>
+                <div className="space-y-2">
+                  {PAYMENT_METHODS.map((method) => (
+                    <label
+                      key={method.value}
+                      className="flex items-center gap-3 p-3 rounded-md border border-zinc-300 cursor-pointer hover:bg-zinc-50 transition-colors"
+                    >
+                      <input
+                        type="radio"
+                        name="paymentMethod"
+                        value={method.value}
+                        checked={paymentMethod === method.value}
+                        onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
+                        className="w-4 h-4 text-black"
+                      />
+                      <span className="text-black">{method.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
 
               {/* Submit Button */}
               <button

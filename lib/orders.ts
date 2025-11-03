@@ -10,6 +10,7 @@ export type Order = {
   address?: string | null;
   order_status?: string;
   delivery_method: string;
+  payment_method?: string;
   total_amount: number;
   created_at?: string;
   updated_at?: string;
@@ -37,6 +38,11 @@ export async function createOrder(
   cartItems: CartItem[]
 ) {
   try {
+    // Determine order status based on payment method
+    // PayPal orders start as 'waiting' until payment is confirmed
+    // Card orders are 'paid' immediately after Easy Pay confirmation
+    const orderStatus = orderData.payment_method === "paypal" ? "waiting" : "paid";
+
     // Insert the order
     const { data: order, error: orderError } = await supabase
       .from("umeki_orders")
@@ -48,8 +54,9 @@ export async function createOrder(
           phone_num: orderData.phone_num,
           address: orderData.address,
           delivery_method: orderData.delivery_method,
+          payment_method: orderData.payment_method || null,
           total_amount: orderData.total_amount,
-          order_status: "paid",
+          order_status: orderStatus,
         },
       ])
       .select()
