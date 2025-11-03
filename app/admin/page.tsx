@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Order } from '@/lib/orders';
 
 type OrderWithItems = Order & {
@@ -23,17 +23,24 @@ export default function AdminDashboard() {
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
-  useEffect(() => {
-    fetchOrders();
-  }, [activeTab]);
-
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
     setLoading(true);
     setError('');
 
     try {
-      const response = await fetch(`/api/admin/orders?status=${activeTab}`);
+      const params = new URLSearchParams({
+        status: activeTab,
+        sort: sortOrder,
+      });
+
+      if (searchQuery.trim()) {
+        params.append('search', searchQuery.trim());
+      }
+
+      const response = await fetch(`/api/admin/orders?${params.toString()}`);
       const data = await response.json();
 
       if (response.ok) {
@@ -46,7 +53,15 @@ export default function AdminDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeTab, searchQuery, sortOrder]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchOrders();
+    }, 300); // Debounce search by 300ms
+
+    return () => clearTimeout(timer);
+  }, [fetchOrders]);
 
   const handleStatusChange = async (orderId: string, newStatus: string) => {
     try {
@@ -88,13 +103,37 @@ export default function AdminDashboard() {
   };
 
   const tabs: { key: TabType; label: string }[] = [
-    { key: 'waiting', label: 'Waiting' },
-    { key: 'paid', label: 'Paid' },
-    { key: 'complete', label: 'Complete' },
+    { key: 'waiting', label: '대기' },
+    { key: 'paid', label: '결제완료' },
+    { key: 'complete', label: '완료' },
   ];
 
   return (
     <div>
+      {/* Search and Sort Controls */}
+      <div className="mb-6 flex flex-col sm:flex-row gap-4">
+        <div className="flex-1">
+          <input
+            type="text"
+            placeholder="이름, 이메일, 전화번호로 검색..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+        </div>
+        <div className="sm:w-48">
+          <select
+            value={sortOrder}
+            onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')}
+            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          >
+            <option value="desc">최신순</option>
+            <option value="asc">오래된순</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Tabs */}
       <div className="mb-6">
         <div className="border-b border-gray-200">
           <nav className="-mb-px flex space-x-8">
@@ -132,7 +171,7 @@ export default function AdminDashboard() {
 
       {!loading && !error && orders.length === 0 && (
         <div className="text-center py-8 text-gray-500">
-          No orders found in this category.
+          이 카테고리에 주문이 없습니다.
         </div>
       )}
 
@@ -146,7 +185,7 @@ export default function AdminDashboard() {
               <div className="flex items-start justify-between mb-4">
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900">
-                    Order #{order.id?.substring(0, 8)}
+                    주문 #{order.id?.substring(0, 8)}
                   </h3>
                   <p className="text-sm text-gray-500">
                     {formatDate(order.created_at)}
@@ -170,13 +209,13 @@ export default function AdminDashboard() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div>
-                  <p className="text-sm text-gray-600">Customer</p>
+                  <p className="text-sm text-gray-600">고객 정보</p>
                   <p className="font-medium">{order.name}</p>
                   <p className="text-sm text-gray-600">{order.email}</p>
                   <p className="text-sm text-gray-600">{order.phone_num}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Delivery</p>
+                  <p className="text-sm text-gray-600">배송</p>
                   <p className="font-medium capitalize">{order.delivery_method}</p>
                   {order.address && (
                     <p className="text-sm text-gray-600">{order.address}</p>
@@ -185,7 +224,7 @@ export default function AdminDashboard() {
               </div>
 
               <div className="border-t pt-4 mb-4">
-                <p className="text-sm font-medium text-gray-700 mb-2">Items</p>
+                <p className="text-sm font-medium text-gray-700 mb-2">주문 상품</p>
                 <div className="space-y-2">
                   {order.items.map((item) => (
                     <div
@@ -193,7 +232,7 @@ export default function AdminDashboard() {
                       className="flex justify-between text-sm"
                     >
                       <span className="text-gray-600">
-                        {item.product_name || `Product #${item.product_id}`}
+                        {item.product_name || `상품 #${item.product_id}`}
                         {item.option && ` (${item.option})`} x {item.quantity}
                       </span>
                       <span className="font-medium">
@@ -206,12 +245,12 @@ export default function AdminDashboard() {
 
               <div className="flex items-center justify-between border-t pt-4">
                 <div>
-                  <p className="text-sm text-gray-600">Total Amount</p>
+                  <p className="text-sm text-gray-600">총 금액</p>
                   <p className="text-xl font-bold text-gray-900">
                     {formatPrice(order.total_amount)}
                   </p>
                   <p className="text-xs text-gray-500">
-                    Payment: {order.payment_method}
+                    결제 방법: {order.payment_method}
                   </p>
                 </div>
 
@@ -222,7 +261,7 @@ export default function AdminDashboard() {
                         onClick={() => handleStatusChange(order.id!, 'paid')}
                         className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-sm"
                       >
-                        Mark as Paid
+                        결제완료로 변경
                       </button>
                     </>
                   )}
@@ -232,13 +271,13 @@ export default function AdminDashboard() {
                         onClick={() => handleStatusChange(order.id!, 'complete')}
                         className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm"
                       >
-                        Mark as Complete
+                        완료로 변경
                       </button>
                       <button
                         onClick={() => handleStatusChange(order.id!, 'waiting')}
                         className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors text-sm"
                       >
-                        Back to Waiting
+                        대기로 변경
                       </button>
                     </>
                   )}
@@ -247,7 +286,7 @@ export default function AdminDashboard() {
                       onClick={() => handleStatusChange(order.id!, 'paid')}
                       className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors text-sm"
                     >
-                      Back to Paid
+                      결제완료로 변경
                     </button>
                   )}
                 </div>

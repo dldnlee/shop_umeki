@@ -144,18 +144,34 @@ export async function getOrderById(orderId: string) {
 /**
  * Get all orders filtered by status
  * @param status - Order status to filter by (optional)
+ * @param searchQuery - Search by name, email, or phone number (optional)
+ * @param sortOrder - Sort order by created_at: 'asc' or 'desc' (optional, default: 'desc')
  * @returns List of orders with their items
  */
-export async function getAllOrders(status?: string) {
+export async function getAllOrders(
+  status?: string,
+  searchQuery?: string,
+  sortOrder: 'asc' | 'desc' = 'desc'
+) {
   try {
     let query = supabase
       .from("umeki_orders")
-      .select("*")
-      .order("created_at", { ascending: false });
+      .select("*");
 
     if (status) {
       query = query.eq("order_status", status);
     }
+
+    // Apply search filters using OR conditions
+    if (searchQuery && searchQuery.trim()) {
+      const searchTerm = searchQuery.trim();
+      query = query.or(
+        `name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,phone_num.ilike.%${searchTerm}%`
+      );
+    }
+
+    // Apply sorting
+    query = query.order("created_at", { ascending: sortOrder === 'asc' });
 
     const { data: orders, error: ordersError } = await query;
 

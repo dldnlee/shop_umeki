@@ -17,8 +17,10 @@ export async function GET(request: NextRequest) {
 
     const searchParams = request.nextUrl.searchParams;
     const status = searchParams.get('status') || undefined;
+    const search = searchParams.get('search') || undefined;
+    const sort = searchParams.get('sort') as 'asc' | 'desc' | null;
 
-    const result = await getAllOrders(status);
+    const result = await getAllOrders(status, search, sort || 'desc');
 
     if (!result.success) {
       return NextResponse.json(
