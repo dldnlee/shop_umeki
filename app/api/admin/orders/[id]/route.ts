@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { updateOrderStatus } from '@/lib/orders';
+import { updateOrderStatus, getOrderById } from '@/lib/orders';
+import { sendPaymentConfirmedEmail, OrderEmailData } from '@/lib/email';
 
 export async function PATCH(
   request: NextRequest,
@@ -28,6 +29,18 @@ export async function PATCH(
       );
     }
 
+    // Get the current order to check old status
+    const orderResult = await getOrderById(id);
+    if (!orderResult.success || !orderResult.data) {
+      return NextResponse.json(
+        { error: 'Order not found' },
+        { status: 404 }
+      );
+    }
+
+    const oldStatus = orderResult.data.order.order_status;
+
+    // Update the order status
     const result = await updateOrderStatus(id, status);
 
     if (!result.success) {
@@ -35,6 +48,49 @@ export async function PATCH(
         { error: 'Failed to update order' },
         { status: 500 }
       );
+    }
+
+    // If status changed from 'waiting' to 'paid', send payment confirmation email
+    if (oldStatus === 'waiting' && status === 'paid') {
+      console.log('Order status changed from waiting to paid, sending payment confirmation email');
+
+      const order = orderResult.data.order;
+      const items = orderResult.data.items;
+
+      // Prepare email data
+      const emailData: OrderEmailData = {
+        orderId: order.id!,
+        customerName: order.name,
+        customerEmail: order.email,
+        orderDate: new Date(order.created_at!).toLocaleString('ko-KR', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+        }),
+        items: items.map((item: any) => ({
+          productName: item.product_name || `상품 #${item.product_id}`,
+          productOption: item.option || undefined,
+          quantity: item.quantity,
+          totalPrice: item.total_price,
+        })),
+        totalAmount: order.total_amount,
+        deliveryMethod: order.delivery_method,
+        address: order.address,
+        phoneNum: order.phone_num,
+      };
+
+      // Send the email (don't wait for it to complete)
+      sendPaymentConfirmedEmail(emailData).then((emailResult) => {
+        if (emailResult.success) {
+          console.log('Payment confirmation email sent successfully');
+        } else {
+          console.error('Failed to send payment confirmation email:', emailResult.error);
+        }
+      }).catch((err) => {
+        console.error('Error sending payment confirmation email:', err);
+      });
     }
 
     return NextResponse.json(result.data);

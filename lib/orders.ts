@@ -122,18 +122,29 @@ export async function getOrderById(orderId: string) {
 
     const { data: items, error: itemsError } = await supabase
       .from("umeki_order_items")
-      .select("*")
+      .select(`
+        *,
+        umeki_products (
+          name
+        )
+      `)
       .eq("order_id", orderId);
 
     if (itemsError) {
       return { success: false, error: itemsError };
     }
 
+    // Map items to include product name from joined table
+    const mappedItems = items?.map(item => ({
+      ...item,
+      product_name: item.umeki_products?.name || `상품 #${item.product_id}`,
+    })) || [];
+
     return {
       success: true,
       data: {
         order,
-        items,
+        items: mappedItems,
       },
     };
   } catch (error) {
