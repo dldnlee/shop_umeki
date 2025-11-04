@@ -52,7 +52,7 @@ export default function MainPageTabs({ products }: MainPageTabsProps) {
       {activeTab === 'goods' && (
         <div className="bg-white rounded-lg shadow-lg overflow-hidden">
           <div className="text-black">
-            <img src="/goods_info.jpg" alt="Fanmeeting info" className='w-full' />
+            <img src="/goods_info.jpeg" alt="Fanmeeting info" className='w-full' />
             {/* Add fanmeeting information here */}
           </div>
         </div>
