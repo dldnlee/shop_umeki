@@ -1,59 +1,124 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
-import { getCart } from "@/lib/cart";
-import { useCartModal } from "@/components/CartModalProvider";
+import { useTab } from "@/components/TabProvider";
 
 export default function Header() {
-  const [itemCount, setItemCount] = useState(0);
-  const { openCart } = useCartModal();
+  const { activeTab, setActiveTab } = useTab();
+  const fanmeetingRef = useRef<HTMLButtonElement>(null);
+  const goodsRef = useRef<HTMLButtonElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [indicatorStyle, setIndicatorStyle] = useState({
+    width: 0,
+    left: 0,
+  });
 
-
+  // Update indicator position when active tab changes
   useEffect(() => {
-    // Listen for cart updates
-    const handleCartUpdate = () => {
-      setItemCount(getCart().length);
-    };
+    const activeRef = activeTab === 'fanmeeting' ? fanmeetingRef : goodsRef;
+    if (activeRef.current && containerRef.current) {
+      const buttonRect = activeRef.current.getBoundingClientRect();
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const left = buttonRect.left - containerRect.left;
 
-    // Initialize cart count on mount
-    handleCartUpdate();
-
-    window.addEventListener("cartUpdated", handleCartUpdate);
-
-    // Also check on storage changes (in case of updates from other tabs)
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === "umeki_cart") {
-        setItemCount(getCart().length);
-      }
-    };
-
-    window.addEventListener("storage", handleStorageChange);
-
-    return () => {
-      window.removeEventListener("cartUpdated", handleCartUpdate);
-      window.removeEventListener("storage", handleStorageChange);
-    };
-  }, []);
+      setIndicatorStyle({
+        width: buttonRect.width,
+        left: left,
+      });
+    }
+  }, [activeTab]);
 
 
   return (
     <header className="fixed top-0 z-40 bg-black/20 backdrop-blur-2xl border-b border-white/20 w-full flex flex-col items-center py-2 sm:py-3">
       <div className="max-w-6xl w-full">
-        <div className="flex items-center justify-between px-3 sm:px-8">
-          {/* Logo/Brand */}
-          <Link href="/" className=" sm:text-xl md:text-2xl font-semibold text-white transition-opacity">
-            {"유메키 팬미팅 <YOU MAKE IT>"}
-          </Link>
+        <div className="flex items-center px-3 sm:px-8 gap-4">
+          {/* Logo/Brand - Left Section */}
+          <div className="flex-1 flex justify-start">
+            <Link href="/" className="text-xs sm:text-xl md:text-2xl font-semibold text-white transition-opacity">
+              <p>유메키 팬미팅</p>
+              <p>{"<YOU MAKE IT>"}</p>
+            </Link>
+          </div>
 
-          {/* View Order Button */}
-          <Link
-            href="/order"
-            className="text-white border border-white/30 rounded-full px-4 py-2 text-sm font-medium hover:bg-white/10 transition-all duration-200 whitespace-nowrap"
-            aria-label="View order"
-          >
-            주문 조회
-          </Link>
+          {/* Tab Navigation - Center Section */}
+          <div className="flex-1 flex justify-center">
+            <div ref={containerRef} className="relative flex gap-2 rounded-full bg-black/30 backdrop-blur-xl p-1.5">
+            {/* Sliding background indicator */}
+            <div
+              className="absolute bg-white rounded-full shadow-md transition-all duration-300 ease-out"
+              style={{
+                width: `${indicatorStyle.width}px`,
+                height: `calc(100% - 0.75rem)`,
+                top: '0.375rem',
+                left: `${indicatorStyle.left}px`,
+              }}
+            />
+
+            <button
+              ref={fanmeetingRef}
+              onClick={() => setActiveTab('fanmeeting')}
+              className={`relative z-10 px-3 py-1.5 sm:px-4 sm:py-2 font-medium text-xs sm:text-sm transition-colors duration-300 rounded-full whitespace-nowrap flex items-center gap-1.5 ${
+                activeTab === 'fanmeeting'
+                  ? 'text-black'
+                  : 'text-white hover:text-white/80'
+              }`}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4 sm:h-4 sm:w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"
+                />
+              </svg>
+              <span className="hidden sm:inline">팬미팅 정보</span>
+            </button>
+            <button
+              ref={goodsRef}
+              onClick={() => setActiveTab('goods')}
+              className={`relative z-10 px-3 py-1.5 sm:px-4 sm:py-2 font-medium text-xs sm:text-sm transition-colors duration-300 rounded-full whitespace-nowrap flex items-center gap-1.5 ${
+                activeTab === 'goods'
+                  ? 'text-black'
+                  : 'text-white hover:text-white/80'
+              }`}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4 sm:h-4 sm:w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
+                />
+              </svg>
+              <span className="hidden sm:inline">굿즈 정보</span>
+            </button>
+            </div>
+          </div>
+
+          {/* View Order Button - Right Section */}
+          <div className="flex-1 flex justify-end">
+            <Link
+              href="/order"
+              className="text-white border border-white/30 rounded-full px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium hover:bg-white/10 transition-all duration-200 whitespace-nowrap"
+              aria-label="View order"
+            >
+              주문 조회
+            </Link>
+          </div>
         </div>
       </div>
     </header>
