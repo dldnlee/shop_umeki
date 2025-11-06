@@ -6,7 +6,7 @@ import { formatKRW } from "@/lib/utils";
 import Link from "next/link";
 import { AddressSearch } from "@/components/AddressSearch";
 
-type DeliveryMethod = "국내배송" | "해외배송" | "직접수령";
+type DeliveryMethod = "국내배송" | "해외배송" | "팬미팅현장수령";
 type PaymentMethod = "card" | "paypal";
 
 // Replace this with your actual API key
@@ -26,7 +26,7 @@ export default function PaymentPage() {
   const [address, setAddress] = useState("");
   const [addressDetail, setAddressDetail] = useState("");
   const [zipCode, setZipCode] = useState("");
-  const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>("직접수령");
+  const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>("팬미팅현장수령");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
@@ -385,7 +385,7 @@ export default function PaymentPage() {
       alert("전화번호를 입력해주세요");
       return;
     }
-    if (deliveryMethod !== "직접수령" && !address.trim()) {
+    if (deliveryMethod !== "팬미팅현장수령" && !address.trim()) {
       alert("주소를 입력해주세요");
       return;
     }
@@ -398,7 +398,7 @@ export default function PaymentPage() {
 
     try {
       // Prepare address string (combine all address fields)
-      const fullAddress = deliveryMethod !== "직접수령"
+      const fullAddress = deliveryMethod !== "팬미팅현장수령"
         ? `[${zipCode}] ${address} ${addressDetail}`.trim()
         : null;
 
@@ -453,7 +453,7 @@ export default function PaymentPage() {
     if (!name.trim() || !email.trim() || !phone.trim()) {
       return false;
     }
-    if (deliveryMethod !== "직접수령" && !address.trim()) {
+    if (deliveryMethod !== "팬미팅현장수령" && !address.trim()) {
       return false;
     }
     if (!agreedToTerms) {
@@ -625,10 +625,10 @@ export default function PaymentPage() {
                   Delivery Method <span className="text-red-500">*</span>
                 </label>
                 <div className="space-y-2">
-                  {(["직접수령", "국내배송", "해외배송"] as DeliveryMethod[]).map((method) => (
+                  {(["팬미팅현장수령", "국내배송", "해외배송"] as DeliveryMethod[]).map((method) => (
                     <label
                       key={method}
-                      className="flex items-center gap-3 p-3 rounded-md border border-zinc-300 cursor-pointer hover:bg-zinc-50 transition-colors"
+                      className="flex items-start gap-3 p-3 rounded-md border border-zinc-300 cursor-pointer hover:bg-zinc-50 transition-colors"
                     >
                       <input
                         type="radio"
@@ -636,24 +636,43 @@ export default function PaymentPage() {
                         value={method}
                         checked={deliveryMethod === method}
                         onChange={(e) => setDeliveryMethod(e.target.value as DeliveryMethod)}
-                        className="w-4 h-4 text-black"
+                        className="w-4 h-4 text-black mt-0.5"
                       />
-                      <span className="text-black">{method}</span>
-                      {method === "직접수령" && (
-                        <span className="ml-auto text-sm text-zinc-600">
-                          무료
-                        </span>
-                      )}
-                      {method === "해외배송" && (
-                        <span className="ml-auto text-sm text-zinc-600">
-                          +{formatKRW(12000)}
-                        </span>
-                      )}
-                      {method === "국내배송" && (
-                        <span className="ml-auto text-sm text-zinc-600">
-                          +{formatKRW(3000)}
-                        </span>
-                      )}
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-black">{method}</span>
+                          {method === "팬미팅현장수령" && (
+                            <span className="text-sm text-zinc-600">
+                              무료
+                            </span>
+                          )}
+                          {method === "해외배송" && (
+                            <span className="text-sm text-zinc-600">
+                              +{formatKRW(12000)}
+                            </span>
+                          )}
+                          {method === "국내배송" && (
+                            <span className="text-sm text-zinc-600">
+                              +{formatKRW(3000)}
+                            </span>
+                          )}
+                        </div>
+                        {method === "팬미팅현장수령" && (
+                          <p className="text-xs text-zinc-600 mt-1">
+                            * 팬미팅 현장에서 직접 수령합니다.
+                          </p>
+                        )}
+                        {method === "국내배송" && (
+                          <p className="text-xs text-zinc-600 mt-1">
+                            * 팬미팅 일정 전 배송이 보장되지 않습니다.
+                          </p>
+                        )}
+                        {method === "해외배송" && (
+                          <p className="text-xs text-zinc-600 mt-1">
+                            * 팬미팅 일정 전 배송이 보장되지 않습니다.
+                          </p>
+                        )}
+                      </div>
                     </label>
                   ))}
                 </div>
@@ -671,14 +690,14 @@ export default function PaymentPage() {
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
                     </svg>
                     <p className="text-sm text-amber-800">
-                      택배 수령시 팬미팅 전날에 수령하는 것은 어려울 수 있습니다.
+                      택배 수령 시 팬미팅 일정 전에 전에 수령하기 어렵습니다.
                     </p>
                   </div>
                 )}
               </div>
 
               {/* Address */}
-              {deliveryMethod !== "직접수령" && (
+              {deliveryMethod !== "팬미팅현장수령" && (
                 <div className="mb-6 space-y-4">
                   {/* Only show address search for domestic delivery */}
                   {deliveryMethod === "국내배송" && (
