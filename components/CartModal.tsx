@@ -57,7 +57,9 @@ export default function CartModal({ isOpen, onClose }: CartModalProps) {
     try {
       const { data, error } = await supabase
         .from('umeki_products')
-        .select('*');
+        .select('*')
+        .order('display_order')
+        ;
 
       if (error) {
         console.error('Error fetching products:', error);

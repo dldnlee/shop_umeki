@@ -26,7 +26,7 @@ export default function PaymentPage() {
   const [address, setAddress] = useState("");
   const [addressDetail, setAddressDetail] = useState("");
   const [zipCode, setZipCode] = useState("");
-  const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>("국내배송");
+  const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>("직접수령");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
@@ -625,7 +625,7 @@ export default function PaymentPage() {
                   Delivery Method <span className="text-red-500">*</span>
                 </label>
                 <div className="space-y-2">
-                  {(["국내배송", "해외배송", "직접수령"] as DeliveryMethod[]).map((method) => (
+                  {(["직접수령", "국내배송", "해외배송"] as DeliveryMethod[]).map((method) => (
                     <label
                       key={method}
                       className="flex items-center gap-3 p-3 rounded-md border border-zinc-300 cursor-pointer hover:bg-zinc-50 transition-colors"
@@ -639,6 +639,11 @@ export default function PaymentPage() {
                         className="w-4 h-4 text-black"
                       />
                       <span className="text-black">{method}</span>
+                      {method === "직접수령" && (
+                        <span className="ml-auto text-sm text-zinc-600">
+                          무료
+                        </span>
+                      )}
                       {method === "해외배송" && (
                         <span className="ml-auto text-sm text-zinc-600">
                           +{formatKRW(12000)}
@@ -649,14 +654,27 @@ export default function PaymentPage() {
                           +{formatKRW(3000)}
                         </span>
                       )}
-                      {method === "직접수령" && (
-                        <span className="ml-auto text-sm text-zinc-600">
-                          무료
-                        </span>
-                      )}
                     </label>
                   ))}
                 </div>
+                {/* Warning for shipping options */}
+                {(deliveryMethod === "국내배송" || deliveryMethod === "해외배송") && (
+                  <div className="mt-3 flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-md">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={2}
+                      stroke="currentColor"
+                      className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                    </svg>
+                    <p className="text-sm text-amber-800">
+                      택배 수령시 팬미팅 전날에 수령하는 것은 어려울 수 있습니다.
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Address */}
