@@ -197,6 +197,44 @@ export default function POSDashboard() {
     }
   };
 
+  // Calculate product counts by status
+  const calculateProductCounts = () => {
+    const countsByStatus: Record<string, Record<string, number>> = {
+      '현장수령- 결제완료': {},
+      '현장수령- 결제미확인': {},
+    };
+
+    // Initialize all product options with 0
+    allProductOptions.forEach((productOption) => {
+      const key = productOption.option
+        ? `${productOption.productName} (${productOption.option})`
+        : productOption.productName;
+      countsByStatus['현장수령- 결제완료'][key] = 0;
+      countsByStatus['현장수령- 결제미확인'][key] = 0;
+    });
+
+    // Count products by status
+    orders.forEach((order) => {
+      const statusKey = order.order_status === 'paid'
+        ? '현장수령- 결제완료'
+        : '현장수령- 결제미확인';
+
+      order.items.forEach((item) => {
+        const key = item.option
+          ? `${item.product_name} (${item.option})`
+          : item.product_name || '';
+
+        if (countsByStatus[statusKey][key] !== undefined) {
+          countsByStatus[statusKey][key] += item.quantity;
+        }
+      });
+    });
+
+    return countsByStatus;
+  };
+
+  const productCounts = calculateProductCounts();
+
   return (
     <div className="max-w-7xl mx-auto">
       <div className="mb-6">
@@ -207,6 +245,80 @@ export default function POSDashboard() {
           팬미팅현장수령 주문 관리
         </p>
       </div>
+
+      {/* Product Summary Table */}
+      {!loading && orders.length > 0 && allProductOptions.length > 0 && (
+        <div className="mb-6 overflow-x-auto">
+          <div className="bg-white rounded-lg shadow-md border-2 border-gray-200 p-4">
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">제품별 주문 현황</h2>
+            <table className="min-w-full border-collapse">
+              <thead>
+                <tr className="bg-[#F5F5DC]">
+                  <th className="border border-gray-400 px-3 py-2 text-center text-sm font-semibold text-gray-900">
+                    상태
+                  </th>
+                  {allProductOptions.map((productOption, index) => (
+                    <th
+                      key={`header-${productOption.productId}-${productOption.option || 'no-option'}-${index}`}
+                      className="border border-gray-400 px-3 py-2 text-center text-sm font-semibold text-gray-900 whitespace-nowrap"
+                    >
+                      {productOption.option
+                        ? `${productOption.productName} (${productOption.option})`
+                        : productOption.productName}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {Object.entries(productCounts).map(([status, counts]) => (
+                  <tr key={status} className="bg-white hover:bg-gray-50">
+                    <td className="border border-gray-400 px-3 py-2 text-sm font-medium text-gray-900 whitespace-nowrap">
+                      {status}
+                    </td>
+                    {allProductOptions.map((productOption, index) => {
+                      const key = productOption.option
+                        ? `${productOption.productName} (${productOption.option})`
+                        : productOption.productName;
+                      const count = counts[key] || 0;
+                      return (
+                        <td
+                          key={`count-${productOption.productId}-${productOption.option || 'no-option'}-${index}`}
+                          className="border border-gray-400 px-3 py-2 text-center text-base font-semibold text-gray-900"
+                        >
+                          {count > 0 ? count : ''}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+                {/* Total Row */}
+                <tr className="bg-[#FFFACD] font-bold">
+                  <td className="border border-gray-400 px-3 py-2 text-sm font-bold text-gray-900">
+                    합계
+                  </td>
+                  {allProductOptions.map((productOption, index) => {
+                    const key = productOption.option
+                      ? `${productOption.productName} (${productOption.option})`
+                      : productOption.productName;
+                    const total = Object.values(productCounts).reduce(
+                      (sum, counts) => sum + (counts[key] || 0),
+                      0
+                    );
+                    return (
+                      <td
+                        key={`total-${productOption.productId}-${productOption.option || 'no-option'}-${index}`}
+                        className="border border-gray-400 px-3 py-2 text-center text-base font-bold text-gray-900"
+                      >
+                        {total > 0 ? total : ''}
+                      </td>
+                    );
+                  })}
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Search Filters */}
       <div className="mb-6">
