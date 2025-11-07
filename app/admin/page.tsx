@@ -96,6 +96,27 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleSendWarningEmail = async (orderId: string) => {
+    if (!confirm('Send payment cancellation warning email to the customer?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/admin/orders/${orderId}/send-warning`, {
+        method: 'POST',
+      });
+
+      if (response.ok) {
+        alert('Warning email sent successfully');
+      } else {
+        const data = await response.json();
+        alert(`Failed to send warning email: ${data.error || 'Unknown error'}`);
+      }
+    } catch (err) {
+      alert('An error occurred while sending warning email');
+    }
+  };
+
   const formatDate = (dateString?: string) => {
     if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleString('ko-KR', {
@@ -394,6 +415,13 @@ export default function AdminDashboard() {
                       <div className="flex gap-2">
                         {activeTab === 'waiting' && (
                           <>
+                            <button
+                              onClick={() => handleSendWarningEmail(order.id!)}
+                              className="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors text-sm"
+                              title="Send payment cancellation warning email"
+                            >
+                              Send Warning Email
+                            </button>
                             <button
                               onClick={() => handleStatusChange(order.id!, 'paid')}
                               className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-sm"
