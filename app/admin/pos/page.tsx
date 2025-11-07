@@ -416,79 +416,79 @@ export default function POSDashboard() {
                 {/* Collapsed View - Top Info Bar */}
                 <button
                   onClick={() => toggleAccordion(order.id!)}
-                  className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-gray-50 transition-colors rounded-lg"
+                  className="w-full px-4 py-3 flex items-center text-left hover:bg-gray-50 transition-colors rounded-lg"
                 >
-                  <div className="flex items-center gap-4 flex-1">
+                  <div className="flex items-center flex-1 w-full">
                     {/* Order Number */}
-                    <div className="flex-shrink-0 min-w-[80px]">
+                    <div className="flex-1">
                       <p className="text-[10px] text-gray-500 mb-0.5">주문번호</p>
-                      <p className="text-xs font-bold text-gray-900">
+                      <p className="text-xs font-bold text-gray-900 truncate">
                         #{order.id?.substring(0, 8)}
                       </p>
                     </div>
 
                     {/* Name */}
-                    <div className="flex-shrink-0 min-w-[100px]">
+                    <div className="flex-1">
                       <p className="text-[10px] text-gray-500 mb-0.5">이름</p>
-                      <p className="text-sm font-semibold text-gray-900">
+                      <p className="text-sm font-semibold text-gray-900 truncate">
                         {order.name}
                       </p>
                     </div>
 
                     {/* Delivery Method */}
-                    <div className="flex-shrink-0 min-w-[120px]">
+                    <div className="flex-1">
                       <p className="text-[10px] text-gray-500 mb-0.5">수령방법</p>
-                      <p className="text-xs font-medium text-blue-600">
+                      <p className="text-xs font-medium text-blue-600 truncate">
                         {order.delivery_method}
                       </p>
                     </div>
 
                     {/* Total Amount */}
-                    <div className="flex-shrink-0 min-w-[100px]">
+                    <div className="flex-1">
                       <p className="text-[10px] text-gray-500 mb-0.5">총 금액</p>
-                      <p className="text-base font-bold text-gray-900">
+                      <p className="text-base font-bold text-gray-900 truncate">
                         {formatPrice(order.total_amount)}
                       </p>
                     </div>
 
                     {/* Payment Method */}
-                    <div className="flex-shrink-0 min-w-[80px]">
+                    <div className="flex-1">
                       <p className="text-[10px] text-gray-500 mb-0.5">결제방법</p>
-                      <p className="text-xs font-medium text-gray-700">
+                      <p className="text-xs font-medium text-gray-700 truncate">
                         {order.payment_method || 'N/A'}
                       </p>
                     </div>
 
                     {/* Status */}
-                    <div className="flex-shrink-0">
+                    <div className="flex-1">
                       <span
                         className={`
-                          px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap
+                          inline-block px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap
                           ${getStatusBadgeColor(order.order_status)}
                         `}
                       >
                         {getStatusLabel(order.order_status)}
                       </span>
                     </div>
-                  </div>
 
-                  {/* Expand Icon */}
-                  <div className="ml-3 flex-shrink-0">
-                    <svg
-                      className={`w-5 h-5 text-gray-400 transition-transform ${
-                        isExpanded ? 'transform rotate-180' : ''
-                      }`}
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 9l-7 7-7-7"
-                      />
-                    </svg>
+                    {/* Expand Icon */}
+                    <div className="flex-shrink-0 ml-3">
+                      <svg
+                        className={`w-5 h-5 text-gray-400 transition-transform ${
+                          isExpanded ? 'transform rotate-180' : ''
+                        }`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 9l-7 7-7-7"
+                        />
+                      </svg>
+                    </div>
                   </div>
                 </button>
 
