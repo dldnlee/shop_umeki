@@ -441,7 +441,8 @@ export async function getSalesAnalytics() {
 
     orderItems?.forEach(item => {
       const productId = item.product_id;
-      const productName = item.umeki_products?.name || `Product #${productId}`;
+      const productInfo = item.umeki_products as any;
+      const productName = productInfo?.name || `Product #${productId}`;
       const option = item.option || 'No Option';
       const quantity = item.quantity;
       const revenue = item.total_price;
