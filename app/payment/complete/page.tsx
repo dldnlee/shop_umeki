@@ -62,7 +62,7 @@ function PurchaseCompleteContent() {
   }
 
   // Currency conversion rates (approximate - you may want to fetch these dynamically)
-  const JPY_RATE = 9.0; // 1 KRW = ~9 JPY
+  const JPY_RATE = 0.11; // 1 KRW = ~0.11 JPY
   const USD_RATE = 0.00075; // 1 KRW = ~0.00075 USD
 
   return (
