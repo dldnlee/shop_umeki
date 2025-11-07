@@ -1,3 +1,8 @@
+import { Product } from "@/models";
+import { validateCartItemInventory } from "./inventory";
+
+export type DeliveryMethod = "국내배송" | "해외배송" | "팬미팅현장수령";
+
 export type CartItem = {
   productId: number;
   productName: string;
@@ -5,6 +10,16 @@ export type CartItem = {
   option?: string;
   quantity: number;
   slug?: string;
+  deliveryMethod?: DeliveryMethod; // Track delivery method per item
+};
+
+export type InventoryValidationResult = {
+  isValid: boolean;
+  productId: number;
+  option?: string;
+  requestedQuantity: number;
+  availableQuantity: number;
+  message?: string;
 };
 
 const CART_STORAGE_KEY = "umeki_cart";
@@ -134,4 +149,174 @@ export function getCartItemCount(): number {
 export function getCartTotal(): number {
   const cart = getCart();
   return cart.reduce((total, item) => total + item.price * item.quantity, 0);
+}
+
+/**
+ * Validate all cart items against current product inventory
+ * Returns array of validation results for items that have issues
+ */
+export function validateCartInventory(
+  products: Product[]
+): InventoryValidationResult[] {
+  const cart = getCart();
+  const issues: InventoryValidationResult[] = [];
+
+  cart.forEach((item) => {
+    const product = products.find((p) => p.id === item.productId);
+
+    if (!product) {
+      issues.push({
+        isValid: false,
+        productId: item.productId,
+        option: item.option,
+        requestedQuantity: item.quantity,
+        availableQuantity: 0,
+        message: "Product not found",
+      });
+      return;
+    }
+
+    const validation = validateCartItemInventory(
+      product,
+      item.quantity,
+      item.option
+    );
+
+    if (!validation.isValid) {
+      issues.push({
+        isValid: false,
+        productId: item.productId,
+        option: item.option,
+        requestedQuantity: item.quantity,
+        availableQuantity: validation.availableQuantity,
+        message: validation.message,
+      });
+    }
+  });
+
+  return issues;
+}
+
+/**
+ * Validate a single cart item against product inventory
+ * Returns validation result
+ */
+export function validateCartItem(
+  product: Product,
+  productId: number,
+  quantity: number,
+  option?: string
+): InventoryValidationResult {
+  const validation = validateCartItemInventory(product, quantity, option);
+
+  return {
+    isValid: validation.isValid,
+    productId,
+    option,
+    requestedQuantity: quantity,
+    availableQuantity: validation.availableQuantity,
+    message: validation.message,
+  };
+}
+
+/**
+ * Fix cart by adjusting quantities to match available inventory
+ * Returns array of items that were adjusted
+ */
+export function fixCartInventory(
+  products: Product[]
+): InventoryValidationResult[] {
+  const cart = getCart();
+  const adjustedItems: InventoryValidationResult[] = [];
+  let cartModified = false;
+
+  const updatedCart = cart
+    .map((item) => {
+      const product = products.find((p) => p.id === item.productId);
+
+      if (!product) {
+        // Remove items for products that no longer exist
+        adjustedItems.push({
+          isValid: false,
+          productId: item.productId,
+          option: item.option,
+          requestedQuantity: item.quantity,
+          availableQuantity: 0,
+          message: "Product removed (not found)",
+        });
+        cartModified = true;
+        return null;
+      }
+
+      const validation = validateCartItemInventory(
+        product,
+        item.quantity,
+        item.option
+      );
+
+      if (!validation.isValid) {
+        if (validation.availableQuantity === 0) {
+          // Remove out of stock items
+          adjustedItems.push({
+            isValid: false,
+            productId: item.productId,
+            option: item.option,
+            requestedQuantity: item.quantity,
+            availableQuantity: 0,
+            message: "Item removed (out of stock)",
+          });
+          cartModified = true;
+          return null;
+        } else {
+          // Adjust quantity to available amount
+          adjustedItems.push({
+            isValid: false,
+            productId: item.productId,
+            option: item.option,
+            requestedQuantity: item.quantity,
+            availableQuantity: validation.availableQuantity,
+            message: `Quantity adjusted to ${validation.availableQuantity}`,
+          });
+          cartModified = true;
+          return {
+            ...item,
+            quantity: validation.availableQuantity,
+          };
+        }
+      }
+
+      return item;
+    })
+    .filter((item): item is CartItem => item !== null);
+
+  if (cartModified) {
+    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(updatedCart));
+    window.dispatchEvent(
+      new CustomEvent("cartUpdated", { detail: updatedCart })
+    );
+  }
+
+  return adjustedItems;
+}
+
+/**
+ * Update delivery method for all items in cart
+ */
+export function updateCartDeliveryMethod(deliveryMethod: DeliveryMethod): void {
+  if (typeof window === "undefined") return;
+
+  try {
+    const cart = getCart();
+    const updatedCart = cart.map((item) => ({
+      ...item,
+      deliveryMethod,
+    }));
+
+    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(updatedCart));
+    window.dispatchEvent(
+      new CustomEvent("cartUpdated", { detail: updatedCart })
+    );
+  } catch (error) {
+    console.error("Error updating cart delivery method:", error);
+  }
 }

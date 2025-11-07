@@ -23,7 +23,9 @@ export default function AdminDashboard() {
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchName, setSearchName] = useState('');
+  const [searchOrderId, setSearchOrderId] = useState('');
+  const [searchEmail, setSearchEmail] = useState('');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   const fetchOrders = useCallback(async () => {
@@ -36,8 +38,14 @@ export default function AdminDashboard() {
         sort: sortOrder,
       });
 
-      if (searchQuery.trim()) {
-        params.append('search', searchQuery.trim());
+      if (searchName.trim()) {
+        params.append('name', searchName.trim());
+      }
+      if (searchOrderId.trim()) {
+        params.append('order_id', searchOrderId.trim());
+      }
+      if (searchEmail.trim()) {
+        params.append('email', searchEmail.trim());
       }
 
       const response = await fetch(`/api/admin/orders?${params.toString()}`);
@@ -53,7 +61,7 @@ export default function AdminDashboard() {
     } finally {
       setLoading(false);
     }
-  }, [activeTab, searchQuery, sortOrder]);
+  }, [activeTab, searchName, searchOrderId, searchEmail, sortOrder]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -111,25 +119,56 @@ export default function AdminDashboard() {
   return (
     <div>
       {/* Search and Sort Controls */}
-      <div className="mb-6 flex flex-col sm:flex-row gap-4">
-        <div className="flex-1">
-          <input
-            type="text"
-            placeholder="주문번호, 이름, 이메일, 전화번호로 검색..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
+      <div className="mb-6 space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              주문번호
+            </label>
+            <input
+              type="text"
+              placeholder="주문번호로 검색..."
+              value={searchOrderId}
+              onChange={(e) => setSearchOrderId(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              이름
+            </label>
+            <input
+              type="text"
+              placeholder="이름으로 검색..."
+              value={searchName}
+              onChange={(e) => setSearchName(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              이메일
+            </label>
+            <input
+              type="text"
+              placeholder="이메일로 검색..."
+              value={searchEmail}
+              onChange={(e) => setSearchEmail(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
         </div>
-        <div className="sm:w-48">
-          <select
-            value={sortOrder}
-            onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')}
-            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option value="desc">최신순</option>
-            <option value="asc">오래된순</option>
-          </select>
+        <div className="flex justify-end">
+          <div className="w-full sm:w-48">
+            <select
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')}
+              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="desc">최신순</option>
+              <option value="asc">오래된순</option>
+            </select>
+          </div>
         </div>
       </div>
 

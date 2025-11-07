@@ -1,12 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getCart, getCartTotal, type CartItem } from "@/lib/cart";
+import { getCart, getCartTotal, updateCartDeliveryMethod, type CartItem, type DeliveryMethod } from "@/lib/cart";
 import { formatKRW } from "@/lib/utils";
 import Link from "next/link";
 import { AddressSearch } from "@/components/AddressSearch";
 
-type DeliveryMethod = "국내배송" | "해외배송" | "팬미팅현장수령";
 type PaymentMethod = "card" | "paypal";
 
 // Replace this with your actual API key
@@ -30,6 +29,15 @@ export default function PaymentPage() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+
+  // Initialize delivery method for cart items on mount
+  useEffect(() => {
+    const currentCart = getCart();
+    if (currentCart.length > 0 && !currentCart[0].deliveryMethod) {
+      updateCartDeliveryMethod(deliveryMethod);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount
 
   useEffect(() => {
     // Load cart from localStorage on mount (client-side only)
@@ -635,7 +643,12 @@ export default function PaymentPage() {
                         name="deliveryMethod"
                         value={method}
                         checked={deliveryMethod === method}
-                        onChange={(e) => setDeliveryMethod(e.target.value as DeliveryMethod)}
+                        onChange={(e) => {
+                          const newMethod = e.target.value as DeliveryMethod;
+                          setDeliveryMethod(newMethod);
+                          // Update all cart items with the selected delivery method
+                          updateCartDeliveryMethod(newMethod);
+                        }}
                         className="w-4 h-4 text-black mt-0.5"
                       />
                       <div className="flex-1">

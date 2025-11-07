@@ -7,6 +7,7 @@ import { getCart, addToCart, removeFromCart, getCartTotal, updateCartItemQuantit
 import { formatKRW } from "@/lib/utils";
 import { Product } from "@/models";
 import { supabase } from "@/lib/supabase";
+import { getMaxQuantity, isOutOfStock, validateCartItemInventory } from "@/lib/inventory";
 
 interface CartModalProps {
   isOpen: boolean;
@@ -102,6 +103,22 @@ export default function CartModal({ isOpen, onClose }: CartModalProps) {
     const product = products.find(p => p.id === productId);
     if (!product) return;
 
+    // Validate inventory before allowing the change
+    const optionValue = option === 'default' ? undefined : option;
+    const validation = validateCartItemInventory(product, quantity, optionValue);
+
+    if (!validation.isValid && quantity > 0) {
+      // Show alert with inventory limitation
+      alert(validation.message || `Only ${validation.availableQuantity} item(s) available`);
+
+      // Set to maximum available quantity if trying to exceed
+      if (quantity > validation.availableQuantity) {
+        quantity = validation.availableQuantity;
+      } else {
+        return; // Don't update if quantity is invalid for other reasons
+      }
+    }
+
     setSelections(prev => ({
       ...prev,
       [productId]: {
@@ -111,8 +128,6 @@ export default function CartModal({ isOpen, onClose }: CartModalProps) {
     }));
 
     // Update cart - use updateCartItemQuantity to set the exact quantity
-    const optionValue = option === 'default' ? undefined : option;
-
     if (quantity > 0) {
       // Check if item exists in cart
       const cart = getCart();
@@ -226,30 +241,50 @@ export default function CartModal({ isOpen, onClose }: CartModalProps) {
                             <div className="flex flex-wrap gap-1">
                               {product.options.map((option) => {
                                 const quantity = productSelections[option] || 0;
+                                const maxQty = getMaxQuantity(product, option);
+                                const outOfStock = isOutOfStock(product, option);
+
                                 return (
-                                  <div key={option} className="flex items-center gap-0.5 bg-gray-50 rounded px-1 py-0.5 sm:px-1.5 sm:py-1">
-                                    <span className="text-[10px] sm:text-xs text-gray-700 font-medium">
+                                  <div key={option} className={`flex items-center gap-0.5 rounded px-1 py-0.5 sm:px-1.5 sm:py-1 ${
+                                    outOfStock ? 'bg-gray-200' : 'bg-gray-50'
+                                  }`}>
+                                    <span className={`text-[10px] sm:text-xs font-medium ${
+                                      outOfStock ? 'text-gray-400 line-through' : 'text-gray-700'
+                                    }`}>
                                       {option}
                                     </span>
-                                    <div className="flex items-center gap-0.5">
-                                      <button
-                                        onClick={() => handleOptionChange(product.id, option, Math.max(0, quantity - 1))}
-                                        className="w-5 h-5 rounded bg-gray-200 hover:bg-gray-300 active:bg-gray-400 text-black text-xs font-semibold transition-colors flex items-center justify-center"
-                                        aria-label="Decrease"
-                                      >
-                                        -
-                                      </button>
-                                      <span className="text-[10px] sm:text-xs font-medium text-black min-w-[1.5ch] text-center px-0.5">
-                                        {quantity}
+                                    {outOfStock ? (
+                                      <span className="text-[9px] sm:text-[10px] text-red-500 font-semibold ml-0.5">
+                                        OUT
                                       </span>
-                                      <button
-                                        onClick={() => handleOptionChange(product.id, option, quantity + 1)}
-                                        className="w-5 h-5 rounded bg-[#8DCFDD] hover:bg-[#7BBFCF] active:bg-[#6AAFBF] text-white text-xs font-semibold transition-colors flex items-center justify-center"
-                                        aria-label="Increase"
-                                      >
-                                        +
-                                      </button>
-                                    </div>
+                                    ) : (
+                                      <>
+                                        <span className="text-[9px] sm:text-[10px] text-gray-500 ml-0.5">
+                                          ({maxQty})
+                                        </span>
+                                        <div className="flex items-center gap-0.5">
+                                          <button
+                                            onClick={() => handleOptionChange(product.id, option, Math.max(0, quantity - 1))}
+                                            disabled={quantity === 0}
+                                            className="w-5 h-5 rounded bg-gray-200 hover:bg-gray-300 active:bg-gray-400 text-black text-xs font-semibold transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                                            aria-label="Decrease"
+                                          >
+                                            -
+                                          </button>
+                                          <span className="text-[10px] sm:text-xs font-medium text-black min-w-[1.5ch] text-center px-0.5">
+                                            {quantity}
+                                          </span>
+                                          <button
+                                            onClick={() => handleOptionChange(product.id, option, quantity + 1)}
+                                            disabled={quantity >= maxQty}
+                                            className="w-5 h-5 rounded bg-[#8DCFDD] hover:bg-[#7BBFCF] active:bg-[#6AAFBF] text-white text-xs font-semibold transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                                            aria-label="Increase"
+                                          >
+                                            +
+                                          </button>
+                                        </div>
+                                      </>
+                                    )}
                                   </div>
                                 );
                               })}
@@ -258,25 +293,44 @@ export default function CartModal({ isOpen, onClose }: CartModalProps) {
                             // No options - single quantity selector
                             <div className="flex items-center gap-1.5">
                               <span className="text-[10px] sm:text-xs text-gray-700">Qty:</span>
-                              <div className="flex items-center gap-1">
-                                <button
-                                  onClick={() => handleOptionChange(product.id, 'default', Math.max(0, (productSelections['default'] || 0) - 1))}
-                                  className="w-5 h-5 sm:w-6 sm:h-6 rounded bg-gray-200 hover:bg-gray-300 active:bg-gray-400 text-black text-xs sm:text-sm font-semibold transition-colors"
-                                  aria-label="Decrease"
-                                >
-                                  -
-                                </button>
-                                <span className="text-xs sm:text-sm font-medium text-black min-w-[2ch] text-center">
-                                  {productSelections['default'] || 0}
-                                </span>
-                                <button
-                                  onClick={() => handleOptionChange(product.id, 'default', (productSelections['default'] || 0) + 1)}
-                                  className="w-5 h-5 sm:w-6 sm:h-6 rounded bg-[#8DCFDD] hover:bg-[#7BBFCF] active:bg-[#6AAFBF] text-white text-xs sm:text-sm font-semibold transition-colors"
-                                  aria-label="Increase"
-                                >
-                                  +
-                                </button>
-                              </div>
+                              {(() => {
+                                const maxQty = getMaxQuantity(product);
+                                const outOfStock = isOutOfStock(product);
+                                const currentQty = productSelections['default'] || 0;
+
+                                return outOfStock ? (
+                                  <span className="text-[10px] sm:text-xs text-red-500 font-semibold">
+                                    Out of Stock
+                                  </span>
+                                ) : (
+                                  <>
+                                    <span className="text-[9px] sm:text-[10px] text-gray-500">
+                                      (Available: {maxQty})
+                                    </span>
+                                    <div className="flex items-center gap-1">
+                                      <button
+                                        onClick={() => handleOptionChange(product.id, 'default', Math.max(0, currentQty - 1))}
+                                        disabled={currentQty === 0}
+                                        className="w-5 h-5 sm:w-6 sm:h-6 rounded bg-gray-200 hover:bg-gray-300 active:bg-gray-400 text-black text-xs sm:text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                        aria-label="Decrease"
+                                      >
+                                        -
+                                      </button>
+                                      <span className="text-xs sm:text-sm font-medium text-black min-w-[2ch] text-center">
+                                        {currentQty}
+                                      </span>
+                                      <button
+                                        onClick={() => handleOptionChange(product.id, 'default', currentQty + 1)}
+                                        disabled={currentQty >= maxQty}
+                                        className="w-5 h-5 sm:w-6 sm:h-6 rounded bg-[#8DCFDD] hover:bg-[#7BBFCF] active:bg-[#6AAFBF] text-white text-xs sm:text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                        aria-label="Increase"
+                                      >
+                                        +
+                                      </button>
+                                    </div>
+                                  </>
+                                );
+                              })()}
                             </div>
                           )}
 

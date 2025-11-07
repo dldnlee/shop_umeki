@@ -17,10 +17,18 @@ export async function GET(request: NextRequest) {
 
     const searchParams = request.nextUrl.searchParams;
     const status = searchParams.get('status') || undefined;
-    const search = searchParams.get('search') || undefined;
+    const orderId = searchParams.get('order_id') || undefined;
+    const name = searchParams.get('name') || undefined;
+    const email = searchParams.get('email') || undefined;
     const sort = searchParams.get('sort') as 'asc' | 'desc' | null;
 
-    const result = await getAllOrders(status, search, sort || 'desc');
+    const result = await getAllOrders({
+      status,
+      orderId,
+      name,
+      email,
+      sortOrder: sort || 'desc'
+    });
 
     if (!result.success) {
       return NextResponse.json(
