@@ -1019,6 +1019,12 @@ function generatePaymentCancellationWarningEmail(data: OrderEmailData): string {
           Your order is still pending payment. Please complete the payment within <strong>24 hours</strong> to avoid cancellation.<br>
           <strong>If payment is not received within 24 hours, your order will be automatically canceled.</strong>
         </p>
+        <p style="margin: 5px 0; color: #555;">
+          If you have difficulties proceeding with your payment, you can go to this link:
+        </p>
+        <p style="margin: 5px 0; color: #555;">
+          https://hypetown.kr/event/mhollwh1-3dti
+        </p>
       </div>
 
       <div class="section">
