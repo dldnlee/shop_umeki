@@ -1,5 +1,7 @@
 import { supabase } from "./supabase";
 import { CartItem } from "./cart";
+import { deductInventoryForOrder, verifyInventoryAvailability } from "./inventory-deduction";
+import { Product } from "@/models";
 
 export type Order = {
   id?: string; // UUID
@@ -38,6 +40,24 @@ export async function createOrder(
   cartItems: CartItem[]
 ) {
   try {
+    // First, verify inventory availability
+    const inventoryCheck = await verifyInventoryAvailability(supabase, cartItems);
+
+    if (!inventoryCheck.available) {
+      const unavailableItems = inventoryCheck.unavailableItems || [];
+      const itemsList = unavailableItems
+        .map(item => `Product ${item.productId}${item.option ? ` (${item.option})` : ''}: requested ${item.requested}, available ${item.available}`)
+        .join('; ');
+
+      return {
+        success: false,
+        error: {
+          message: `Insufficient inventory: ${itemsList}`,
+          unavailableItems
+        }
+      };
+    }
+
     // Determine order status based on payment method
     // PayPal orders start as 'waiting' until payment is confirmed
     // Card orders are 'paid' immediately after Easy Pay confirmation
@@ -90,6 +110,49 @@ export async function createOrder(
       console.error("Error creating order items:", itemsError);
       // If order items fail, you might want to delete the order or handle this appropriately
       return { success: false, error: itemsError };
+    }
+
+    // Fetch product details for inventory deduction
+    const productIds = [...new Set(cartItems.map(item => item.productId))];
+    const { data: products, error: productsError } = await supabase
+      .from("umeki_products")
+      .select("*")
+      .in("id", productIds);
+
+    if (productsError || !products) {
+      console.error("Error fetching products for inventory deduction:", productsError);
+      // Order was created but inventory wasn't deducted - log this critical error
+      console.error("CRITICAL: Order created but inventory not deducted for order:", order.id);
+      return {
+        success: true,
+        data: {
+          order,
+          items,
+        },
+        warning: "Inventory was not deducted - manual intervention required"
+      };
+    }
+
+    // Deduct inventory
+    const deductionResult = await deductInventoryForOrder(
+      supabase,
+      cartItems,
+      products as Product[]
+    );
+
+    if (!deductionResult.success) {
+      console.error("Error deducting inventory:", deductionResult.error);
+      console.error("Failed items:", deductionResult.failedItems);
+      // Order was created but inventory wasn't fully deducted - log this critical error
+      console.error("CRITICAL: Order created but inventory deduction failed for order:", order.id);
+      return {
+        success: true,
+        data: {
+          order,
+          items,
+        },
+        warning: `Inventory deduction partially failed: ${deductionResult.error}`
+      };
     }
 
     return {
@@ -154,17 +217,30 @@ export async function getOrderById(orderId: string) {
 
 /**
  * Get all orders filtered by status
- * @param status - Order status to filter by (optional)
- * @param searchQuery - Search by order ID, name, email, or phone number (optional)
- * @param sortOrder - Sort order by created_at: 'asc' or 'desc' (optional, default: 'desc')
+ * @param options - Filter options
+ * @param options.status - Order status to filter by (optional)
+ * @param options.orderId - Filter by order ID (optional)
+ * @param options.name - Filter by customer name (optional)
+ * @param options.email - Filter by customer email (optional)
+ * @param options.sortOrder - Sort order by created_at: 'asc' or 'desc' (optional, default: 'desc')
  * @returns List of orders with their items
  */
-export async function getAllOrders(
-  status?: string,
-  searchQuery?: string,
-  sortOrder: 'asc' | 'desc' = 'desc'
-) {
+export async function getAllOrders(options?: {
+  status?: string;
+  orderId?: string;
+  name?: string;
+  email?: string;
+  sortOrder?: 'asc' | 'desc';
+}) {
   try {
+    const {
+      status,
+      orderId,
+      name,
+      email,
+      sortOrder = 'desc'
+    } = options || {};
+
     let query = supabase
       .from("umeki_orders")
       .select("*");
@@ -173,12 +249,26 @@ export async function getAllOrders(
       query = query.eq("order_status", status);
     }
 
-    // Apply search filters using OR conditions
-    if (searchQuery && searchQuery.trim()) {
-      const searchTerm = searchQuery.trim();
-      query = query.or(
-        `id.ilike.%${searchTerm}%,name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,phone_num.ilike.%${searchTerm}%`
-      );
+    // Apply individual search filters using AND conditions
+    if (orderId && orderId.trim()) {
+      const orderIdTerm = orderId.trim();
+      const looksLikeUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(orderIdTerm);
+
+      if (looksLikeUUID) {
+        // Exact match for UUID
+        query = query.eq("id", orderIdTerm);
+      } else {
+        // Pattern matching for partial searches
+        query = query.ilike("id", `%${orderIdTerm}%`);
+      }
+    }
+
+    if (name && name.trim()) {
+      query = query.ilike("name", `%${name.trim()}%`);
+    }
+
+    if (email && email.trim()) {
+      query = query.ilike("email", `%${email.trim()}%`);
     }
 
     // Apply sorting

@@ -1,3 +1,10 @@
+export type InventoryByOption = {
+  [option: string]: {
+    onsite?: number;
+    delivery?: number;
+  };
+};
+
 export type Product = {
   id: number;
   name: string;
@@ -5,4 +12,5 @@ export type Product = {
   image_urls: string[]; // Array of image URLs
   options?: string[];
   inventory: number;
+  inventory_by_option?: InventoryByOption;
 };
