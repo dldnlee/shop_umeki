@@ -129,6 +129,11 @@ function PurchaseCompleteContent() {
               <p className="text-sm text-zinc-600">
                 We will send you an order confirmation email once the payment is verified.
               </p>
+              <div className="bg-amber-50 border border-amber-200 p-4 rounded-md">
+                <p className="text-sm text-amber-900">
+                  <span className="font-semibold">Note:</span> If there is any difference in the payment amount, it will be refunded to your PayPal account.
+                </p>
+              </div>
             </div>
           ) : (
             <p className="text-zinc-600 mb-8">
