@@ -339,3 +339,217 @@ export async function updateOrderStatus(orderId: string, status: string) {
     return { success: false, error };
   }
 }
+
+/**
+ * Get sales analytics data
+ * @returns Sales analytics including product sales and total amounts by status
+ */
+export async function getSalesAnalytics() {
+  try {
+    // Get all orders with 'paid' status and their items
+    const { data: paidOrders, error: paidOrdersError } = await supabase
+      .from("umeki_orders")
+      .select(`
+        id,
+        total_amount,
+        order_status,
+        created_at,
+        delivery_method
+      `)
+      .eq("order_status", "paid");
+
+    if (paidOrdersError) {
+      return { success: false, error: paidOrdersError };
+    }
+
+    // Get all orders with 'waiting' status for total calculation
+    const { data: waitingOrders, error: waitingOrdersError } = await supabase
+      .from("umeki_orders")
+      .select("total_amount, delivery_method")
+      .eq("order_status", "waiting");
+
+    if (waitingOrdersError) {
+      return { success: false, error: waitingOrdersError };
+    }
+
+    // Get all order items for paid orders with product information
+    const { data: orderItems, error: itemsError } = await supabase
+      .from("umeki_order_items")
+      .select(`
+        product_id,
+        quantity,
+        option,
+        total_price,
+        order_id,
+        umeki_products (
+          name
+        )
+      `)
+      .in("order_id", paidOrders?.map(o => o.id) || []);
+
+    if (itemsError) {
+      return { success: false, error: itemsError };
+    }
+
+    // Calculate total amounts
+    const totalPaidAmount = paidOrders?.reduce((sum, order) => sum + (order.total_amount || 0), 0) || 0;
+    const totalWaitingAmount = waitingOrders?.reduce((sum, order) => sum + (order.total_amount || 0), 0) || 0;
+
+    // Calculate delivery method breakdown for paid orders
+    const paidDeliveryBreakdown = new Map<string, { count: number; amount: number }>();
+    paidOrders?.forEach(order => {
+      const method = order.delivery_method || 'unknown';
+      if (!paidDeliveryBreakdown.has(method)) {
+        paidDeliveryBreakdown.set(method, { count: 0, amount: 0 });
+      }
+      const data = paidDeliveryBreakdown.get(method)!;
+      data.count += 1;
+      data.amount += order.total_amount || 0;
+    });
+
+    // Calculate delivery method breakdown for waiting orders
+    const waitingDeliveryBreakdown = new Map<string, { count: number; amount: number }>();
+    waitingOrders?.forEach(order => {
+      const method = order.delivery_method || 'unknown';
+      if (!waitingDeliveryBreakdown.has(method)) {
+        waitingDeliveryBreakdown.set(method, { count: 0, amount: 0 });
+      }
+      const data = waitingDeliveryBreakdown.get(method)!;
+      data.count += 1;
+      data.amount += order.total_amount || 0;
+    });
+
+    // Aggregate product sales data with delivery method tracking
+    const productSalesMap = new Map<string, {
+      productId: number;
+      productName: string;
+      totalQuantity: number;
+      totalRevenue: number;
+      deliveryMethods: Map<string, {
+        quantity: number;
+        revenue: number;
+      }>;
+      options: Map<string, {
+        quantity: number;
+        revenue: number;
+        deliveryMethods: Map<string, {
+          quantity: number;
+          revenue: number;
+        }>;
+      }>;
+    }>();
+
+    orderItems?.forEach(item => {
+      const productId = item.product_id;
+      const productName = item.umeki_products?.name || `Product #${productId}`;
+      const option = item.option || 'No Option';
+      const quantity = item.quantity;
+      const revenue = item.total_price;
+
+      // Find the order for this item to get delivery method
+      const order = paidOrders?.find(o => o.id === item.order_id);
+      const deliveryMethod = order?.delivery_method || 'unknown';
+
+      const key = `${productId}`;
+
+      if (!productSalesMap.has(key)) {
+        productSalesMap.set(key, {
+          productId,
+          productName,
+          totalQuantity: 0,
+          totalRevenue: 0,
+          deliveryMethods: new Map(),
+          options: new Map(),
+        });
+      }
+
+      const productData = productSalesMap.get(key)!;
+      productData.totalQuantity += quantity;
+      productData.totalRevenue += revenue;
+
+      // Track delivery method for product
+      if (!productData.deliveryMethods.has(deliveryMethod)) {
+        productData.deliveryMethods.set(deliveryMethod, { quantity: 0, revenue: 0 });
+      }
+      const productDeliveryData = productData.deliveryMethods.get(deliveryMethod)!;
+      productDeliveryData.quantity += quantity;
+      productDeliveryData.revenue += revenue;
+
+      // Track options
+      if (!productData.options.has(option)) {
+        productData.options.set(option, {
+          quantity: 0,
+          revenue: 0,
+          deliveryMethods: new Map(),
+        });
+      }
+
+      const optionData = productData.options.get(option)!;
+      optionData.quantity += quantity;
+      optionData.revenue += revenue;
+
+      // Track delivery method for option
+      if (!optionData.deliveryMethods.has(deliveryMethod)) {
+        optionData.deliveryMethods.set(deliveryMethod, { quantity: 0, revenue: 0 });
+      }
+      const optionDeliveryData = optionData.deliveryMethods.get(deliveryMethod)!;
+      optionDeliveryData.quantity += quantity;
+      optionDeliveryData.revenue += revenue;
+    });
+
+    // Convert Map to array format
+    const productSales = Array.from(productSalesMap.values()).map(product => ({
+      productId: product.productId,
+      productName: product.productName,
+      totalQuantity: product.totalQuantity,
+      totalRevenue: product.totalRevenue,
+      deliveryMethods: Array.from(product.deliveryMethods.entries()).map(([method, data]) => ({
+        method,
+        quantity: data.quantity,
+        revenue: data.revenue,
+      })),
+      options: Array.from(product.options.entries()).map(([option, data]) => ({
+        option,
+        quantity: data.quantity,
+        revenue: data.revenue,
+        deliveryMethods: Array.from(data.deliveryMethods.entries()).map(([method, dmData]) => ({
+          method,
+          quantity: dmData.quantity,
+          revenue: dmData.revenue,
+        })),
+      })),
+    }));
+
+    // Sort by total quantity sold (descending)
+    productSales.sort((a, b) => b.totalQuantity - a.totalQuantity);
+
+    // Convert delivery method Maps to arrays
+    const paidDeliveryMethods = Array.from(paidDeliveryBreakdown.entries()).map(([method, data]) => ({
+      method,
+      count: data.count,
+      amount: data.amount,
+    }));
+
+    const waitingDeliveryMethods = Array.from(waitingDeliveryBreakdown.entries()).map(([method, data]) => ({
+      method,
+      count: data.count,
+      amount: data.amount,
+    }));
+
+    return {
+      success: true,
+      data: {
+        totalPaidAmount,
+        totalWaitingAmount,
+        productSales,
+        totalPaidOrders: paidOrders?.length || 0,
+        totalWaitingOrders: waitingOrders?.length || 0,
+        paidDeliveryMethods,
+        waitingDeliveryMethods,
+      },
+    };
+  } catch (error) {
+    console.error("Error fetching sales analytics:", error);
+    return { success: false, error };
+  }
+}
