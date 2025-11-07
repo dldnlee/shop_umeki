@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { getCart, addToCart, removeFromCart, getCartTotal } from "@/lib/cart";
+import { getCart, addToCart, removeFromCart, getCartTotal, updateCartItemQuantity } from "@/lib/cart";
 import { formatKRW } from "@/lib/utils";
 import { Product } from "@/models";
 import { supabase } from "@/lib/supabase";
@@ -110,18 +110,32 @@ export default function CartModal({ isOpen, onClose }: CartModalProps) {
       }
     }));
 
-    // Update cart
+    // Update cart - use updateCartItemQuantity to set the exact quantity
+    const optionValue = option === 'default' ? undefined : option;
+
     if (quantity > 0) {
-      addToCart({
-        productId: product.id,
-        productName: product.name,
-        price: product.price,
-        option: option === 'default' ? undefined : option,
-        quantity: quantity,
-        slug: product.id.toString()
-      });
+      // Check if item exists in cart
+      const cart = getCart();
+      const existingItem = cart.find(
+        item => item.productId === productId && item.option === optionValue
+      );
+
+      if (existingItem) {
+        // Update existing item's quantity
+        updateCartItemQuantity(productId, quantity, optionValue);
+      } else {
+        // Add new item to cart
+        addToCart({
+          productId: product.id,
+          productName: product.name,
+          price: product.price,
+          option: optionValue,
+          quantity: quantity,
+          slug: product.id.toString()
+        });
+      }
     } else {
-      removeFromCart(product.id, option === 'default' ? undefined : option);
+      removeFromCart(productId, optionValue);
     }
   };
 
