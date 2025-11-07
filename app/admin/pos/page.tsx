@@ -418,9 +418,9 @@ export default function POSDashboard() {
                   onClick={() => toggleAccordion(order.id!)}
                   className="w-full px-4 py-3 flex items-center text-left hover:bg-gray-50 transition-colors rounded-lg"
                 >
-                  <div className="flex items-center flex-1 w-full">
+                  <div className="flex items-center flex-1 w-full gap-1.5">
                     {/* Order Number */}
-                    <div className="flex-1">
+                    <div className="w-[100px] shrink-0">
                       <p className="text-[10px] text-gray-500 mb-0.5">주문번호</p>
                       <p className="text-xs font-bold text-gray-900 truncate">
                         #{order.id?.substring(0, 8)}
@@ -428,15 +428,31 @@ export default function POSDashboard() {
                     </div>
 
                     {/* Name */}
-                    <div className="flex-1">
+                    <div className="w-[160px] shrink-0">
                       <p className="text-[10px] text-gray-500 mb-0.5">이름</p>
                       <p className="text-sm font-semibold text-gray-900 truncate">
                         {order.name}
                       </p>
                     </div>
 
+                    {/* Email */}
+                    <div className="w-[230px] shrink-0 min-w-0">
+                      <p className="text-[10px] text-gray-500 mb-0.5">이메일</p>
+                      <p className="text-xs font-medium text-gray-700 truncate overflow-hidden text-ellipsis">
+                        {order.email || 'N/A'}
+                      </p>
+                    </div>
+
+                    {/* Phone */}
+                    <div className="w-[110px] shrink-0">
+                      <p className="text-[10px] text-gray-500 mb-0.5">전화번호</p>
+                      <p className="text-xs font-medium text-gray-700 truncate">
+                        {order.phone_num || 'N/A'}
+                      </p>
+                    </div>
+
                     {/* Delivery Method */}
-                    <div className="flex-1">
+                    <div className="w-[110px] shrink-0">
                       <p className="text-[10px] text-gray-500 mb-0.5">수령방법</p>
                       <p className="text-xs font-medium text-blue-600 truncate">
                         {order.delivery_method}
@@ -444,15 +460,15 @@ export default function POSDashboard() {
                     </div>
 
                     {/* Total Amount */}
-                    <div className="flex-1">
+                    <div className="w-[85px] shrink-0">
                       <p className="text-[10px] text-gray-500 mb-0.5">총 금액</p>
-                      <p className="text-base font-bold text-gray-900 truncate">
+                      <p className="text-sm font-bold text-gray-900 truncate">
                         {formatPrice(order.total_amount)}
                       </p>
                     </div>
 
                     {/* Payment Method */}
-                    <div className="flex-1">
+                    <div className="w-[100px] shrink-0">
                       <p className="text-[10px] text-gray-500 mb-0.5">결제방법</p>
                       <p className="text-xs font-medium text-gray-700 truncate">
                         {order.payment_method || 'N/A'}
@@ -460,7 +476,7 @@ export default function POSDashboard() {
                     </div>
 
                     {/* Status */}
-                    <div className="flex-1">
+                    <div className="w-[105px] shrink-0">
                       <span
                         className={`
                           inline-block px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap
@@ -472,7 +488,7 @@ export default function POSDashboard() {
                     </div>
 
                     {/* Expand Icon */}
-                    <div className="flex-shrink-0 ml-3">
+                    <div className="shrink-0 ml-auto pl-2">
                       <svg
                         className={`w-5 h-5 text-gray-400 transition-transform ${
                           isExpanded ? 'transform rotate-180' : ''
@@ -495,6 +511,28 @@ export default function POSDashboard() {
                 {/* Expanded View - Items Table */}
                 {isExpanded && (
                   <div className="border-t border-gray-200">
+                    {/* Customer Information */}
+                    <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">이름</p>
+                          <p className="font-semibold text-gray-900">{order.name}</p>
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs text-gray-500 mb-1">이메일</p>
+                          <p className="font-medium text-gray-700 truncate overflow-hidden text-ellipsis">{order.email || 'N/A'}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">전화번호</p>
+                          <p className="font-medium text-gray-700">{order.phone_num || 'N/A'}</p>
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs text-gray-500 mb-1">주문번호</p>
+                          <p className="font-semibold text-gray-900 truncate">#{order.id}</p>
+                        </div>
+                      </div>
+                    </div>
+
                     {/* Order Items Table */}
                     <div className="overflow-x-auto">
                       <table className="min-w-full border-collapse text-sm">
