@@ -222,6 +222,8 @@ export async function getOrderById(orderId: string) {
  * @param options.orderId - Filter by order ID (optional)
  * @param options.name - Filter by customer name (optional)
  * @param options.email - Filter by customer email (optional)
+ * @param options.phone - Filter by phone number (optional)
+ * @param options.deliveryMethod - Filter by delivery method (optional)
  * @param options.sortOrder - Sort order by created_at: 'asc' or 'desc' (optional, default: 'desc')
  * @returns List of orders with their items
  */
@@ -230,6 +232,8 @@ export async function getAllOrders(options?: {
   orderId?: string;
   name?: string;
   email?: string;
+  phone?: string;
+  deliveryMethod?: string;
   sortOrder?: 'asc' | 'desc';
 }) {
   try {
@@ -238,6 +242,8 @@ export async function getAllOrders(options?: {
       orderId,
       name,
       email,
+      phone,
+      deliveryMethod,
       sortOrder = 'desc'
     } = options || {};
 
@@ -247,6 +253,10 @@ export async function getAllOrders(options?: {
 
     if (status) {
       query = query.eq("order_status", status);
+    }
+
+    if (deliveryMethod) {
+      query = query.eq("delivery_method", deliveryMethod);
     }
 
     // Apply individual search filters using AND conditions
@@ -269,6 +279,10 @@ export async function getAllOrders(options?: {
 
     if (email && email.trim()) {
       query = query.ilike("email", `%${email.trim()}%`);
+    }
+
+    if (phone && phone.trim()) {
+      query = query.ilike("phone_num", `%${phone.trim()}%`);
     }
 
     // Apply sorting

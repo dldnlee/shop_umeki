@@ -20,6 +20,8 @@ export async function GET(request: NextRequest) {
     const orderId = searchParams.get('order_id') || undefined;
     const name = searchParams.get('name') || undefined;
     const email = searchParams.get('email') || undefined;
+    const phone = searchParams.get('phone') || undefined;
+    const deliveryMethod = searchParams.get('delivery_method') || undefined;
     const sort = searchParams.get('sort') as 'asc' | 'desc' | null;
 
     const result = await getAllOrders({
@@ -27,6 +29,8 @@ export async function GET(request: NextRequest) {
       orderId,
       name,
       email,
+      phone,
+      deliveryMethod,
       sortOrder: sort || 'desc'
     });
 

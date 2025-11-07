@@ -30,6 +30,7 @@ export default function AdminLayout({
 
   const navigation = [
     { name: '주문 관리', href: '/admin', current: pathname === '/admin' },
+    { name: '현장수령용 POS', href: '/admin/pos', current: pathname === '/admin/pos' },
     { name: '매출 분석', href: '/admin/analytics', current: pathname === '/admin/analytics' },
   ];
 
