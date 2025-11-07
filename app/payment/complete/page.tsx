@@ -3,7 +3,7 @@
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { formatKRW } from "@/lib/utils";
+import { formatKRW, formatJPY, formatUSD } from "@/lib/utils";
 
 type Order = {
   id: string;
@@ -55,11 +55,15 @@ function PurchaseCompleteContent() {
       <div className="min-h-screen bg-zinc-50 font-sans text-foreground flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black mx-auto mb-4"></div>
-          <p className="text-zinc-600">로딩 중...</p>
+          <p className="text-zinc-600">{order?.payment_method === "paypal" ? "Loading..." : "로딩 중..."}</p>
         </div>
       </div>
     );
   }
+
+  // Currency conversion rates (approximate - you may want to fetch these dynamically)
+  const JPY_RATE = 9.0; // 1 KRW = ~9 JPY
+  const USD_RATE = 0.00075; // 1 KRW = ~0.00075 USD
 
   return (
     <div className="min-h-screen bg-zinc-50 font-sans text-foreground">
@@ -86,14 +90,14 @@ function PurchaseCompleteContent() {
 
           {/* Title */}
           <h1 className="text-3xl font-semibold text-black mb-4">
-            {isPayPalOrder ? '주문 접수가 완료 되었습니다' : '결제가 완료되었습니다!'}
+            {isPayPalOrder ? 'Order Received Successfully' : '결제가 완료되었습니다!'}
           </h1>
 
           {/* Order ID */}
           {orderId && (
             <div className="mb-6">
               <p className="text-zinc-600 mb-2">
-                주문번호
+                {isPayPalOrder ? 'Order Number' : '주문번호'}
               </p>
               <p className="text-lg font-mono font-semibold text-black bg-zinc-100 px-4 py-2 rounded-md inline-block">
                 {orderId}
@@ -105,15 +109,25 @@ function PurchaseCompleteContent() {
           {isPayPalOrder ? (
             <div className="mb-8 space-y-4">
               <p className="text-zinc-600">
-                아래 계좌로 <span className="font-semibold text-black">{order && formatKRW(order.total_amount)}</span>을 입금해주세요
+                Please send the payment to the following PayPal account:
               </p>
               <div className="bg-zinc-50 p-4 rounded-md">
                 <p className="text-lg font-semibold text-black">
                   tkay@grigoent.co.kr
                 </p>
               </div>
+              {order && (
+                <div className="bg-blue-50 p-4 rounded-md space-y-2">
+                  <p className="text-sm font-semibold text-black mb-2">Payment Amount:</p>
+                  <div className="space-y-1 text-left">
+                    <p className="text-black font-medium">{formatKRW(order.total_amount)}</p>
+                    <p className="text-black font-medium">{formatJPY(order.total_amount * JPY_RATE)}</p>
+                    <p className="text-black font-medium">{formatUSD(order.total_amount * USD_RATE)}</p>
+                  </div>
+                </div>
+              )}
               <p className="text-sm text-zinc-600">
-                입금 확인 후 주문 확인 메일을 보내드립니다
+                We will send you an order confirmation email once the payment is verified.
               </p>
             </div>
           ) : (
@@ -137,14 +151,14 @@ function PurchaseCompleteContent() {
               href="/"
               className="px-6 py-3 bg-zinc-200 text-black rounded-md font-medium hover:opacity-90 transition-opacity"
             >
-              쇼핑 계속하기
+              {isPayPalOrder ? 'Continue Shopping' : '쇼핑 계속하기'}
             </Link>
           </div>
 
           {/* Additional Info */}
           <div className="mt-12 pt-8 border-t border-zinc-200">
             <h3 className="text-sm font-semibold text-black mb-4">
-              다음 단계
+              {isPayPalOrder ? 'Next Steps' : '다음 단계'}
             </h3>
             {isPayPalOrder ? (
               <div className="space-y-3 text-sm text-zinc-600">
@@ -152,19 +166,19 @@ function PurchaseCompleteContent() {
                   <div className="w-6 h-6 bg-zinc-200 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
                     <span className="text-xs font-semibold text-black">1</span>
                   </div>
-                  <p className="text-left">tkay@grigoent.co.kr로 결제 금액을 송금해주세요</p>
+                  <p className="text-left">Send the payment amount to tkay@grigoent.co.kr via PayPal</p>
                 </div>
                 <div className="flex items-start gap-3">
                   <div className="w-6 h-6 bg-zinc-200 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
                     <span className="text-xs font-semibold text-black">2</span>
                   </div>
-                  <p className="text-left">입금 확인 후 주문 확인 메일을 보내드립니다</p>
+                  <p className="text-left">We will send you an order confirmation email once payment is verified</p>
                 </div>
                 <div className="flex items-start gap-3">
                   <div className="w-6 h-6 bg-zinc-200 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
                     <span className="text-xs font-semibold text-black">3</span>
                   </div>
-                  <p className="text-left">배송 방법에 따라 상품이 발송됩니다</p>
+                  <p className="text-left">Your items will be shipped according to your selected shipping method</p>
                 </div>
               </div>
             ) : (
@@ -209,7 +223,7 @@ export default function PurchaseCompletePage() {
       <div className="min-h-screen bg-zinc-50 font-sans text-foreground flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black mx-auto mb-4"></div>
-          <p className="text-zinc-600">로딩 중...</p>
+          <p className="text-zinc-600">Loading...</p>
         </div>
       </div>
     }>

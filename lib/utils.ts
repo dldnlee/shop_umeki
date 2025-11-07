@@ -23,6 +23,18 @@ export function formatUSD(amount: number): string {
 }
 
 /**
+ * Format a number as Japanese Yen currency
+ * @param amount - The amount to format
+ * @returns Formatted string in JPY (e.g., "¥1,000")
+ */
+export function formatJPY(amount: number): string {
+  return amount.toLocaleString("ja-JP", {
+    style: "currency",
+    currency: "JPY",
+  });
+}
+
+/**
  * Format a number with Korean number grouping (no currency symbol)
  * @param amount - The amount to format
  * @returns Formatted string with commas (e.g., "1,000")
