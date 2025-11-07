@@ -119,16 +119,18 @@ function PurchaseCompleteContent() {
               {order && (
                 <div className="bg-blue-50 p-4 rounded-md space-y-2">
                   <p className="text-sm font-semibold text-black mb-2">Payment Amount:</p>
+                  
                   <div className="space-y-1 text-left">
+                    <p className="text-sm text-zinc-600">
+                      You can transfer the payment in any of the currencies shown below, using whichever is most convenient.</p>
+                    <p>下記に表示された通貨のいずれかで、最も便利な方法でご送金いただけます。</p>
                     <p className="text-black font-medium">{formatKRW(order.total_amount)}</p>
                     <p className="text-black font-medium">{formatJPY(order.total_amount * JPY_RATE)}</p>
                     <p className="text-black font-medium">{formatUSD(order.total_amount * USD_RATE)}</p>
                   </div>
                 </div>
               )}
-              <p className="text-sm text-zinc-600">
-                We will send you an order confirmation email once the payment is verified.
-              </p>
+              
               <div className="bg-amber-50 border border-amber-200 p-4 rounded-md">
                 <p className="text-sm text-amber-900">
                   <span className="font-semibold">Note:</span> If there is any difference in the payment amount, it will be refunded to your PayPal account.
