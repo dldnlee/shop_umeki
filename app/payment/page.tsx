@@ -14,7 +14,7 @@ const JUSO_API_KEY = process.env.NEXT_PUBLIC_JUSO_API_KEY || "YOUR_API_KEY_HERE"
 // Payment method display mapping
 const PAYMENT_METHODS: { value: PaymentMethod; label: string }[] = [
   { value: "card", label: "신용카드" },
-  { value: "paypal", label: "PayPal" },
+  // { value: "paypal", label: "PayPal" },
 ];
 
 export default function PaymentPage() {
