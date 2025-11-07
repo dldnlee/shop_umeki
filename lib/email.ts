@@ -1023,7 +1023,7 @@ function generatePaymentCancellationWarningEmail(data: OrderEmailData): string {
           If you have difficulties proceeding with your payment, you can go to this link:
         </p>
         <p style="margin: 5px 0; color: #555;">
-          https://hypetown.kr/event/mhollwh1-3dti
+          https://www.hypetown.kr/event/mhollwh1-3dti
         </p>
       </div>
 

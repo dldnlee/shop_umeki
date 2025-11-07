@@ -68,7 +68,7 @@ export default function BottomTabs() {
       {activeTab !== "fanmeeting" && (
         <a
           target="_blank"
-          href="https://hypetown.kr/event/mhollwh1-3dti"
+          href="https://www.hypetown.kr/event/mhollwh1-3dti"
           className="px-6 bg-black text-white py-2.5 sm:px-8 sm:py-3 rounded-full text-sm sm:text-base shadow-xl hover:shadow-2xl hover:scale-105 active:scale-95 transition-all duration-200 whitespace-nowrap flex items-center justify-center gap-2"
         >
           <svg
