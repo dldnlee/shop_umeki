@@ -187,11 +187,11 @@ export default function POSDashboard() {
   const getStatusLabel = (status?: string) => {
     switch (status) {
       case 'waiting':
-        return '대기';
+        return '결제 미확인';
       case 'paid':
-        return '결제완료';
+        return '결제 완료';
       case 'complete':
-        return '완료';
+        return '수령 완료';
       default:
         return status || 'N/A';
     }
