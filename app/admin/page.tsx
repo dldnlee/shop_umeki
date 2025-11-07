@@ -18,6 +18,9 @@ type OrderWithItems = Order & {
 
 type TabType = 'waiting' | 'paid' | 'complete';
 
+const JPY_RATE = 0.11; // 1 KRW = ~0.11 JPY
+const USD_RATE = 0.00075; // 1 KRW = ~0.00075 USD
+
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<TabType>('waiting');
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
@@ -27,6 +30,7 @@ export default function AdminDashboard() {
   const [searchOrderId, setSearchOrderId] = useState('');
   const [searchEmail, setSearchEmail] = useState('');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
 
   const fetchOrders = useCallback(async () => {
     setLoading(true);
@@ -108,6 +112,27 @@ export default function AdminDashboard() {
       style: 'currency',
       currency: 'KRW',
     }).format(price);
+  };
+
+  const formatMultiCurrency = (priceKRW: number) => {
+    const jpy = priceKRW * JPY_RATE;
+    const usd = priceKRW * USD_RATE;
+
+    return {
+      krw: formatPrice(priceKRW),
+      jpy: new Intl.NumberFormat('ja-JP', {
+        style: 'currency',
+        currency: 'JPY',
+      }).format(jpy),
+      usd: new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+      }).format(usd),
+    };
+  };
+
+  const toggleAccordion = (orderId: string) => {
+    setExpandedOrderId(expandedOrderId === orderId ? null : orderId);
   };
 
   const tabs: { key: TabType; label: string }[] = [
@@ -215,123 +240,203 @@ export default function AdminDashboard() {
       )}
 
       {!loading && !error && orders.length > 0 && (
-        <div className="space-y-4">
-          {orders.map((order) => (
-            <div
-              key={order.id}
-              className="bg-white rounded-lg shadow p-6 hover:shadow-md transition-shadow"
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    주문 #{order.id?.substring(0, 8)}
-                  </h3>
-                  <p className="text-sm text-gray-500">
-                    {formatDate(order.created_at)}
-                  </p>
-                </div>
-                <span
-                  className={`
-                    px-3 py-1 rounded-full text-sm font-medium
-                    ${
-                      order.order_status === 'waiting'
-                        ? 'bg-yellow-100 text-yellow-800'
-                        : order.order_status === 'paid'
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-blue-100 text-blue-800'
-                    }
-                  `}
+        <div className="space-y-3">
+          {orders.map((order) => {
+            const isExpanded = expandedOrderId === order.id;
+            const currencies = formatMultiCurrency(order.total_amount);
+
+            return (
+              <div
+                key={order.id}
+                className="bg-white rounded-lg shadow hover:shadow-md transition-shadow"
+              >
+                {/* Collapsed View - Always Visible */}
+                <button
+                  onClick={() => toggleAccordion(order.id!)}
+                  className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-gray-50 transition-colors rounded-lg"
                 >
-                  {order.order_status}
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div>
-                  <p className="text-sm text-gray-600">고객 정보</p>
-                  <p className="font-medium">{order.name}</p>
-                  <p className="text-sm text-gray-600">{order.email}</p>
-                  <p className="text-sm text-gray-600">{order.phone_num}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">배송</p>
-                  <p className="font-medium capitalize">{order.delivery_method}</p>
-                  {order.address && (
-                    <p className="text-sm text-gray-600">{order.address}</p>
-                  )}
-                </div>
-              </div>
-
-              <div className="border-t pt-4 mb-4">
-                <p className="text-sm font-medium text-gray-700 mb-2">주문 상품</p>
-                <div className="space-y-2">
-                  {order.items.map((item) => (
-                    <div
-                      key={item.id}
-                      className="flex justify-between text-sm"
-                    >
-                      <span className="text-gray-600">
-                        {item.product_name || `상품 #${item.product_id}`}
-                        {item.option && ` (${item.option})`} x {item.quantity}
-                      </span>
-                      <span className="font-medium">
-                        {formatPrice(item.total_price)}
-                      </span>
+                  <div className="flex items-center gap-4 flex-1">
+                    <div className="flex-shrink-0">
+                      <h3 className="text-base font-semibold text-gray-900">
+                        #{order.id?.substring(0, 8)}
+                      </h3>
+                      <p className="text-xs text-gray-500">
+                        {formatDate(order.created_at)}
+                      </p>
                     </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between border-t pt-4">
-                <div>
-                  <p className="text-sm text-gray-600">총 금액</p>
-                  <p className="text-xl font-bold text-gray-900">
-                    {formatPrice(order.total_amount)}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    결제 방법: {order.payment_method}
-                  </p>
-                </div>
-
-                <div className="flex gap-2">
-                  {activeTab === 'waiting' && (
-                    <>
-                      <button
-                        onClick={() => handleStatusChange(order.id!, 'paid')}
-                        className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-sm"
-                      >
-                        결제완료로 변경
-                      </button>
-                    </>
-                  )}
-                  {activeTab === 'paid' && (
-                    <>
-                      <button
-                        onClick={() => handleStatusChange(order.id!, 'complete')}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm"
-                      >
-                        완료로 변경
-                      </button>
-                      <button
-                        onClick={() => handleStatusChange(order.id!, 'waiting')}
-                        className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors text-sm"
-                      >
-                        대기로 변경
-                      </button>
-                    </>
-                  )}
-                  {activeTab === 'complete' && (
-                    <button
-                      onClick={() => handleStatusChange(order.id!, 'paid')}
-                      className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors text-sm"
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-gray-900 truncate">
+                        {order.name}
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        {order.items.length}개 상품
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold text-gray-900">
+                        {currencies.krw}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {currencies.jpy} / {currencies.usd}
+                      </p>
+                    </div>
+                    <span
+                      className={`
+                        px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap
+                        ${
+                          order.order_status === 'waiting'
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : order.order_status === 'paid'
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-blue-100 text-blue-800'
+                        }
+                      `}
                     >
-                      결제완료로 변경
-                    </button>
-                  )}
-                </div>
+                      {order.order_status}
+                    </span>
+                  </div>
+                  <div className="ml-4 flex-shrink-0">
+                    <svg
+                      className={`w-5 h-5 text-gray-400 transition-transform ${
+                        isExpanded ? 'transform rotate-180' : ''
+                      }`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 9l-7 7-7-7"
+                      />
+                    </svg>
+                  </div>
+                </button>
+
+                {/* Expanded View - Details */}
+                {isExpanded && (
+                  <div className="px-6 pb-6 pt-2 border-t">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      <div>
+                        <p className="text-sm font-medium text-gray-700 mb-1">
+                          고객 정보
+                        </p>
+                        <p className="font-medium">{order.name}</p>
+                        <p className="text-sm text-gray-600">{order.email}</p>
+                        <p className="text-sm text-gray-600">{order.phone_num}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-700 mb-1">
+                          배송 정보
+                        </p>
+                        <p className="font-medium capitalize">
+                          {order.delivery_method}
+                        </p>
+                        {order.address && (
+                          <p className="text-sm text-gray-600">{order.address}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="mb-4">
+                      <p className="text-sm font-medium text-gray-700 mb-2">
+                        주문 상품
+                      </p>
+                      <div className="space-y-2 bg-gray-50 rounded-md p-3">
+                        {order.items.map((item) => {
+                          const itemCurrencies = formatMultiCurrency(
+                            item.total_price
+                          );
+                          return (
+                            <div
+                              key={item.id}
+                              className="flex justify-between text-sm"
+                            >
+                              <span className="text-gray-700">
+                                {item.product_name || `상품 #${item.product_id}`}
+                                {item.option && ` (${item.option})`} x{' '}
+                                {item.quantity}
+                              </span>
+                              <div className="text-right">
+                                <p className="font-medium text-gray-900">
+                                  {itemCurrencies.krw}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  {itemCurrencies.jpy} / {itemCurrencies.usd}
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-4 border-t">
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">총 금액</p>
+                        <p className="text-xl font-bold text-gray-900">
+                          {currencies.krw}
+                        </p>
+                        <div className="flex gap-3 mt-1">
+                          <p className="text-sm font-medium text-blue-600">
+                            {currencies.jpy}
+                          </p>
+                          <p className="text-sm font-medium text-green-600">
+                            {currencies.usd}
+                          </p>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                          결제 방법: {order.payment_method}
+                        </p>
+                      </div>
+
+                      <div className="flex gap-2">
+                        {activeTab === 'waiting' && (
+                          <>
+                            <button
+                              onClick={() => handleStatusChange(order.id!, 'paid')}
+                              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-sm"
+                            >
+                              결제완료로 변경
+                            </button>
+                          </>
+                        )}
+                        {activeTab === 'paid' && (
+                          <>
+                            <button
+                              onClick={() =>
+                                handleStatusChange(order.id!, 'complete')
+                              }
+                              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm"
+                            >
+                              완료로 변경
+                            </button>
+                            <button
+                              onClick={() =>
+                                handleStatusChange(order.id!, 'waiting')
+                              }
+                              className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors text-sm"
+                            >
+                              대기로 변경
+                            </button>
+                          </>
+                        )}
+                        {activeTab === 'complete' && (
+                          <button
+                            onClick={() => handleStatusChange(order.id!, 'paid')}
+                            className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors text-sm"
+                          >
+                            결제완료로 변경
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
