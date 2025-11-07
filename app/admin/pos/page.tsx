@@ -248,19 +248,19 @@ export default function POSDashboard() {
 
       {/* Product Summary Table */}
       {!loading && orders.length > 0 && allProductOptions.length > 0 && (
-        <div className="mb-6 overflow-x-auto">
-          <div className="bg-white rounded-lg shadow-md border-2 border-gray-200 p-4">
-            <h2 className="text-lg font-semibold text-gray-900 mb-3">제품별 주문 현황</h2>
-            <table className="min-w-full border-collapse">
+        <div className="mb-5 overflow-x-auto">
+          <div className="bg-white rounded-lg shadow border border-gray-300 p-3">
+            <h2 className="text-base font-semibold text-gray-900 mb-2">제품별 주문 현황</h2>
+            <table className="min-w-full border-collapse text-sm">
               <thead>
-                <tr className="bg-[#F5F5DC]">
-                  <th className="border border-gray-400 px-3 py-2 text-center text-sm font-semibold text-gray-900">
+                <tr className="bg-gradient-to-r from-blue-50 to-indigo-50">
+                  <th className="border border-gray-300 px-2 py-1.5 text-center text-xs font-semibold text-gray-700">
                     상태
                   </th>
                   {allProductOptions.map((productOption, index) => (
                     <th
                       key={`header-${productOption.productId}-${productOption.option || 'no-option'}-${index}`}
-                      className="border border-gray-400 px-3 py-2 text-center text-sm font-semibold text-gray-900 whitespace-nowrap"
+                      className="border border-gray-300 px-2 py-1.5 text-center text-xs font-semibold text-gray-700 whitespace-nowrap"
                     >
                       {productOption.option
                         ? `${productOption.productName} (${productOption.option})`
@@ -271,8 +271,8 @@ export default function POSDashboard() {
               </thead>
               <tbody>
                 {Object.entries(productCounts).map(([status, counts]) => (
-                  <tr key={status} className="bg-white hover:bg-gray-50">
-                    <td className="border border-gray-400 px-3 py-2 text-sm font-medium text-gray-900 whitespace-nowrap">
+                  <tr key={status} className="bg-white hover:bg-blue-50 transition-colors">
+                    <td className="border border-gray-300 px-2 py-1.5 text-xs font-medium text-gray-800 whitespace-nowrap">
                       {status}
                     </td>
                     {allProductOptions.map((productOption, index) => {
@@ -283,17 +283,17 @@ export default function POSDashboard() {
                       return (
                         <td
                           key={`count-${productOption.productId}-${productOption.option || 'no-option'}-${index}`}
-                          className="border border-gray-400 px-3 py-2 text-center text-base font-semibold text-gray-900"
+                          className="border border-gray-300 px-2 py-1.5 text-center text-sm font-semibold text-gray-900"
                         >
-                          {count > 0 ? count : ''}
+                          {count > 0 ? count : '-'}
                         </td>
                       );
                     })}
                   </tr>
                 ))}
                 {/* Total Row */}
-                <tr className="bg-[#FFFACD] font-bold">
-                  <td className="border border-gray-400 px-3 py-2 text-sm font-bold text-gray-900">
+                <tr className="bg-gradient-to-r from-yellow-100 to-amber-100 font-bold">
+                  <td className="border border-gray-300 px-2 py-1.5 text-xs font-bold text-gray-900">
                     합계
                   </td>
                   {allProductOptions.map((productOption, index) => {
@@ -307,9 +307,9 @@ export default function POSDashboard() {
                     return (
                       <td
                         key={`total-${productOption.productId}-${productOption.option || 'no-option'}-${index}`}
-                        className="border border-gray-400 px-3 py-2 text-center text-base font-bold text-gray-900"
+                        className="border border-gray-300 px-2 py-1.5 text-center text-sm font-bold text-gray-900"
                       >
-                        {total > 0 ? total : ''}
+                        {total > 0 ? total : '-'}
                       </td>
                     );
                   })}
@@ -404,57 +404,57 @@ export default function POSDashboard() {
       )}
 
       {!loading && !error && orders.length > 0 && (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {orders.map((order) => {
             const isExpanded = expandedOrderId === order.id;
 
             return (
               <div
                 key={order.id}
-                className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow border-2 border-gray-100"
+                className="bg-white rounded-lg shadow hover:shadow-md transition-shadow border border-gray-300"
               >
                 {/* Collapsed View - Top Info Bar */}
                 <button
                   onClick={() => toggleAccordion(order.id!)}
-                  className="w-full px-6 py-5 flex items-center justify-between text-left hover:bg-gray-50 transition-colors rounded-lg"
+                  className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-gray-50 transition-colors rounded-lg"
                 >
-                  <div className="flex items-center gap-6 flex-1">
+                  <div className="flex items-center gap-4 flex-1">
                     {/* Order Number */}
-                    <div className="flex-shrink-0 min-w-[100px]">
-                      <p className="text-xs text-gray-500 mb-1">주문번호</p>
-                      <p className="text-sm font-bold text-gray-900">
+                    <div className="flex-shrink-0 min-w-[80px]">
+                      <p className="text-[10px] text-gray-500 mb-0.5">주문번호</p>
+                      <p className="text-xs font-bold text-gray-900">
                         #{order.id?.substring(0, 8)}
                       </p>
                     </div>
 
                     {/* Name */}
-                    <div className="flex-shrink-0 min-w-[120px]">
-                      <p className="text-xs text-gray-500 mb-1">이름</p>
-                      <p className="text-base font-semibold text-gray-900">
+                    <div className="flex-shrink-0 min-w-[100px]">
+                      <p className="text-[10px] text-gray-500 mb-0.5">이름</p>
+                      <p className="text-sm font-semibold text-gray-900">
                         {order.name}
                       </p>
                     </div>
 
                     {/* Delivery Method */}
-                    <div className="flex-shrink-0 min-w-[140px]">
-                      <p className="text-xs text-gray-500 mb-1">수령방법</p>
-                      <p className="text-sm font-medium text-blue-600">
+                    <div className="flex-shrink-0 min-w-[120px]">
+                      <p className="text-[10px] text-gray-500 mb-0.5">수령방법</p>
+                      <p className="text-xs font-medium text-blue-600">
                         {order.delivery_method}
                       </p>
                     </div>
 
                     {/* Total Amount */}
-                    <div className="flex-shrink-0 min-w-[120px]">
-                      <p className="text-xs text-gray-500 mb-1">총 금액</p>
-                      <p className="text-lg font-bold text-gray-900">
+                    <div className="flex-shrink-0 min-w-[100px]">
+                      <p className="text-[10px] text-gray-500 mb-0.5">총 금액</p>
+                      <p className="text-base font-bold text-gray-900">
                         {formatPrice(order.total_amount)}
                       </p>
                     </div>
 
                     {/* Payment Method */}
-                    <div className="flex-shrink-0 min-w-[100px]">
-                      <p className="text-xs text-gray-500 mb-1">결제방법</p>
-                      <p className="text-sm font-medium text-gray-700">
+                    <div className="flex-shrink-0 min-w-[80px]">
+                      <p className="text-[10px] text-gray-500 mb-0.5">결제방법</p>
+                      <p className="text-xs font-medium text-gray-700">
                         {order.payment_method || 'N/A'}
                       </p>
                     </div>
@@ -463,7 +463,7 @@ export default function POSDashboard() {
                     <div className="flex-shrink-0">
                       <span
                         className={`
-                          px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap
+                          px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap
                           ${getStatusBadgeColor(order.order_status)}
                         `}
                       >
@@ -473,9 +473,9 @@ export default function POSDashboard() {
                   </div>
 
                   {/* Expand Icon */}
-                  <div className="ml-4 flex-shrink-0">
+                  <div className="ml-3 flex-shrink-0">
                     <svg
-                      className={`w-6 h-6 text-gray-400 transition-transform ${
+                      className={`w-5 h-5 text-gray-400 transition-transform ${
                         isExpanded ? 'transform rotate-180' : ''
                       }`}
                       fill="none"
@@ -494,22 +494,22 @@ export default function POSDashboard() {
 
                 {/* Expanded View - Items Table */}
                 {isExpanded && (
-                  <div className="border-t-2 border-gray-200">
+                  <div className="border-t border-gray-200">
                     {/* Order Items Table */}
                     <div className="overflow-x-auto">
-                      <table className="min-w-full border-collapse">
+                      <table className="min-w-full border-collapse text-sm">
                         <thead>
-                          <tr className="bg-[#F5F5DC]">
+                          <tr className="bg-gradient-to-r from-blue-50 to-indigo-50">
                             {/* All product options as columns */}
                             {allProductOptions.map((productOption, index) => (
                               <th
                                 key={`${productOption.productId}-${productOption.option || 'no-option'}-${index}`}
-                                className="border border-gray-400 px-3 py-2 text-center text-sm font-normal text-gray-900 whitespace-nowrap"
+                                className="border border-gray-300 px-2 py-1.5 text-center text-xs font-semibold text-gray-700 whitespace-nowrap"
                               >
                                 {productOption.option ? `${productOption.productName} (${productOption.option})` : productOption.productName}
                               </th>
                             ))}
-                            <th className="border border-gray-400 px-3 py-2 text-center text-sm font-normal text-gray-900 bg-[#FFFACD]">
+                            <th className="border border-gray-300 px-2 py-1.5 text-center text-xs font-semibold text-gray-700 bg-gradient-to-r from-yellow-100 to-amber-100">
                               총 구매 금액
                             </th>
                           </tr>
@@ -529,13 +529,13 @@ export default function POSDashboard() {
                               return (
                                 <td
                                   key={`${productOption.productId}-${productOption.option || 'no-option'}-${index}`}
-                                  className="border border-gray-400 px-3 py-3 text-center text-base font-semibold text-gray-900"
+                                  className="border border-gray-300 px-2 py-2 text-center text-sm font-semibold text-gray-900"
                                 >
-                                  {quantity}
+                                  {quantity > 0 ? quantity : '-'}
                                 </td>
                               );
                             })}
-                            <td className="border border-gray-400 px-3 py-3 text-center text-base font-bold text-gray-900 bg-[#FFFACD]">
+                            <td className="border border-gray-300 px-2 py-2 text-center text-sm font-bold text-gray-900 bg-gradient-to-r from-yellow-100 to-amber-100">
                               {formatPrice(order.total_amount)}
                             </td>
                           </tr>
@@ -544,15 +544,15 @@ export default function POSDashboard() {
                     </div>
 
                     {/* Action Buttons */}
-                    <div className="border-t-2 border-gray-300 bg-[#F5F5DC] px-6 py-4">
-                      <div className="flex justify-center gap-4">
+                    <div className="border-t border-gray-300 bg-gray-50 px-4 py-3">
+                      <div className="flex justify-center gap-3">
                         <button
                           onClick={() => {
                             if (confirm('수령완료로 변경하시겠습니까?')) {
                               handleStatusChange(order.id!, 'complete');
                             }
                           }}
-                          className="px-8 py-3 bg-green-600 text-white text-base font-semibold rounded-md hover:bg-green-700 transition-colors shadow-md"
+                          className="px-6 py-2 bg-green-600 text-white text-sm font-semibold rounded-md hover:bg-green-700 transition-colors shadow-sm"
                         >
                           수령완료로 변경
                         </button>
@@ -562,7 +562,7 @@ export default function POSDashboard() {
                               handleStatusChange(order.id!, 'waiting');
                             }
                           }}
-                          className="px-8 py-3 bg-gray-600 text-white text-base font-semibold rounded-md hover:bg-gray-700 transition-colors shadow-md"
+                          className="px-6 py-2 bg-gray-600 text-white text-sm font-semibold rounded-md hover:bg-gray-700 transition-colors shadow-sm"
                         >
                           대기로 변경
                         </button>
