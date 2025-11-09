@@ -14,7 +14,7 @@ export default async function PricesPage() {
   const { data: products, error } = await supabase
     .from('umeki_products')
     .select('*')
-    .order('name', { ascending: true });
+    .order('display_order', { ascending: true });
 
   if (error) {
     console.error('Error fetching products:', error);
