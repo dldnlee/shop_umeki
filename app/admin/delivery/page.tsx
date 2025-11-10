@@ -64,7 +64,8 @@ export default function DeliveryPage() {
         .from(ordersTable)
         .select('*')
         .neq('delivery_method', '팬미팅현장수령')
-        .order('created_at', { ascending: false });
+        .neq('order_status', 'waiting')
+        .order('name', { ascending: true });
 
       if (ordersError) throw ordersError;
 
@@ -205,7 +206,7 @@ export default function DeliveryPage() {
     // Get all unique products with options
     const allProductOptions = new Set<string>();
     orders.forEach(order => {
-      if (order.order_status === 'paid') {
+      if (order.order_status === 'paid' || order.order_status === 'complete' ) {
         order.items.forEach(item => {
           const key = item.option
             ? `${item.product?.name} (${item.option})`
