@@ -35,6 +35,7 @@ type OrderWithItems = Order & {
 };
 
 type DeliveryFilter = 'all' | '국내배송' | '해외배송';
+type PlatformTab = 'shop_umeki' | 'hypetown';
 
 export default function DeliveryPage() {
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
@@ -43,18 +44,24 @@ export default function DeliveryPage() {
   const [updatingInvoice, setUpdatingInvoice] = useState<{ [orderId: string]: boolean }>({});
   const [expandedOrders, setExpandedOrders] = useState<{ [orderId: string]: boolean }>({});
   const [deliveryFilter, setDeliveryFilter] = useState<DeliveryFilter>('all');
+  const [platformTab, setPlatformTab] = useState<PlatformTab>('shop_umeki');
 
   useEffect(() => {
     fetchDeliveryOrders();
-  }, []);
+  }, [platformTab]);
 
   const fetchDeliveryOrders = async () => {
     try {
       setLoading(true);
 
+      // Determine which tables to use based on platform
+      const ordersTable = platformTab === 'hypetown' ? 'umeki_orders_hypetown' : 'umeki_orders';
+      const orderItemsTable = platformTab === 'hypetown' ? 'umeki_order_items_hypetown' : 'umeki_order_items';
+      const productsTable = 'umeki_products';
+
       // Fetch orders where delivery_method is NOT 팬미팅현장수령
       const { data: ordersData, error: ordersError } = await supabase
-        .from('umeki_orders')
+        .from(ordersTable)
         .select('*')
         .neq('delivery_method', '팬미팅현장수령')
         .order('created_at', { ascending: false });
@@ -70,10 +77,10 @@ export default function DeliveryPage() {
       // Fetch all order items for these orders with product information
       const orderIds = ordersData.map(order => order.id);
       const { data: itemsData, error: itemsError } = await supabase
-        .from('umeki_order_items')
+        .from(orderItemsTable)
         .select(`
           *,
-          product:umeki_products(id, name, price)
+          product:${productsTable}(id, name, price)
         `)
         .in('order_id', orderIds);
 
@@ -115,9 +122,12 @@ export default function DeliveryPage() {
     try {
       setUpdatingInvoice(prev => ({ ...prev, [orderId]: true }));
 
+      // Determine which table to use based on platform
+      const ordersTable = platformTab === 'hypetown' ? 'umeki_orders_hypetown' : 'umeki_orders';
+
       const { error } = await supabase
-        .from('umeki_orders')
-        .update({ 
+        .from(ordersTable)
+        .update({
           invoice_id: invoiceNumbers[orderId] || null,
           order_status: "complete"
         })
@@ -251,6 +261,30 @@ export default function DeliveryPage() {
         <div className="mb-6">
           <h1 className="text-3xl font-bold mb-2">배송 관리</h1>
           <p className="text-gray-600 mb-4">팬미팅 현장수령을 제외한 모든 배송 주문</p>
+
+          {/* Platform Tabs */}
+          <div className="flex gap-2 mb-4">
+            <button
+              onClick={() => setPlatformTab('shop_umeki')}
+              className={`px-6 py-3 rounded-lg font-semibold transition-colors ${
+                platformTab === 'shop_umeki'
+                  ? 'bg-indigo-600 text-white shadow-lg'
+                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              자사몰
+            </button>
+            <button
+              onClick={() => setPlatformTab('hypetown')}
+              className={`px-6 py-3 rounded-lg font-semibold transition-colors ${
+                platformTab === 'hypetown'
+                  ? 'bg-indigo-600 text-white shadow-lg'
+                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              HypeTown
+            </button>
+          </div>
 
           {/* Product Summary Table */}
           {!loading && orders.length > 0 && allProductOptions.length > 0 && (
