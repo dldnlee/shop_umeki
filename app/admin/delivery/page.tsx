@@ -22,6 +22,7 @@ type OrderItem = {
 type Order = {
   id: string;
   name: string;
+  email: string;
   phone_num?: string | null;
   address?: string | null;
   delivery_method: string;
@@ -64,6 +65,7 @@ export default function DeliveryPage() {
         .from(ordersTable)
         .select('*')
         .neq('delivery_method', '팬미팅현장수령')
+        .neq('order_status', '팬미팅 현장수령')
         .neq('order_status', 'waiting')
         .order('name', { ascending: true });
 
@@ -409,9 +411,9 @@ export default function DeliveryPage() {
                     <div className="flex items-center flex-1 w-full gap-1.5">
                       {/* Order ID */}
                       <div className="w-[100px] shrink-0">
-                        <p className="text-[10px] text-gray-500 mb-0.5">주문번호</p>
+                        <p className="text-[10px] text-gray-500 mb-0.5">배송방법</p>
                         <p className="text-xs font-bold text-gray-900 truncate">
-                          #{order.id?.substring(0, 8)}
+                          {order.delivery_method}
                         </p>
                       </div>
 
@@ -432,10 +434,10 @@ export default function DeliveryPage() {
                       </div>
 
                       {/* Delivery Method */}
-                      <div className="w-[100px] shrink-0">
-                        <p className="text-[10px] text-gray-500 mb-0.5">배송방법</p>
-                        <p className="text-xs font-medium text-blue-600 truncate">
-                          {order.delivery_method}
+                      <div className="w-[140px] shrink-0">
+                        <p className="text-[10px] text-gray-500 mb-0.5">이메일</p>
+                        <p className="text-xs font-medium text-gray-700 truncate">
+                          {order.email}
                         </p>
                       </div>
 
@@ -499,8 +501,8 @@ export default function DeliveryPage() {
                             <p className="font-medium text-gray-700 truncate overflow-hidden text-ellipsis">{order.address || 'N/A'}</p>
                           </div>
                           <div className="min-w-0">
-                            <p className="text-xs text-gray-500 mb-1">배송방법</p>
-                            <p className="font-semibold text-blue-600">{order.delivery_method}</p>
+                            <p className="text-xs text-gray-500 mb-1">이메일</p>
+                            <p className="font-semibold text-blue-600">{order.email}</p>
                           </div>
                           <div className="min-w-0 col-span-3">
                             <p className="text-xs text-gray-500 mb-1">주문번호</p>
