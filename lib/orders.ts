@@ -360,7 +360,7 @@ export async function updateOrderStatus(orderId: string, status: string) {
  */
 export async function getSalesAnalytics() {
   try {
-    // Get all orders with 'paid' status and their items
+    // Get all orders with 'paid' or 'complete' status and their items
     const { data: paidOrders, error: paidOrdersError } = await supabase
       .from("umeki_orders")
       .select(`
@@ -370,7 +370,7 @@ export async function getSalesAnalytics() {
         created_at,
         delivery_method
       `)
-      .eq("order_status", "paid");
+      .in("order_status", ["paid", "complete"]);
 
     if (paidOrdersError) {
       return { success: false, error: paidOrdersError };
