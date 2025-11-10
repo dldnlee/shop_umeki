@@ -67,7 +67,7 @@ export default function DeliveryPage() {
         .neq('delivery_method', '팬미팅현장수령')
         .neq('order_status', '팬미팅 현장수령')
         .neq('order_status', 'waiting')
-        .order('name', { ascending: true });
+        .order('created_at', { ascending: true });
 
       if (ordersError) throw ordersError;
 
@@ -517,11 +517,32 @@ export default function DeliveryPage() {
                         <div className="space-y-1.5">
                           {order.items.map((item) => (
                             <div key={item.id} className="text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded border border-gray-200">
-                              <span className="font-semibold">{item.product?.name || '상품명 없음'}</span>
-                              {item.option && <span className="text-gray-600 text-xs"> ({item.option})</span>}
-                              <span className="text-gray-600 text-xs ml-2">× {item.quantity}</span>
+                              <div className="flex justify-between items-center">
+                                <div>
+                                  <span className="font-semibold">{item.product?.name || '상품명 없음'}</span>
+                                  {item.option && <span className="text-gray-600 text-xs"> ({item.option})</span>}
+                                  <span className="text-gray-600 text-xs ml-2">× {item.quantity}</span>
+                                </div>
+                                <div className="text-right">
+                                  <div className="text-xs text-gray-500">
+                                    {item.product?.price?.toLocaleString('ko-KR')}원 × {item.quantity}
+                                  </div>
+                                  <div className="font-semibold text-sm text-gray-900">
+                                    {item.total_price.toLocaleString('ko-KR')}원
+                                  </div>
+                                </div>
+                              </div>
                             </div>
                           ))}
+                        </div>
+                        {/* Total Price */}
+                        <div className="mt-3 pt-3 border-t border-gray-300">
+                          <div className="flex justify-between items-center">
+                            <span className="font-bold text-sm text-gray-900">총 주문 금액</span>
+                            <span className="font-bold text-lg text-indigo-600">
+                              {order.items.reduce((sum, item) => sum + item.total_price, 0).toLocaleString('ko-KR')}원
+                            </span>
+                          </div>
                         </div>
                       </div>
 

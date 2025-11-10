@@ -202,6 +202,7 @@ export default function POSDashboard() {
     const countsByStatus: Record<string, Record<string, number>> = {
       '현장수령- 결제완료': {},
       '현장수령- 결제미확인': {},
+      '현장수령- 수령완료': {},
     };
 
     // Initialize all product options with 0
@@ -211,13 +212,19 @@ export default function POSDashboard() {
         : productOption.productName;
       countsByStatus['현장수령- 결제완료'][key] = 0;
       countsByStatus['현장수령- 결제미확인'][key] = 0;
+      countsByStatus['현장수령- 수령완료'][key] = 0;
     });
 
     // Count products by status
     orders.forEach((order) => {
-      const statusKey = order.order_status === 'paid'
-        ? '현장수령- 결제완료'
-        : '현장수령- 결제미확인';
+      let statusKey: string;
+      if (order.order_status === 'complete') {
+        statusKey = '현장수령- 수령완료';
+      } else if (order.order_status === 'paid') {
+        statusKey = '현장수령- 결제완료';
+      } else {
+        statusKey = '현장수령- 결제미확인';
+      }
 
       order.items.forEach((item) => {
         const key = item.option
