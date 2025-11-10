@@ -13,4 +13,5 @@ export type Product = {
   options?: string[];
   inventory: number;
   inventory_by_option?: InventoryByOption;
+  display_order: number;
 };
