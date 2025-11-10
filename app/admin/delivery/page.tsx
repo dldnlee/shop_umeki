@@ -65,7 +65,7 @@ export default function DeliveryPage() {
         .from(ordersTable)
         .select('*')
         .neq('delivery_method', '팬미팅현장수령')
-        .neq('order_status', '팬미팅 현장수령')
+        .neq('delivery_method', '팬미팅 현장수령')
         .neq('order_status', 'waiting')
         .order('created_at', { ascending: true });
 
