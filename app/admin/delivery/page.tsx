@@ -7,6 +7,7 @@ type Product = {
   id: string;
   name: string;
   price: number;
+  display_order: number;
 };
 
 type OrderItem = {
@@ -38,6 +39,13 @@ type OrderWithItems = Order & {
 type DeliveryFilter = 'all' | '국내배송' | '해외배송';
 type PlatformTab = 'shop_umeki' | 'hypetown';
 
+type ProductOption = {
+  productId: string;
+  productName: string;
+  option: string | null;
+  displayOrder: number;
+};
+
 export default function DeliveryPage() {
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
   const [loading, setLoading] = useState(true);
@@ -46,10 +54,56 @@ export default function DeliveryPage() {
   const [expandedOrders, setExpandedOrders] = useState<{ [orderId: string]: boolean }>({});
   const [deliveryFilter, setDeliveryFilter] = useState<DeliveryFilter>('all');
   const [platformTab, setPlatformTab] = useState<PlatformTab>('shop_umeki');
+  const [allProductOptions, setAllProductOptions] = useState<ProductOption[]>([]);
+
+  useEffect(() => {
+    fetchProducts();
+  }, []);
 
   useEffect(() => {
     fetchDeliveryOrders();
   }, [platformTab]);
+
+  const fetchProducts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('umeki_products')
+        .select('*')
+        .order('display_order', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching products:', error);
+        return;
+      }
+
+      if (data) {
+        // Build all product options
+        const options: ProductOption[] = [];
+        data.forEach((product) => {
+          if (product.options && Array.isArray(product.options) && product.options.length > 0) {
+            (product.options as string[]).forEach((option: string) => {
+              options.push({
+                productId: product.id.toString(),
+                productName: product.name as string,
+                option,
+                displayOrder: product.display_order as number,
+              });
+            });
+          } else {
+            options.push({
+              productId: product.id.toString(),
+              productName: product.name as string,
+              option: null,
+              displayOrder: product.display_order as number,
+            });
+          }
+        });
+        setAllProductOptions(options);
+      }
+    } catch (err) {
+      console.error('Failed to fetch products:', err);
+    }
+  };
 
   const fetchDeliveryOrders = async () => {
     try {
@@ -205,23 +259,13 @@ export default function DeliveryPage() {
       '해외배송': {},
     };
 
-    // Get all unique products with options
-    const allProductOptions = new Set<string>();
-    orders.forEach(order => {
-      if (order.order_status === 'paid' || order.order_status === 'complete' ) {
-        order.items.forEach(item => {
-          const key = item.option
-            ? `${item.product?.name} (${item.option})`
-            : item.product?.name || '상품명 없음';
-          allProductOptions.add(key);
-        });
-      }
-    });
-
-    // Initialize all products with 0
-    allProductOptions.forEach(productKey => {
-      countsByDeliveryMethod['국내배송'][productKey] = 0;
-      countsByDeliveryMethod['해외배송'][productKey] = 0;
+    // Initialize all product options with 0
+    allProductOptions.forEach((productOption) => {
+      const key = productOption.option
+        ? `${productOption.productName} (${productOption.option})`
+        : productOption.productName;
+      countsByDeliveryMethod['국내배송'][key] = 0;
+      countsByDeliveryMethod['해외배송'][key] = 0;
     });
 
     // Count products by delivery method (only paid orders)
@@ -239,10 +283,10 @@ export default function DeliveryPage() {
       }
     });
 
-    return { countsByDeliveryMethod, allProductOptions: Array.from(allProductOptions).sort() };
+    return countsByDeliveryMethod;
   };
 
-  const { countsByDeliveryMethod, allProductOptions } = calculateProductCountsByDeliveryMethod();
+  const countsByDeliveryMethod = calculateProductCountsByDeliveryMethod();
 
   if (loading) {
     return (
@@ -300,12 +344,14 @@ export default function DeliveryPage() {
                       <th className="border border-gray-300 px-2 py-1.5 text-center text-xs font-semibold text-gray-700">
                         배송방법
                       </th>
-                      {allProductOptions.map((productKey, index) => (
+                      {allProductOptions.map((productOption, index) => (
                         <th
-                          key={`header-${index}`}
+                          key={`header-${productOption.productId}-${productOption.option || 'no-option'}-${index}`}
                           className="border border-gray-300 px-2 py-1.5 text-center text-xs font-semibold text-gray-700 whitespace-nowrap"
                         >
-                          {productKey}
+                          {productOption.option
+                            ? `${productOption.productName} (${productOption.option})`
+                            : productOption.productName}
                         </th>
                       ))}
                     </tr>
@@ -316,11 +362,14 @@ export default function DeliveryPage() {
                         <td className="border border-gray-300 px-2 py-1.5 text-xs font-medium text-gray-800 whitespace-nowrap">
                           {deliveryMethod}
                         </td>
-                        {allProductOptions.map((productKey, index) => {
-                          const count = counts[productKey] || 0;
+                        {allProductOptions.map((productOption, index) => {
+                          const key = productOption.option
+                            ? `${productOption.productName} (${productOption.option})`
+                            : productOption.productName;
+                          const count = counts[key] || 0;
                           return (
                             <td
-                              key={`count-${deliveryMethod}-${index}`}
+                              key={`count-${productOption.productId}-${productOption.option || 'no-option'}-${index}`}
                               className="border border-gray-300 px-2 py-1.5 text-center text-sm font-semibold text-gray-900"
                             >
                               {count > 0 ? count : '-'}
@@ -334,14 +383,17 @@ export default function DeliveryPage() {
                       <td className="border border-gray-300 px-2 py-1.5 text-xs font-bold text-gray-900">
                         합계
                       </td>
-                      {allProductOptions.map((productKey, index) => {
+                      {allProductOptions.map((productOption, index) => {
+                        const key = productOption.option
+                          ? `${productOption.productName} (${productOption.option})`
+                          : productOption.productName;
                         const total = Object.values(countsByDeliveryMethod).reduce(
-                          (sum, counts) => sum + (counts[productKey] || 0),
+                          (sum, counts) => sum + (counts[key] || 0),
                           0
                         );
                         return (
                           <td
-                            key={`total-${index}`}
+                            key={`total-${productOption.productId}-${productOption.option || 'no-option'}-${index}`}
                             className="border border-gray-300 px-2 py-1.5 text-center text-sm font-bold text-gray-900"
                           >
                             {total > 0 ? total : '-'}

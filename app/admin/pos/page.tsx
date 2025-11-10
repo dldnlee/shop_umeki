@@ -21,6 +21,7 @@ type ProductOption = {
   productId: number;
   productName: string;
   option: string | null;
+  displayOrder: number;
 };
 
 export default function POSDashboard() {
@@ -64,6 +65,7 @@ export default function POSDashboard() {
                   productId: product.id,
                   productName: product.name,
                   option,
+                  displayOrder: product.display_order,
                 });
               });
             } else {
@@ -71,6 +73,7 @@ export default function POSDashboard() {
                 productId: product.id,
                 productName: product.name,
                 option: null,
+                displayOrder: product.display_order,
               });
             }
           });
