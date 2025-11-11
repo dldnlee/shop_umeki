@@ -17,12 +17,14 @@ type Order = {
   total_amount: number;
   created_at: string;
   updated_at?: string;
+  customs_code?: string | null;
 };
 
 type OrderItem = {
   id: number;
   order_id: string;
   product_id: number;
+  product_name?: string;
   quantity: number;
   option?: string | null;
   total_price: number;
@@ -42,6 +44,9 @@ export default function OrderDetailsPage() {
   const [items, setItems] = useState<OrderItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [customsCode, setCustomsCode] = useState("");
+  const [isSavingCustomsCode, setIsSavingCustomsCode] = useState(false);
+  const [customsCodeMessage, setCustomsCodeMessage] = useState("");
 
   useEffect(() => {
     const fetchOrderDetails = async () => {
@@ -57,6 +62,7 @@ export default function OrderDetailsPage() {
         if (result.success && result.data) {
           setOrder(result.data.order);
           setItems(result.data.items || []);
+          setCustomsCode(result.data.order.customs_code || "");
         } else {
           setError("주문을 찾을 수 없습니다. 주문번호를 확인해주세요.");
         }
@@ -117,6 +123,39 @@ export default function OrderDetailsPage() {
         return "bg-red-100 text-red-800";
       default:
         return "bg-zinc-100 text-zinc-800";
+    }
+  };
+
+  // Handle customs code save
+  const handleSaveCustomsCode = async () => {
+    if (!orderId) return;
+
+    setIsSavingCustomsCode(true);
+    setCustomsCodeMessage("");
+
+    try {
+      const response = await fetch(`/api/admin/orders/${orderId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ customsCode }),
+      });
+
+      if (response.ok) {
+        setCustomsCodeMessage("통관 코드가 저장되었습니다.");
+        // Update the order state
+        if (order) {
+          setOrder({ ...order, customs_code: customsCode });
+        }
+      } else {
+        setCustomsCodeMessage("저장 중 오류가 발생했습니다.");
+      }
+    } catch (err) {
+      console.error("Error saving customs code:", err);
+      setCustomsCodeMessage("저장 중 오류가 발생했습니다.");
+    } finally {
+      setIsSavingCustomsCode(false);
     }
   };
 
@@ -209,7 +248,45 @@ export default function OrderDetailsPage() {
           <h1 className="text-3xl font-semibold text-black">주문 상세</h1>
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-6">{/* Customs Code Card */}
+          <div className="bg-white rounded-lg border border-black/6 shadow-sm p-6">
+            <h2 className="text-xl font-semibold text-black mb-4">통관 정보</h2>
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="customsCode" className="block text-sm font-medium text-zinc-700 mb-2">
+                  통관 코드
+                </label>
+                <div className="flex gap-3">
+                  <input
+                    id="customsCode"
+                    type="text"
+                    value={customsCode}
+                    onChange={(e) => setCustomsCode(e.target.value)}
+                    placeholder="통관 코드를 입력하세요"
+                    className="flex-1 px-4 py-2 border border-zinc-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
+                  />
+                  <button
+                    onClick={handleSaveCustomsCode}
+                    disabled={isSavingCustomsCode}
+                    className="px-6 py-2 bg-black text-white rounded-md font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isSavingCustomsCode ? "저장 중..." : "저장"}
+                  </button>
+                </div>
+                {customsCodeMessage && (
+                  <p className={`mt-2 text-sm ${customsCodeMessage.includes("오류") ? "text-red-600" : "text-green-600"}`}>
+                    {customsCodeMessage}
+                  </p>
+                )}
+              </div>
+              {order.customs_code && (
+                <div className="flex justify-between text-sm pt-3 border-t border-zinc-200">
+                  <span className="text-zinc-600">저장된 통관 코드</span>
+                  <span className="font-mono text-black">{order.customs_code}</span>
+                </div>
+              )}
+            </div>
+          </div>
           {/* Order Status Card */}
           <div className="bg-white rounded-lg border border-black/6 shadow-sm p-6">
             <div className="flex items-center justify-between mb-4">
@@ -254,7 +331,7 @@ export default function OrderDetailsPage() {
                 >
                   <div className="flex-1">
                     <p className="font-medium text-black mb-1">
-                      상품 ID: {item.product_id}
+                      {item.product_name || `상품 #${item.product_id}`}
                     </p>
                     {item.option && (
                       <p className="text-sm text-zinc-600 mb-1">

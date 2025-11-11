@@ -355,6 +355,31 @@ export async function updateOrderStatus(orderId: string, status: string) {
 }
 
 /**
+ * Update order customs code
+ * @param orderId - Order ID
+ * @param customsCode - Customs clearance code
+ * @returns Updated order
+ */
+export async function updateOrderCustomsCode(orderId: string, customsCode: string) {
+  try {
+    const { data, error } = await supabase
+      .from("umeki_orders")
+      .update({ customs_code: customsCode, updated_at: new Date().toISOString() })
+      .eq("id", orderId)
+      .select()
+      .single();
+
+    if (error) {
+      return { success: false, error };
+    }
+
+    return { success: true, data };
+  } catch (error) {
+    return { success: false, error };
+  }
+}
+
+/**
  * Get sales analytics data
  * @returns Sales analytics including product sales and total amounts by status
  */
