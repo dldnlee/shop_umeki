@@ -30,6 +30,7 @@ type Order = {
   order_status?: string;
   created_at?: string;
   invoice_id?: string | null;
+  customs_code?: string | null;
 };
 
 type OrderWithItems = Order & {
@@ -560,6 +561,15 @@ export default function DeliveryPage() {
                             <p className="text-xs text-gray-500 mb-1">주문번호</p>
                             <p className="font-semibold text-gray-900 truncate">#{order.id}</p>
                           </div>
+                          {/* Customs Code - Only show for international shipping */}
+                          {order.delivery_method === '해외배송' && (
+                            <div className="min-w-0 col-span-2">
+                              <p className="text-xs text-gray-500 mb-1">통관 코드</p>
+                              <p className="font-semibold text-indigo-600">
+                                {order.customs_code || '미입력'}
+                              </p>
+                            </div>
+                          )}
                         </div>
                       </div>
 
