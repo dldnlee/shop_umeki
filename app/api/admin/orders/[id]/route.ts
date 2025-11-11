@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { updateOrderStatus, getOrderById } from '@/lib/orders';
+import { updateOrderStatus, updateOrderCustomsCode, getOrderById } from '@/lib/orders';
 import { sendPaymentConfirmedEmail, OrderEmailData } from '@/lib/email';
 
 export async function PATCH(
@@ -20,7 +20,21 @@ export async function PATCH(
     }
 
     const { id } = await params;
-    const { status } = await request.json();
+    const { status, customsCode } = await request.json();
+
+    // Handle customs code update
+    if (customsCode !== undefined) {
+      const result = await updateOrderCustomsCode(id, customsCode);
+
+      if (!result.success) {
+        return NextResponse.json(
+          { error: 'Failed to update customs code' },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json(result.data);
+    }
 
     if (!status) {
       return NextResponse.json(
