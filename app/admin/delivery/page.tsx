@@ -551,7 +551,7 @@ export default function DeliveryPage() {
                           </div>
                           <div className="min-w-0 col-span-2">
                             <p className="text-xs text-gray-500 mb-1">주소</p>
-                            <p className="font-medium text-gray-700 truncate overflow-hidden text-ellipsis">{order.address || 'N/A'}</p>
+                            <p className="font-medium text-gray-700 whitespace-normal text-ellipsis">{order.address || 'N/A'}</p>
                           </div>
                           <div className="min-w-0">
                             <p className="text-xs text-gray-500 mb-1">이메일</p>
