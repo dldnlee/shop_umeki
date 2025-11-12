@@ -417,7 +417,7 @@ export default function CustomerManagementPage() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto max-h-[300px] overflow-y-auto">
           {loading ? (
             <div className="text-center py-12">
               <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -577,17 +577,39 @@ export default function CustomerManagementPage() {
         </div>
       </div>
 
-      {/* Email Preview */}
+      {/* Email Preview Modal */}
       {showPreview && (
-        <div className="rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">
-            미리보기
-          </h2>
-          <div className="border border-gray-300 rounded-md overflow-hidden">
-            <div
-              dangerouslySetInnerHTML={{ __html: generateEmailPreview() }}
-              className="bg-gray-50"
-            />
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={() => setShowPreview(false)}
+        >
+          <div
+            className="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gray-50">
+              <h2 className="text-lg font-semibold text-gray-900">
+                이메일 미리보기
+              </h2>
+              <button
+                onClick={() => setShowPreview(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+                aria-label="Close preview"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="overflow-y-auto max-h-[calc(90vh-64px)]">
+              <div
+                dangerouslySetInnerHTML={{ __html: generateEmailPreview() }}
+                className="bg-gray-50"
+              />
+            </div>
           </div>
         </div>
       )}
