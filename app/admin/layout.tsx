@@ -33,6 +33,7 @@ export default function AdminLayout({
     { name: '현장수령용 POS', href: '/admin/pos', current: pathname === '/admin/pos' },
     { name: '매출 분석', href: '/admin/analytics', current: pathname === '/admin/analytics' },
     { name: '배송 관리', href: '/admin/delivery', current: pathname === '/admin/delivery' },
+    { name: '고객 관리', href: '/admin/customers', current: pathname === '/admin/customers' || pathname === '/admin/customers/hypetown' },
   ];
 
   return (
