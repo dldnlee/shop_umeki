@@ -334,28 +334,6 @@ export default function CustomerManagementPage() {
         </div>
       </div>
 
-      {/* Summary Stats for Hypetown */}
-      {activeTab === 'hypetown' && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="text-sm font-medium text-gray-500">총 고객 수</div>
-            <div className="mt-2 text-3xl font-bold text-gray-900">{customers.length}명</div>
-          </div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="text-sm font-medium text-gray-500">총 주문 수</div>
-            <div className="mt-2 text-3xl font-bold text-gray-900">
-              {customers.reduce((sum, c) => sum + c.order_count, 0)}건
-            </div>
-          </div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="text-sm font-medium text-gray-500">총 매출액</div>
-            <div className="mt-2 text-3xl font-bold text-gray-900">
-              {formatCurrency(customers.reduce((sum, c) => sum + (c.total_spent || 0), 0))}
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Filters */}
       <div className="bg-white rounded-lg shadow p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">필터</h2>

@@ -289,10 +289,10 @@ export default function HypetownDatabasePage() {
 
       {/* Summary Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white rounded-lg shadow p-6">
+        {/* <div className="bg-white rounded-lg shadow p-6">
           <div className="text-sm font-medium text-gray-500">총 고객 수</div>
           <div className="mt-2 text-3xl font-bold text-gray-900">{customers.length}명</div>
-        </div>
+        </div> */}
         <div className="bg-white rounded-lg shadow p-6">
           <div className="text-sm font-medium text-gray-500">총 주문 수</div>
           <div className="mt-2 text-3xl font-bold text-gray-900">
