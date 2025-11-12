@@ -5,6 +5,7 @@ type Recipient = {
   email: string;
   name: string;
   id?: string;
+  orderId?: string;
 };
 
 type SendCustomEmailRequest = {
@@ -17,10 +18,11 @@ type SendCustomEmailRequest = {
 /**
  * Replace variables in content with customer data
  */
-function replaceVariables(content: string, customerName: string, customerEmail: string): string {
+function replaceVariables(content: string, customerName: string, customerEmail: string, orderId?: string): string {
   return content
     .replace(/\{\{name\}\}/g, customerName)
-    .replace(/\{\{email\}\}/g, customerEmail);
+    .replace(/\{\{email\}\}/g, customerEmail)
+    .replace(/\{\{orderId\}\}/g, orderId || '');
 }
 
 /**
@@ -145,11 +147,12 @@ export async function POST(request: NextRequest) {
 
     // Prepare messages for each recipient with personalization
     const messages = recipients.map((recipient) => {
-      const personalizedSubject = replaceVariables(subject, recipient.name, recipient.email);
-      const personalizedTextContent = replaceVariables(textContent, recipient.name, recipient.email);
+      const orderId = recipient.orderId || recipient.id;
+      const personalizedSubject = replaceVariables(subject, recipient.name, recipient.email, orderId);
+      const personalizedTextContent = replaceVariables(textContent, recipient.name, recipient.email, orderId);
       const personalizedHtmlContent = generateHtmlEmail(
         personalizedSubject,
-        replaceVariables(htmlContent, recipient.name, recipient.email)
+        replaceVariables(htmlContent, recipient.name, recipient.email, orderId)
       );
 
       return {

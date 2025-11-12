@@ -130,21 +130,23 @@ export default function CustomerManagementPage() {
     setSelectedCustomers(new Set());
   };
 
-  const replaceVariables = (content: string, customerName: string, customerEmail: string): string => {
+  const replaceVariables = (content: string, customerName: string, customerEmail: string, orderId?: string): string => {
     return content
       .replace(/\{\{name\}\}/g, customerName)
-      .replace(/\{\{email\}\}/g, customerEmail);
+      .replace(/\{\{email\}\}/g, customerEmail)
+      .replace(/\{\{orderId\}\}/g, orderId || '');
   };
 
   const generateEmailPreview = (sampleCustomer?: Customer): string => {
     // Use first selected customer for preview, or a sample
     const previewCustomer = sampleCustomer || filteredCustomers.find(c => selectedCustomers.has(c.id)) || {
+      id: 'SAMPLE-ORDER-ID',
       name: '홍길동',
       email: 'customer@example.com',
     };
 
-    const personalizedContent = replaceVariables(emailContent, previewCustomer.name, previewCustomer.email);
-    const personalizedSubject = replaceVariables(emailSubject, previewCustomer.name, previewCustomer.email);
+    const personalizedContent = replaceVariables(emailContent, previewCustomer.name, previewCustomer.email, previewCustomer.id);
+    const personalizedSubject = replaceVariables(emailSubject, previewCustomer.name, previewCustomer.email, previewCustomer.id);
 
     // Generate HTML preview
     return `
@@ -240,7 +242,10 @@ export default function CustomerManagementPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          recipients: selectedCustomerData,
+          recipients: selectedCustomerData.map(c => ({
+            ...c,
+            orderId: c.id,
+          })),
           subject: emailSubject,
           htmlContent: emailContent,
           textContent: emailContent,
@@ -524,6 +529,7 @@ export default function CustomerManagementPage() {
           <ul className="text-sm text-blue-800 space-y-1">
             <li>• <code className="bg-blue-100 px-2 py-0.5 rounded">{'{{name}}'}</code> - 고객 이름</li>
             <li>• <code className="bg-blue-100 px-2 py-0.5 rounded">{'{{email}}'}</code> - 고객 이메일</li>
+            <li>• <code className="bg-blue-100 px-2 py-0.5 rounded">{'{{orderId}}'}</code> - 주문 ID</li>
           </ul>
           <p className="text-xs text-blue-700 mt-2">예: &quot;안녕하세요 {'{{name}}'} 님!&quot; → &quot;안녕하세요 홍길동 님!&quot;</p>
         </div>
@@ -548,7 +554,7 @@ export default function CustomerManagementPage() {
             <textarea
               value={emailContent}
               onChange={(e) => setEmailContent(e.target.value)}
-              placeholder="이메일 내용을 입력하세요 ({{name}}, {{email}} 사용 가능)"
+              placeholder="이메일 내용을 입력하세요 ({{name}}, {{email}}, {{orderId}} 사용 가능)"
               rows={10}
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
             />
