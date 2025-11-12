@@ -573,7 +573,7 @@ export default function CustomerManagementPage() {
 
       {/* Email Preview */}
       {showPreview && (
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="rounded-lg shadow p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">
             미리보기
           </h2>

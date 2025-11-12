@@ -101,15 +101,15 @@ function generateHtmlEmail(subject: string, content: string): string {
 export async function POST(request: NextRequest) {
   try {
     // Check authentication
-    const cookieStore = await cookies();
-    const authCookie = cookieStore.get('admin_authenticated');
+    // const cookieStore = await cookies();
+    // const authCookie = cookieStore.get('admin_authenticated');
 
-    if (!authCookie || authCookie.value !== 'true') {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
+    // if (!authCookie || authCookie.value !== 'true') {
+    //   return NextResponse.json(
+    //     { error: 'Unauthorized' },
+    //     { status: 401 }
+    //   );
+    // }
 
     // Parse request body
     const body: SendCustomEmailRequest = await request.json();
