@@ -12,6 +12,7 @@ type Customer = {
   created_at: string;
   order_count: number;
   total_spent?: number;
+  delivery_fee_payment?: boolean;
 };
 
 
@@ -28,6 +29,7 @@ export default function CustomerManagementPage() {
   // Filters
   const [deliveryMethodFilter, setDeliveryMethodFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [deliveryFeePaidFilter, setDeliveryFeePaidFilter] = useState<boolean | null>(null); // null = all, true = paid, false = unpaid
 
   // Email Editor
   const [emailSubject, setEmailSubject] = useState('');
@@ -50,7 +52,7 @@ export default function CustomerManagementPage() {
 
   useEffect(() => {
     applyFilters();
-  }, [customers, deliveryMethodFilter, searchQuery]);
+  }, [customers, deliveryMethodFilter, searchQuery, deliveryFeePaidFilter]);
 
   const fetchCustomers = async () => {
     setLoading(true);
@@ -58,9 +60,14 @@ export default function CustomerManagementPage() {
       const tableName = activeTab === 'regular' ? 'umeki_orders' : 'umeki_orders_hypetown';
 
       // Fetch all orders with customer info
+      // Only fetch delivery_fee_payment for Hypetown customers
+      const selectFields = activeTab === 'hypetown'
+        ? 'id, name, email, phone_num, delivery_method, created_at, total_amount, delivery_fee_payment'
+        : 'id, name, email, phone_num, delivery_method, created_at, total_amount';
+
       const { data, error } = await supabase
         .from(tableName)
-        .select('id, name, email, phone_num, delivery_method, created_at, total_amount')
+        .select(selectFields)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -76,6 +83,10 @@ export default function CustomerManagementPage() {
           if (order.total_amount) {
             existing.total_spent = (existing.total_spent || 0) + order.total_amount;
           }
+          // Update delivery_fee_payment to true if any order has it paid
+          if (order.delivery_fee_payment) {
+            existing.delivery_fee_payment = true;
+          }
         } else {
           customerMap.set(email, {
             id: order.id,
@@ -86,6 +97,7 @@ export default function CustomerManagementPage() {
             created_at: order.created_at,
             order_count: 1,
             total_spent: order.total_amount || 0,
+            delivery_fee_payment: order.delivery_fee_payment || false,
           });
         }
       });
@@ -105,6 +117,11 @@ export default function CustomerManagementPage() {
     // Apply delivery method filter
     if (deliveryMethodFilter !== 'all') {
       filtered = filtered.filter((c) => c.delivery_method === deliveryMethodFilter);
+    }
+
+    // Apply delivery fee paid filter (only for Hypetown)
+    if (activeTab === 'hypetown' && deliveryFeePaidFilter !== null) {
+      filtered = filtered.filter((c) => c.delivery_fee_payment === deliveryFeePaidFilter);
     }
 
     // Apply search query
@@ -400,6 +417,7 @@ export default function CustomerManagementPage() {
     setActiveTab(tab);
     setSelectedCustomers(new Set());
     setDeliveryMethodFilter('all');
+    setDeliveryFeePaidFilter(null);
     setSearchQuery('');
     setEmailSubject('');
     setEmailContent('');
@@ -446,7 +464,7 @@ export default function CustomerManagementPage() {
       {/* Filters */}
       <div className="bg-white rounded-lg shadow p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">필터</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               배송 방법
@@ -462,6 +480,25 @@ export default function CustomerManagementPage() {
               <option value="팬미팅현장수령">팬미팅현장수령</option>
             </select>
           </div>
+          {activeTab === 'hypetown' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                배송비 결제 상태
+              </label>
+              <select
+                value={deliveryFeePaidFilter === null ? 'all' : deliveryFeePaidFilter ? 'paid' : 'unpaid'}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setDeliveryFeePaidFilter(value === 'all' ? null : value === 'paid');
+                }}
+                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="all">전체</option>
+                <option value="paid">결제 완료</option>
+                <option value="unpaid">결제 미완료</option>
+              </select>
+            </div>
+          )}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               검색
@@ -536,9 +573,14 @@ export default function CustomerManagementPage() {
                     주문 횟수
                   </th>
                   {activeTab === 'hypetown' && (
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      총 구매액
-                    </th>
+                    <>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        총 구매액
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        배송비 결제
+                      </th>
+                    </>
                   )}
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     최근 주문일
@@ -589,9 +631,22 @@ export default function CustomerManagementPage() {
                       {customer.order_count}회
                     </td>
                     {activeTab === 'hypetown' && (
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {formatCurrency(customer.total_spent || 0)}
-                      </td>
+                      <>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {formatCurrency(customer.total_spent || 0)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span
+                            className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                              customer.delivery_fee_payment
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-red-100 text-red-800'
+                            }`}
+                          >
+                            {customer.delivery_fee_payment ? '완료' : '미완료'}
+                          </span>
+                        </td>
+                      </>
                     )}
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {formatDate(customer.created_at)}
