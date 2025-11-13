@@ -12,6 +12,7 @@ type Customer = {
   created_at: string;
   order_count: number;
   total_spent?: number;
+  delivery_fee_payment?: boolean;
 };
 
 
@@ -58,9 +59,14 @@ export default function CustomerManagementPage() {
       const tableName = activeTab === 'regular' ? 'umeki_orders' : 'umeki_orders_hypetown';
 
       // Fetch all orders with customer info
+      // Only fetch delivery_fee_payment for Hypetown customers
+      const selectFields = activeTab === 'hypetown'
+        ? 'id, name, email, phone_num, delivery_method, created_at, total_amount, delivery_fee_payment'
+        : 'id, name, email, phone_num, delivery_method, created_at, total_amount';
+
       const { data, error } = await supabase
         .from(tableName)
-        .select('id, name, email, phone_num, delivery_method, created_at, total_amount')
+        .select(selectFields)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -76,6 +82,10 @@ export default function CustomerManagementPage() {
           if (order.total_amount) {
             existing.total_spent = (existing.total_spent || 0) + order.total_amount;
           }
+          // Update delivery_fee_payment to true if any order has it paid
+          if (order.delivery_fee_payment) {
+            existing.delivery_fee_payment = true;
+          }
         } else {
           customerMap.set(email, {
             id: order.id,
@@ -86,6 +96,7 @@ export default function CustomerManagementPage() {
             created_at: order.created_at,
             order_count: 1,
             total_spent: order.total_amount || 0,
+            delivery_fee_payment: order.delivery_fee_payment || false,
           });
         }
       });
@@ -536,9 +547,14 @@ export default function CustomerManagementPage() {
                     주문 횟수
                   </th>
                   {activeTab === 'hypetown' && (
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      총 구매액
-                    </th>
+                    <>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        총 구매액
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        배송비 결제
+                      </th>
+                    </>
                   )}
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     최근 주문일
@@ -589,9 +605,22 @@ export default function CustomerManagementPage() {
                       {customer.order_count}회
                     </td>
                     {activeTab === 'hypetown' && (
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {formatCurrency(customer.total_spent || 0)}
-                      </td>
+                      <>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {formatCurrency(customer.total_spent || 0)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span
+                            className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                              customer.delivery_fee_payment
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-red-100 text-red-800'
+                            }`}
+                          >
+                            {customer.delivery_fee_payment ? '완료' : '미완료'}
+                          </span>
+                        </td>
+                      </>
                     )}
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {formatDate(customer.created_at)}
