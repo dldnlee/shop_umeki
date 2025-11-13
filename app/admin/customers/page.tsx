@@ -29,6 +29,7 @@ export default function CustomerManagementPage() {
   // Filters
   const [deliveryMethodFilter, setDeliveryMethodFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [deliveryFeePaidFilter, setDeliveryFeePaidFilter] = useState<boolean | null>(null); // null = all, true = paid, false = unpaid
 
   // Email Editor
   const [emailSubject, setEmailSubject] = useState('');
@@ -51,7 +52,7 @@ export default function CustomerManagementPage() {
 
   useEffect(() => {
     applyFilters();
-  }, [customers, deliveryMethodFilter, searchQuery]);
+  }, [customers, deliveryMethodFilter, searchQuery, deliveryFeePaidFilter]);
 
   const fetchCustomers = async () => {
     setLoading(true);
@@ -116,6 +117,11 @@ export default function CustomerManagementPage() {
     // Apply delivery method filter
     if (deliveryMethodFilter !== 'all') {
       filtered = filtered.filter((c) => c.delivery_method === deliveryMethodFilter);
+    }
+
+    // Apply delivery fee paid filter (only for Hypetown)
+    if (activeTab === 'hypetown' && deliveryFeePaidFilter !== null) {
+      filtered = filtered.filter((c) => c.delivery_fee_payment === deliveryFeePaidFilter);
     }
 
     // Apply search query
@@ -411,6 +417,7 @@ export default function CustomerManagementPage() {
     setActiveTab(tab);
     setSelectedCustomers(new Set());
     setDeliveryMethodFilter('all');
+    setDeliveryFeePaidFilter(null);
     setSearchQuery('');
     setEmailSubject('');
     setEmailContent('');
@@ -457,7 +464,7 @@ export default function CustomerManagementPage() {
       {/* Filters */}
       <div className="bg-white rounded-lg shadow p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">필터</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               배송 방법
@@ -473,6 +480,25 @@ export default function CustomerManagementPage() {
               <option value="팬미팅현장수령">팬미팅현장수령</option>
             </select>
           </div>
+          {activeTab === 'hypetown' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                배송비 결제 상태
+              </label>
+              <select
+                value={deliveryFeePaidFilter === null ? 'all' : deliveryFeePaidFilter ? 'paid' : 'unpaid'}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setDeliveryFeePaidFilter(value === 'all' ? null : value === 'paid');
+                }}
+                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="all">전체</option>
+                <option value="paid">결제 완료</option>
+                <option value="unpaid">결제 미완료</option>
+              </select>
+            </div>
+          )}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               검색

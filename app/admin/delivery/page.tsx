@@ -59,6 +59,9 @@ export default function DeliveryPage() {
   const [platformTab, setPlatformTab] = useState<PlatformTab>('shop_umeki');
   const [allProductOptions, setAllProductOptions] = useState<ProductOption[]>([]);
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
+  const [deliveryFeePaidFilter, setDeliveryFeePaidFilter] = useState<boolean | null>(null); // null = all, true = paid, false = unpaid
+  const [emailSearch, setEmailSearch] = useState<string>('');
+  const [updatingDeliveryFee, setUpdatingDeliveryFee] = useState<{ [orderId: string]: boolean }>({});
 
   useEffect(() => {
     fetchProducts();
@@ -213,6 +216,41 @@ export default function DeliveryPage() {
     }
   };
 
+  const handleToggleDeliveryFeePayment = async (orderId: string, currentStatus: boolean | undefined) => {
+    try {
+      setUpdatingDeliveryFee(prev => ({ ...prev, [orderId]: true }));
+
+      // Determine which table to use based on platform
+      const ordersTable = platformTab === 'hypetown' ? 'umeki_orders_hypetown' : 'umeki_orders';
+
+      const newStatus = !currentStatus;
+
+      const { error } = await supabase
+        .from(ordersTable)
+        .update({
+          delivery_fee_payment: newStatus
+        })
+        .eq('id', orderId);
+
+      if (error) throw error;
+
+      alert(`배송비 결제 상태가 ${newStatus ? '완료' : '미완료'}로 변경되었습니다.`);
+
+      // Update the local state
+      setOrders(prev => prev.map(order =>
+        order.id === orderId
+          ? { ...order, delivery_fee_payment: newStatus }
+          : order
+      ));
+
+    } catch (error) {
+      console.error('Error updating delivery fee payment status:', error);
+      alert('배송비 결제 상태 변경에 실패했습니다.');
+    } finally {
+      setUpdatingDeliveryFee(prev => ({ ...prev, [orderId]: false }));
+    }
+  };
+
   const formatDate = (dateString?: string) => {
     if (!dateString) return '';
     return new Date(dateString).toLocaleString('ko-KR');
@@ -252,8 +290,26 @@ export default function DeliveryPage() {
   };
 
   const filteredOrders = orders.filter(order => {
-    if (deliveryFilter === 'all') return true;
-    return order.delivery_method === deliveryFilter;
+    // Apply delivery method filter
+    if (deliveryFilter !== 'all' && order.delivery_method !== deliveryFilter) {
+      return false;
+    }
+
+    // Apply delivery fee paid filter (only for Hypetown)
+    if (platformTab === 'hypetown' && deliveryFeePaidFilter !== null) {
+      if (order.delivery_fee_payment !== deliveryFeePaidFilter) {
+        return false;
+      }
+    }
+
+    // Apply email search filter
+    if (emailSearch.trim() !== '') {
+      if (!order.email.toLowerCase().includes(emailSearch.toLowerCase())) {
+        return false;
+      }
+    }
+
+    return true;
   });
 
   // Calculate product counts by delivery method for paid orders
@@ -316,7 +372,10 @@ export default function DeliveryPage() {
           {/* Platform Tabs */}
           <div className="flex gap-2 mb-4">
             <button
-              onClick={() => setPlatformTab('shop_umeki')}
+              onClick={() => {
+                setPlatformTab('shop_umeki');
+                setDeliveryFeePaidFilter(null);
+              }}
               className={`px-6 py-3 rounded-lg font-semibold transition-colors ${
                 platformTab === 'shop_umeki'
                   ? 'bg-indigo-600 text-white shadow-lg'
@@ -411,8 +470,28 @@ export default function DeliveryPage() {
             </div>
           )}
 
+          {/* Email Search Input */}
+          <div className="mb-4">
+            <label htmlFor="email-search" className="block text-sm font-medium text-gray-700 mb-2">
+              이메일로 주문 검색
+            </label>
+            <input
+              id="email-search"
+              type="text"
+              value={emailSearch}
+              onChange={(e) => setEmailSearch(e.target.value)}
+              placeholder="이메일 주소를 입력하세요..."
+              className="w-full max-w-md px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            {emailSearch && (
+              <p className="text-sm text-gray-600 mt-1">
+                검색 결과: {filteredOrders.length}개의 주문
+              </p>
+            )}
+          </div>
+
           {/* Filter Buttons */}
-          <div className="flex gap-2 items-center">
+          <div className="flex gap-2 items-center flex-wrap">
             <button
               onClick={() => setDeliveryFilter('all')}
               className={`px-4 py-2 rounded-lg font-medium transition-colors ${
@@ -443,6 +522,43 @@ export default function DeliveryPage() {
             >
               해외배송 ({orders.filter(o => o.delivery_method === '해외배송').length})
             </button>
+
+            {/* Delivery Fee Payment Filter - Only for Hypetown */}
+            {platformTab === 'hypetown' && (
+              <>
+                <div className="w-px h-6 bg-gray-300 mx-2"></div>
+                <button
+                  onClick={() => setDeliveryFeePaidFilter(null)}
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                    deliveryFeePaidFilter === null
+                      ? 'bg-purple-600 text-white'
+                      : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  배송비: 전체
+                </button>
+                <button
+                  onClick={() => setDeliveryFeePaidFilter(true)}
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                    deliveryFeePaidFilter === true
+                      ? 'bg-purple-600 text-white'
+                      : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  결제 완료
+                </button>
+                <button
+                  onClick={() => setDeliveryFeePaidFilter(false)}
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                    deliveryFeePaidFilter === false
+                      ? 'bg-purple-600 text-white'
+                      : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  결제 미완료
+                </button>
+              </>
+            )}
 
             {/* Sort Order Toggle */}
             <div className="ml-auto flex gap-2">
@@ -619,16 +735,25 @@ export default function DeliveryPage() {
                           {platformTab === 'hypetown' && (
                             <div className="min-w-0">
                               <p className="text-xs text-gray-500 mb-1">배송비 결제</p>
-                              <span
-                                className={`
-                                  inline-block px-3 py-1 rounded-full text-sm font-semibold
-                                  ${order.delivery_fee_payment
-                                    ? 'bg-green-100 text-green-800'
-                                    : 'bg-red-100 text-red-800'}
-                                `}
-                              >
-                                {order.delivery_fee_payment ? '✓ 완료' : '✗ 미완료'}
-                              </span>
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className={`
+                                    inline-block px-3 py-1 rounded-full text-sm font-semibold
+                                    ${order.delivery_fee_payment
+                                      ? 'bg-green-100 text-green-800'
+                                      : 'bg-red-100 text-red-800'}
+                                  `}
+                                >
+                                  {order.delivery_fee_payment ? '✓ 완료' : '✗ 미완료'}
+                                </span>
+                                <button
+                                  onClick={() => handleToggleDeliveryFeePayment(order.id, order.delivery_fee_payment)}
+                                  disabled={updatingDeliveryFee[order.id]}
+                                  className="px-3 py-1 bg-blue-600 text-white text-xs font-semibold rounded hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                                >
+                                  {updatingDeliveryFee[order.id] ? '변경중...' : '상태 변경'}
+                                </button>
+                              </div>
                             </div>
                           )}
                         </div>
