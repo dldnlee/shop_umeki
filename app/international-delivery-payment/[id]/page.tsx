@@ -385,7 +385,7 @@ export default function InternationalDeliveryPaymentPage() {
           {/* Currency Selection at the top */}
           <div className="mb-6">
             <h1 className="text-3xl font-semibold text-black mb-4">국제 배송비 결제</h1>
-            <div className="bg-white rounded-lg border border-black/6 shadow-sm p-6">
+            {/* <div className="bg-white rounded-lg border border-black/6 shadow-sm p-6">
               <label className="block text-sm font-medium text-zinc-700 mb-3">
                 결제 통화 선택
               </label>
@@ -415,7 +415,8 @@ export default function InternationalDeliveryPaymentPage() {
                   <div className="text-sm">¥{DELIVERY_FEE_JPY}</div>
                 </button>
               </div>
-            </div>
+            </div> */}
+            
           </div>
 
           <div className="space-y-6">
@@ -442,43 +443,6 @@ export default function InternationalDeliveryPaymentPage() {
               </div>
             </div>
 
-            {/* Order Items Card */}
-            <div className="bg-white rounded-lg border border-black/6 shadow-sm p-6">
-              <h2 className="text-xl font-semibold text-black mb-4">주문 상품</h2>
-              <div className="space-y-4">
-                {order.items.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex justify-between items-start pb-4 border-b border-zinc-200 last:border-0 last:pb-0"
-                  >
-                    <div className="flex-1">
-                      <p className="font-medium text-black mb-1">
-                        {item.product?.name || `상품 #${item.product_id}`}
-                      </p>
-                      {item.option && (
-                        <p className="text-sm text-zinc-600 mb-1">옵션: {item.option}</p>
-                      )}
-                      <p className="text-sm text-zinc-600">수량: {item.quantity}개</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-semibold text-black">
-                        {formatCurrency(item.total_price)}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Total Amount */}
-              <div className="mt-6 pt-6 border-t border-zinc-300">
-                <div className="flex justify-between items-center">
-                  <span className="text-lg font-semibold text-black">상품 총액</span>
-                  <span className="text-2xl font-bold text-black">
-                    {formatCurrency(order.total_amount)}
-                  </span>
-                </div>
-              </div>
-            </div>
 
             {/* Delivery Fee Payment Card */}
             <div className="bg-white rounded-lg border border-black/6 shadow-sm p-6">
@@ -555,6 +519,45 @@ export default function InternationalDeliveryPaymentPage() {
                 </div>
               )}
             </div>
+
+            {/* Order Items Card */}
+            <div className="bg-white rounded-lg border border-black/6 shadow-sm p-6">
+              <h2 className="text-xl font-semibold text-black mb-4">주문 상품</h2>
+              <div className="space-y-4">
+                {order.items.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex justify-between items-start pb-4 border-b border-zinc-200 last:border-0 last:pb-0"
+                  >
+                    <div className="flex-1">
+                      <p className="font-medium text-black mb-1">
+                        {item.product?.name || `상품 #${item.product_id}`}
+                      </p>
+                      {item.option && (
+                        <p className="text-sm text-zinc-600 mb-1">옵션: {item.option}</p>
+                      )}
+                      <p className="text-sm text-zinc-600">수량: {item.quantity}개</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold text-black">
+                        {formatCurrency(item.total_price)}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Total Amount */}
+              <div className="mt-6 pt-6 border-t border-zinc-300">
+                <div className="flex justify-between items-center">
+                  <span className="text-lg font-semibold text-black">상품 총액</span>
+                  <span className="text-2xl font-bold text-black">
+                    {formatCurrency(order.total_amount)}
+                  </span>
+                </div>
+              </div>
+            </div>
+
           </div>
         </main>
 
