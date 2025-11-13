@@ -58,9 +58,9 @@ declare global {
   }
 }
 
-const DELIVERY_FEE_KRW = 15000;
-const DELIVERY_FEE_USD = "10.20"; // Fixed conversion for consistency
-const DELIVERY_FEE_JPY = "1650"; // Fixed conversion for consistency
+const DELIVERY_FEE_KRW = 18000;
+const DELIVERY_FEE_USD = "12.30"; // Fixed conversion for consistency
+const DELIVERY_FEE_JPY = "1900"; // Fixed conversion for consistency
 
 export default function InternationalDeliveryPaymentPage() {
   const params = useParams();
@@ -223,25 +223,26 @@ export default function InternationalDeliveryPaymentPage() {
               // const actualOrderId = captureData.originalOrderId?.replace('DELIVERY_', '') || orderId;
 
               // Update delivery_fee_payment to TRUE
-              // const updateResponse = await fetch(`/api/payment/delivery-fee/${actualOrderId}`, {
-              //   method: "PATCH",
-              //   headers: {
-              //     "Content-Type": "application/json",
-              //   },
-              //   body: JSON.stringify({
-              //     paymentId: captureData.paymentId,
-              //     status: captureData.status,
-              //   }),
-              // });
+              console.log("The order ID is: ", orderId);
+              const updateResponse = await fetch(`/api/payment/delivery-fee/${orderId}`, {
+                method: "PATCH",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  paymentId: captureData.paymentId,
+                  status: captureData.status,
+                }),
+              });
 
-              // if (updateResponse.ok) {
-              //   setShowSuccessModal(true);
-              //   setOrder({ ...order, delivery_fee_payment: true });
-              // } else {
-              //   const errorData = await updateResponse.json();
-              //   console.error("Database update failed:", errorData);
-              //   alert(`결제 처리 중 오류가 발생했습니다: ${errorData.error || "알 수 없는 오류"}`);
-              // }
+              if (updateResponse.ok) {
+                setShowSuccessModal(true);
+                setOrder({ ...order, delivery_fee_payment: true });
+              } else {
+                const errorData = await updateResponse.json();
+                console.error("Database update failed:", errorData);
+                alert(`결제 처리 중 오류가 발생했습니다: ${errorData.error || "알 수 없는 오류"}`);
+              }
             } catch (error) {
               console.error("Payment processing error:", error);
               alert("결제 처리 중 오류가 발생했습니다. 다시 시도해주세요.");

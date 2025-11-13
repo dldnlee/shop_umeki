@@ -8,10 +8,11 @@ import { supabase } from '@/lib/supabase';
  */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const orderId = params.id;
+    const { id: orderId } = await params;
+    console.log("The order id received:", orderId);
     const body = await request.json();
     const { paymentId, status } = body;
 
@@ -82,10 +83,11 @@ export async function PATCH(
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const orderId = params.id;
+    const { id: orderId } = await params;
+    console.log("The received order id:", orderId)
 
     if (!orderId) {
       return NextResponse.json(
