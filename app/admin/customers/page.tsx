@@ -34,6 +34,16 @@ export default function CustomerManagementPage() {
   const [emailContent, setEmailContent] = useState('');
   const [showPreview, setShowPreview] = useState(false);
 
+  // Progress modal
+  const [showProgressModal, setShowProgressModal] = useState(false);
+  const [sendProgress, setSendProgress] = useState({
+    current: 0,
+    total: 0,
+    successCount: 0,
+    failureCount: 0,
+    currentEmail: '',
+  });
+
   useEffect(() => {
     fetchCustomers();
   }, [activeTab]);
@@ -235,36 +245,135 @@ export default function CustomerManagementPage() {
     if (!confirmed) return;
 
     setSending(true);
-    try {
-      const selectedCustomerData = filteredCustomers.filter((c) => selectedCustomers.has(c.id));
+    const selectedCustomerData = filteredCustomers.filter((c) => selectedCustomers.has(c.id));
 
-      const response = await fetch('/api/admin/send-custom-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          recipients: selectedCustomerData.map(c => ({
-            ...c,
-            orderId: c.id,
-          })),
-          subject: emailSubject,
-          htmlContent: emailContent,
-          textContent: emailContent,
-        }),
+    // Initialize progress modal
+    setShowProgressModal(true);
+    setSendProgress({
+      current: 0,
+      total: selectedCustomerData.length,
+      successCount: 0,
+      failureCount: 0,
+      currentEmail: '',
+    });
+
+    try {
+      const requestBody = {
+        recipients: selectedCustomerData.map(c => ({
+          ...c,
+          orderId: c.id,
+        })),
+        subject: emailSubject,
+        htmlContent: emailContent,
+        textContent: emailContent,
+      };
+
+      console.log('Sending email request:', {
+        recipientCount: requestBody.recipients.length,
+        hasSubject: !!requestBody.subject,
+        hasHtmlContent: !!requestBody.htmlContent,
+        hasTextContent: !!requestBody.textContent,
+        sampleRecipient: requestBody.recipients[0],
       });
 
-      const result = await response.json();
+      // Send emails one by one to show progress
+      let successCount = 0;
+      let failureCount = 0;
+      const errors: Array<{ email: string; error: string }> = [];
 
-      if (response.ok) {
-        alert(`Successfully sent ${result.successCount} emails!`);
-        // Clear selections and form
-        setSelectedCustomers(new Set());
-        setEmailSubject('');
-        setEmailContent('');
-      } else {
-        alert(`Failed to send emails: ${result.error || 'Unknown error'}`);
+      for (let i = 0; i < selectedCustomerData.length; i++) {
+        const customer = selectedCustomerData[i];
+
+        // Update progress
+        setSendProgress({
+          current: i + 1,
+          total: selectedCustomerData.length,
+          successCount,
+          failureCount,
+          currentEmail: customer.email,
+        });
+
+        try {
+          const response = await fetch('/api/admin/send-custom-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              recipients: [{
+                ...customer,
+                orderId: customer.id,
+              }],
+              subject: emailSubject,
+              htmlContent: emailContent,
+              textContent: emailContent,
+            }),
+          });
+
+          const result = await response.json();
+
+          if (response.ok && result.successCount > 0) {
+            successCount++;
+          } else {
+            failureCount++;
+            errors.push({
+              email: customer.email,
+              error: result.error || (result.errors?.[0]?.error) || 'Unknown error'
+            });
+          }
+        } catch (error) {
+          failureCount++;
+          errors.push({
+            email: customer.email,
+            error: error instanceof Error ? error.message : 'Network error'
+          });
+        }
+
+        // Update final progress for this email
+        setSendProgress({
+          current: i + 1,
+          total: selectedCustomerData.length,
+          successCount,
+          failureCount,
+          currentEmail: customer.email,
+        });
+
+        // Small delay to avoid overwhelming the API
+        if (i < selectedCustomerData.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
       }
+
+      // Show final results
+      setTimeout(() => {
+        setShowProgressModal(false);
+
+        let message = `Successfully sent ${successCount} out of ${selectedCustomerData.length} emails!`;
+
+        if (failureCount > 0) {
+          message += `\n\nFailed: ${failureCount} emails`;
+          if (errors.length > 0) {
+            message += '\n\nFailed recipients:';
+            errors.slice(0, 5).forEach((err) => {
+              message += `\n- ${err.email}: ${err.error}`;
+            });
+            if (errors.length > 5) {
+              message += `\n... and ${errors.length - 5} more`;
+            }
+          }
+        }
+
+        alert(message);
+
+        // Clear selections and form only if all succeeded
+        if (failureCount === 0) {
+          setSelectedCustomers(new Set());
+          setEmailSubject('');
+          setEmailContent('');
+        }
+      }, 500);
+
     } catch (error) {
       console.error('Error sending emails:', error);
+      setShowProgressModal(false);
       alert('An error occurred while sending emails');
     } finally {
       setSending(false);
@@ -587,6 +696,78 @@ export default function CustomerManagementPage() {
                 dangerouslySetInnerHTML={{ __html: generateEmailPreview() }}
                 className="bg-gray-50"
               />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Progress Modal */}
+      {showProgressModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-2xl max-w-md w-full p-6">
+            {/* Header */}
+            <div className="mb-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                이메일 발송 중...
+              </h2>
+              <p className="text-sm text-gray-600">
+                잠시만 기다려주세요. 이메일을 발송하고 있습니다.
+              </p>
+            </div>
+
+            {/* Progress Bar */}
+            <div className="mb-6">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm font-medium text-gray-700">
+                  진행률: {sendProgress.current} / {sendProgress.total}
+                </span>
+                <span className="text-sm font-medium text-gray-700">
+                  {sendProgress.total > 0
+                    ? Math.round((sendProgress.current / sendProgress.total) * 100)
+                    : 0}%
+                </span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                <div
+                  className="bg-blue-600 h-3 rounded-full transition-all duration-300 ease-out"
+                  style={{
+                    width: `${
+                      sendProgress.total > 0
+                        ? (sendProgress.current / sendProgress.total) * 100
+                        : 0
+                    }%`,
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Current Email */}
+            {sendProgress.currentEmail && (
+              <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                <p className="text-xs font-medium text-blue-900 mb-1">현재 발송 중:</p>
+                <p className="text-sm text-blue-800 truncate">{sendProgress.currentEmail}</p>
+              </div>
+            )}
+
+            {/* Stats */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="text-center p-3 bg-green-50 border border-green-200 rounded-md">
+                <div className="text-2xl font-bold text-green-600">
+                  {sendProgress.successCount}
+                </div>
+                <div className="text-xs text-green-700 mt-1">성공</div>
+              </div>
+              <div className="text-center p-3 bg-red-50 border border-red-200 rounded-md">
+                <div className="text-2xl font-bold text-red-600">
+                  {sendProgress.failureCount}
+                </div>
+                <div className="text-xs text-red-700 mt-1">실패</div>
+              </div>
+            </div>
+
+            {/* Loading Spinner */}
+            <div className="flex justify-center mt-6">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
             </div>
           </div>
         </div>
