@@ -31,6 +31,7 @@ type Order = {
   created_at?: string;
   invoice_id?: string | null;
   customs_code?: string | null;
+  delivery_fee_payment?: boolean;
 };
 
 type OrderWithItems = Order & {
@@ -541,6 +542,23 @@ export default function DeliveryPage() {
                         </span>
                       </div>
 
+                      {/* Delivery Fee Payment Status - Only for Hypetown */}
+                      {platformTab === 'hypetown' && (
+                        <div className="w-[90px] shrink-0">
+                          <p className="text-[10px] text-gray-500 mb-0.5">배송비 결제</p>
+                          <span
+                            className={`
+                              inline-block px-2 py-1 rounded text-xs font-semibold whitespace-nowrap
+                              ${order.delivery_fee_payment
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-red-100 text-red-800'}
+                            `}
+                          >
+                            {order.delivery_fee_payment ? '완료' : '미완료'}
+                          </span>
+                        </div>
+                      )}
+
                       {/* Expand Icon */}
                       <div className="shrink-0 ml-auto pl-2">
                         <svg
@@ -595,6 +613,22 @@ export default function DeliveryPage() {
                               <p className="font-semibold text-indigo-600">
                                 {order.customs_code || '미입력'}
                               </p>
+                            </div>
+                          )}
+                          {/* Delivery Fee Payment - Only show for Hypetown */}
+                          {platformTab === 'hypetown' && (
+                            <div className="min-w-0">
+                              <p className="text-xs text-gray-500 mb-1">배송비 결제</p>
+                              <span
+                                className={`
+                                  inline-block px-3 py-1 rounded-full text-sm font-semibold
+                                  ${order.delivery_fee_payment
+                                    ? 'bg-green-100 text-green-800'
+                                    : 'bg-red-100 text-red-800'}
+                                `}
+                              >
+                                {order.delivery_fee_payment ? '✓ 완료' : '✗ 미완료'}
+                              </span>
                             </div>
                           )}
                         </div>
