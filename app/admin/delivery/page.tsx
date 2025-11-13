@@ -39,6 +39,7 @@ type OrderWithItems = Order & {
 
 type DeliveryFilter = 'all' | '국내배송' | '해외배송';
 type PlatformTab = 'shop_umeki' | 'hypetown';
+type SortOrder = 'asc' | 'desc';
 
 type ProductOption = {
   productId: string;
@@ -56,6 +57,7 @@ export default function DeliveryPage() {
   const [deliveryFilter, setDeliveryFilter] = useState<DeliveryFilter>('all');
   const [platformTab, setPlatformTab] = useState<PlatformTab>('shop_umeki');
   const [allProductOptions, setAllProductOptions] = useState<ProductOption[]>([]);
+  const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
 
   useEffect(() => {
     fetchProducts();
@@ -63,7 +65,7 @@ export default function DeliveryPage() {
 
   useEffect(() => {
     fetchDeliveryOrders();
-  }, [platformTab]);
+  }, [platformTab, sortOrder]);
 
   const fetchProducts = async () => {
     try {
@@ -122,7 +124,7 @@ export default function DeliveryPage() {
         .neq('delivery_method', '팬미팅현장수령')
         .neq('delivery_method', '팬미팅 현장수령')
         .neq('order_status', 'waiting')
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: sortOrder === 'asc' });
 
       if (ordersError) throw ordersError;
 
@@ -409,7 +411,7 @@ export default function DeliveryPage() {
           )}
 
           {/* Filter Buttons */}
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
             <button
               onClick={() => setDeliveryFilter('all')}
               className={`px-4 py-2 rounded-lg font-medium transition-colors ${
@@ -440,6 +442,31 @@ export default function DeliveryPage() {
             >
               해외배송 ({orders.filter(o => o.delivery_method === '해외배송').length})
             </button>
+
+            {/* Sort Order Toggle */}
+            <div className="ml-auto flex gap-2">
+              <span className="text-sm text-gray-600 self-center">정렬:</span>
+              <button
+                onClick={() => setSortOrder('asc')}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  sortOrder === 'asc'
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                오래된 순
+              </button>
+              <button
+                onClick={() => setSortOrder('desc')}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  sortOrder === 'desc'
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                최신 순
+              </button>
+            </div>
           </div>
         </div>
 
