@@ -7,18 +7,27 @@ This page allows customers with international orders (from `umeki_orders_hypetow
 - Displays order details including items and total amount
 - Shows delivery fee payment status
 - Integrates PayPal payment button for delivery fee payment
-- Currency conversion display (KRW, USD, JPY)
+- Currency selection (USD or JPY)
+- Automatic currency conversion display (KRW, USD, JPY)
 - Success modal after payment completion
 - Updates `delivery_fee_payment` status in database
+- Clean and robust error handling
 
 ## Setup
 
-### 1. Install Dependencies
+### 1. Environment Variables
 
-The page uses `@paypal/react-paypal-js` for PayPal integration:
+Add your PayPal credentials to `.env.local`:
 
-```bash
-npm install @paypal/react-paypal-js
+```env
+# PayPal Client ID (public, exposed to client)
+NEXT_PUBLIC_PAYPAL_CLIENT_ID=your_paypal_client_id_here
+
+# PayPal Secret Key (private, server-side only)
+PAYPAL_CLIENT_SECRET=your_paypal_secret_key_here
+
+# PayPal Environment (true for sandbox, false for production)
+NEXT_PUBLIC_PAYPAL_SANDBOX=true
 ```
 
 ### 2. Get PayPal Credentials
@@ -29,19 +38,19 @@ npm install @paypal/react-paypal-js
    - **Sandbox** credentials for testing
    - **Live** credentials for production
 
-### 3. Configure Environment Variables
+### 3. Delivery Fee Settings
 
-Add your PayPal credentials to `.env.local`:
+The delivery fee is set to 15,000 KRW with fixed conversions:
+- **USD**: $10.20
+- **JPY**: ¥1,650
 
-```env
-# PayPal Client ID (public, exposed to client)
-NEXT_PUBLIC_PAYPAL_CLIENT_ID=your_paypal_client_id_here
+To update these values, edit the constants in [`[id]/page.tsx`](./[id]/page.tsx:61-63):
 
-# PayPal Secret Key (private, server-side only - optional for this implementation)
-PAYPAL_SECRET_KEY=your_paypal_secret_key_here
+```typescript
+const DELIVERY_FEE_KRW = 15000;
+const DELIVERY_FEE_USD = "10.20";
+const DELIVERY_FEE_JPY = "1650";
 ```
-
-**Note:** The current implementation only requires the Client ID. The Secret Key can be used for server-side verification if needed.
 
 ## Usage
 
@@ -62,9 +71,37 @@ Example: `/international-delivery-payment/123e4567-e89b-12d3-a456-426614174000`
    - Currency selection buttons (USD or JPY)
    - PayPal payment button (if not already paid)
 4. Customer selects preferred currency (USD or JPY)
-5. Customer clicks PayPal button and completes payment in selected currency
-6. System updates `delivery_fee_payment` to `TRUE` in database
+5. Customer clicks PayPal button and completes payment
+6. System:
+   - Creates PayPal order via API
+   - Captures payment via API
+   - Updates `delivery_fee_payment` to `TRUE` in database
 7. Success modal is displayed
+
+## Architecture
+
+### Frontend Flow
+```
+Page Load → Fetch Order → Load PayPal SDK →
+Render Button → User Pays → Capture Payment →
+Update Database → Show Success
+```
+
+### API Integration
+```
+createOrder → /api/payment/paypal/create-order
+captureOrder → /api/payment/paypal/capture-order
+updateDatabase → /api/payment/delivery-fee/[id]
+```
+
+### Key Improvements
+
+1. **Next.js Script Component**: Uses Next.js `<Script>` component for optimal SDK loading
+2. **Currency Switching**: Properly handles SDK reload when currency changes
+3. **Simpler State Management**: Uses minimal state with clear flow
+4. **Better Error Handling**: Clear error messages and recovery paths
+5. **Type Safety**: Proper TypeScript types for PayPal SDK
+6. **Loading States**: Clear feedback during all async operations
 
 ## Database Schema
 
@@ -80,7 +117,7 @@ The page interacts with these tables:
 - `order_status` (text): Order status
 - `created_at` (timestamp): Order creation date
 - `total_amount` (integer): Order total amount
-- `delivery_fee_payment` (boolean): Delivery fee payment status
+- `delivery_fee_payment` (boolean): Delivery fee payment status ← Updated by this page
 
 ### umeki_order_items_hypetown
 - `id` (uuid): Item ID
@@ -91,6 +128,65 @@ The page interacts with these tables:
 - `total_price` (integer): Item total price
 
 ## API Routes
+
+### POST /api/payment/paypal/create-order
+
+Creates a PayPal order for delivery fee payment.
+
+**Request Body:**
+```json
+{
+  "amount": "10.20",
+  "currency": "USD",
+  "orderId": "DELIVERY_abc-123",
+  "items": [
+    {
+      "name": "International Delivery Fee",
+      "description": "Shipping fee for order abc-123",
+      "quantity": "1",
+      "unit_amount": {
+        "currency_code": "USD",
+        "value": "10.20"
+      },
+      "category": "PHYSICAL_GOODS"
+    }
+  ]
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "orderId": "PAYPAL_ORDER_ID",
+  "message": "Order created successfully"
+}
+```
+
+### POST /api/payment/paypal/capture-order
+
+Captures payment for an approved PayPal order.
+
+**Request Body:**
+```json
+{
+  "orderId": "PAYPAL_ORDER_ID"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "orderId": "PAYPAL_ORDER_ID",
+  "status": "COMPLETED",
+  "captureId": "CAPTURE_ID",
+  "paymentId": "CAPTURE_ID",
+  "amount": "10.20",
+  "currency": "USD",
+  "message": "Payment captured successfully"
+}
+```
 
 ### PATCH /api/payment/delivery-fee/[id]
 
@@ -113,102 +209,122 @@ Updates the delivery fee payment status.
 }
 ```
 
-### GET /api/payment/delivery-fee/[id]
-
-Retrieves the delivery fee payment status.
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "id": "order-id",
-    "delivery_fee_payment": false,
-    "updated_at": "2025-01-01T00:00:00Z"
-  }
-}
-```
-
-## Currency Conversion
-
-The delivery fee is set to 15,000 KRW and converted using real exchange rates:
-- **USD**: $10.20 (1 KRW = 0.00068 USD)
-- **JPY**: ¥1,650 (1 KRW = 0.11 JPY)
-
-Users can choose between USD or JPY for payment. The conversion rates are defined in the page component and can be updated as needed.
-
-## Customization
-
-### Change Delivery Fee Amount
-
-Edit the constants in [page.tsx](./[id]/page.tsx):
-
-```typescript
-const DELIVERY_FEE_KRW = 15000; // Change this value
-const DELIVERY_FEE_USD = (DELIVERY_FEE_KRW * 0.00068).toFixed(2); // 1 KRW = 0.00068 USD
-const DELIVERY_FEE_JPY = Math.round(DELIVERY_FEE_KRW * 0.11); // 1 KRW = 0.11 JPY
-```
-
-### Update Exchange Rates
-
-To update the exchange rates, modify the conversion factors:
-
-```typescript
-// Update these based on current exchange rates
-const DELIVERY_FEE_USD = (DELIVERY_FEE_KRW * 0.00068).toFixed(2); // Update 0.00068
-const DELIVERY_FEE_JPY = Math.round(DELIVERY_FEE_KRW * 0.11); // Update 0.11
-```
-
-### Add More Currencies
-
-To support additional currencies:
-
-1. Update the PayPalScriptProvider options:
-```typescript
-<PayPalScriptProvider
-  options={{
-    clientId: clientId,
-    currency: "USD,JPY,EUR", // Add more currencies
-    intent: "capture",
-  }}
->
-```
-
-2. Add the currency to the state and UI:
-```typescript
-const [selectedCurrency, setSelectedCurrency] = useState<"USD" | "JPY" | "EUR">("USD");
-```
-
-Supported currencies: USD, EUR, GBP, JPY, CAD, AUD, etc.
-
 ## Testing
 
 ### Sandbox Mode
 
-1. Use PayPal Sandbox Client ID
+1. Use PayPal Sandbox Client ID and Secret
 2. Create test accounts at [PayPal Sandbox](https://developer.paypal.com/dashboard/accounts)
 3. Use test account credentials to complete payments
+4. No real money is charged
 
 ### Test Scenarios
 
 - ✅ Order with items loads correctly
 - ✅ Delivery fee is displayed in multiple currencies
+- ✅ Currency selection works (USD/JPY)
+- ✅ PayPal SDK loads properly with selected currency
 - ✅ PayPal button appears for unpaid orders
-- ✅ Payment completes successfully
+- ✅ Payment creates order successfully
+- ✅ Payment captures successfully
 - ✅ Database updates correctly
 - ✅ Success modal displays
 - ✅ Already-paid orders show completion status
+- ✅ Error handling works for failed payments
 
 ## Troubleshooting
 
 ### PayPal SDK Not Loading
 
-Check that `NEXT_PUBLIC_PAYPAL_CLIENT_ID` is set in `.env.local` and restart the dev server.
+**Symptoms**: Button doesn't appear, or spinner shows indefinitely
+
+**Solutions**:
+1. Check that `NEXT_PUBLIC_PAYPAL_CLIENT_ID` is set in `.env.local`
+2. Restart the dev server after changing environment variables
+3. Check browser console for script loading errors
+4. Verify internet connection
 
 ### Payment Not Processing
 
-Check browser console and server logs for errors. Verify PayPal Client ID is valid.
+**Symptoms**: Payment fails or gets stuck
+
+**Solutions**:
+1. Check browser console for errors
+2. Verify PayPal Client ID and Secret are valid
+3. Check that you're using sandbox credentials in development
+4. Try in an incognito/private browser window
+5. Check server logs for API errors
 
 ### Database Not Updating
 
-Check API route logs at `/api/payment/delivery-fee/[id]` and verify Supabase connection.
+**Symptoms**: Payment succeeds but order status doesn't change
+
+**Solutions**:
+1. Check API route logs at `/api/payment/delivery-fee/[id]`
+2. Verify Supabase connection and credentials
+3. Check database permissions
+4. Ensure `delivery_fee_payment` column exists
+
+### Currency Switch Not Working
+
+**Symptoms**: Changing currency doesn't update button
+
+**Solutions**:
+1. This is expected - changing currency reloads the SDK
+2. Wait for the SDK to reload (2-3 seconds)
+3. Check browser console for reload progress
+4. Disable button during SDK reload
+
+## Production Deployment
+
+### Before Going Live
+
+1. **Get Live Credentials**:
+   - Go to PayPal Developer Dashboard
+   - Switch to **Live** tab
+   - Copy live Client ID and Secret
+
+2. **Update Environment Variables**:
+   ```env
+   NEXT_PUBLIC_PAYPAL_CLIENT_ID=your_live_client_id
+   PAYPAL_CLIENT_SECRET=your_live_client_secret
+   NEXT_PUBLIC_PAYPAL_SANDBOX=false
+   ```
+
+3. **Test in Production**:
+   - Use small test transaction first
+   - Verify payment captures correctly
+   - Check database updates
+   - Confirm emails are sent
+
+4. **Monitor**:
+   - Watch for payment errors in logs
+   - Monitor PayPal Dashboard for transactions
+   - Check for failed updates in database
+   - Review customer feedback
+
+## Security
+
+✅ **Secure by design**:
+- Client Secret never exposed to frontend
+- All API calls made from secure backend
+- HTTPS encryption for all connections
+- Amount verified before order creation
+- Order ID validated in all requests
+- Error messages don't reveal sensitive data
+
+⚠️ **Keep secure**:
+- Never commit `.env.local` with real credentials
+- Use `.gitignore` to exclude environment files
+- Rotate credentials periodically
+- Monitor logs for unauthorized access
+- Use HTTPS in production (required by PayPal)
+
+## Support
+
+For issues or questions:
+1. Check this documentation first
+2. Review browser console for errors
+3. Check server logs for API errors
+4. Refer to [PayPal Developer Docs](https://developer.paypal.com/docs/)
+5. Contact PayPal support if issue is with their API
