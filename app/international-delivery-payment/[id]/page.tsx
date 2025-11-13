@@ -384,7 +384,21 @@ export default function InternationalDeliveryPaymentPage() {
         <main className="max-w-4xl mx-auto p-8 pt-24">
           {/* Currency Selection at the top */}
           <div className="mb-6">
-            <h1 className="text-3xl font-semibold text-black mb-4">국제 배송비 결제</h1>
+            <div className="flex items-center justify-between mb-4">
+              <h1 className="text-3xl font-semibold text-black">Delivery Fee Payment</h1>
+
+              {/* Payment Status Badge */}
+              <div
+                className={`
+                  px-6 py-3 rounded-lg font-semibold text-lg shadow-md
+                  ${order.delivery_fee_payment
+                    ? 'bg-green-500/50 border-2 border-green-500 text-white'
+                    : 'bg-red-500/50 border-2 border-red-500 text-white'}
+                `}
+              >
+                {order.delivery_fee_payment ? 'Paid' : 'Not Paid'}
+              </div>
+            </div>
             {/* <div className="bg-white rounded-lg border border-black/6 shadow-sm p-6">
               <label className="block text-sm font-medium text-zinc-700 mb-3">
                 결제 통화 선택
@@ -425,19 +439,19 @@ export default function InternationalDeliveryPaymentPage() {
               <h2 className="text-xl font-semibold text-black mb-4">주문 정보</h2>
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-zinc-600">주문번호</span>
+                  <span className="text-zinc-600">Order Id</span>
                   <span className="font-mono font-medium text-black">{order.id}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-zinc-600">주문일시</span>
+                  <span className="text-zinc-600">Order Date</span>
                   <span className="text-black">{formatDate(order.created_at)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-zinc-600">고객명</span>
+                  <span className="text-zinc-600">Customer Name</span>
                   <span className="text-black">{order.name}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-zinc-600">이메일</span>
+                  <span className="text-zinc-600">Customer Email</span>
                   <span className="text-black">{order.email}</span>
                 </div>
               </div>
@@ -446,7 +460,7 @@ export default function InternationalDeliveryPaymentPage() {
 
             {/* Delivery Fee Payment Card */}
             <div className="bg-white rounded-lg border border-black/6 shadow-sm p-6">
-              <h2 className="text-xl font-semibold text-black mb-4">배송비 결제</h2>
+              <h2 className="text-xl font-semibold text-black mb-4">Payment</h2>
 
               {order.delivery_fee_payment ? (
                 <div className="text-center py-8">
@@ -466,40 +480,40 @@ export default function InternationalDeliveryPaymentPage() {
                     </svg>
                   </div>
                   <h3 className="text-lg font-semibold text-black mb-2">
-                    배송비 결제 완료
+                    Payment Complete!
                   </h3>
-                  <p className="text-zinc-600">배송비가 이미 결제되었습니다.</p>
+                  <p className="text-zinc-600">Delivery Fee has been paid.</p>
                 </div>
               ) : (
                 <div>
                   <div className="space-y-3 mb-6">
                     <div className="flex justify-between items-center">
-                      <span className="text-zinc-600">배송비 (KRW)</span>
+                      <span className="text-zinc-600">Delivery Fee (KRW)</span>
                       <span className="font-semibold text-black">
                         {formatCurrency(DELIVERY_FEE_KRW)}
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-zinc-600">배송비 (USD)</span>
+                      <span className="text-zinc-600">Delivery Fee (USD)</span>
                       <span className="font-semibold text-black">${DELIVERY_FEE_USD}</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-zinc-600">배송비 (JPY)</span>
+                      <span className="text-zinc-600">Delivery Fee (JPY)</span>
                       <span className="font-semibold text-black">¥{DELIVERY_FEE_JPY}</span>
                     </div>
                   </div>
 
-                  <div className="bg-blue-50 border border-blue-200 rounded-md p-4 mb-6">
+                  {/* <div className="bg-blue-50 border border-blue-200 rounded-md p-4 mb-6">
                     <p className="text-sm text-blue-800">
                       PayPal을 통해 배송비를 결제해주세요. 결제는 {selectedCurrency}로
                       진행됩니다.
                     </p>
-                  </div>
+                  </div> */}
 
                   {processing && (
                     <div className="text-center py-4 mb-4">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black mx-auto mb-2"></div>
-                      <p className="text-zinc-600">결제 처리 중...</p>
+                      <p className="text-zinc-600">Processing...</p>
                     </div>
                   )}
 
@@ -509,7 +523,7 @@ export default function InternationalDeliveryPaymentPage() {
                       {!sdkReady ? (
                         <div className="text-center py-4">
                           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black mx-auto mb-2"></div>
-                          <p className="text-zinc-600">PayPal 결제 버튼을 불러오는 중...</p>
+                          <p className="text-zinc-600">Retrieving PayPal Button...</p>
                         </div>
                       ) : (
                         <div id="paypal-button-container"></div>
@@ -522,7 +536,7 @@ export default function InternationalDeliveryPaymentPage() {
 
             {/* Order Items Card */}
             <div className="bg-white rounded-lg border border-black/6 shadow-sm p-6">
-              <h2 className="text-xl font-semibold text-black mb-4">주문 상품</h2>
+              <h2 className="text-xl font-semibold text-black mb-4">Order</h2>
               <div className="space-y-4">
                 {order.items.map((item) => (
                   <div
@@ -534,9 +548,9 @@ export default function InternationalDeliveryPaymentPage() {
                         {item.product?.name || `상품 #${item.product_id}`}
                       </p>
                       {item.option && (
-                        <p className="text-sm text-zinc-600 mb-1">옵션: {item.option}</p>
+                        <p className="text-sm text-zinc-600 mb-1">Option: {item.option}</p>
                       )}
-                      <p className="text-sm text-zinc-600">수량: {item.quantity}개</p>
+                      <p className="text-sm text-zinc-600">Qty: {item.quantity}</p>
                     </div>
                     <div className="text-right">
                       <p className="font-semibold text-black">
@@ -550,7 +564,7 @@ export default function InternationalDeliveryPaymentPage() {
               {/* Total Amount */}
               <div className="mt-6 pt-6 border-t border-zinc-300">
                 <div className="flex justify-between items-center">
-                  <span className="text-lg font-semibold text-black">상품 총액</span>
+                  <span className="text-lg font-semibold text-black">Total Paid Amount</span>
                   <span className="text-2xl font-bold text-black">
                     {formatCurrency(order.total_amount)}
                   </span>
@@ -580,15 +594,15 @@ export default function InternationalDeliveryPaymentPage() {
                   />
                 </svg>
               </div>
-              <h2 className="text-2xl font-semibold text-black mb-2">결제 완료!</h2>
+              <h2 className="text-2xl font-semibold text-black mb-2">Payment Confirmed!</h2>
               <p className="text-zinc-600 mb-6">
-                배송비 결제가 성공적으로 완료되었습니다.
+                Your Payment has been Confirmed
               </p>
               <button
                 onClick={() => setShowSuccessModal(false)}
                 className="w-full px-6 py-3 bg-black text-white rounded-md font-medium hover:opacity-90 transition-opacity"
               >
-                확인
+                Proceed
               </button>
             </div>
           </div>
