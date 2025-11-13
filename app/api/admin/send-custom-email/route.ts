@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 
 type Recipient = {
   email: string;
@@ -117,17 +116,51 @@ export async function POST(request: NextRequest) {
     const body: SendCustomEmailRequest = await request.json();
     const { recipients, subject, htmlContent, textContent } = body;
 
+    console.log('Received request body:', {
+      recipientCount: recipients?.length,
+      hasSubject: !!subject,
+      hasHtmlContent: !!htmlContent,
+      hasTextContent: !!textContent,
+      sampleRecipient: recipients?.[0],
+    });
+
     // Validate inputs
     if (!recipients || recipients.length === 0) {
+      console.error('Validation failed: No recipients provided');
       return NextResponse.json(
         { error: 'No recipients provided' },
         { status: 400 }
       );
     }
 
-    if (!subject || !htmlContent || !textContent) {
+    // Validate each recipient has required fields
+    const invalidRecipients = recipients.filter(r => !r.email || !r.name);
+    if (invalidRecipients.length > 0) {
+      console.error('Validation failed: Invalid recipients', invalidRecipients);
       return NextResponse.json(
-        { error: 'Subject, HTML content, and text content are required' },
+        {
+          error: 'All recipients must have email and name fields',
+          invalidCount: invalidRecipients.length,
+        },
+        { status: 400 }
+      );
+    }
+
+    if (!subject || !htmlContent || !textContent) {
+      console.error('Validation failed:', {
+        hasSubject: !!subject,
+        hasHtmlContent: !!htmlContent,
+        hasTextContent: !!textContent,
+      });
+      return NextResponse.json(
+        {
+          error: 'Subject, HTML content, and text content are required',
+          details: {
+            hasSubject: !!subject,
+            hasHtmlContent: !!htmlContent,
+            hasTextContent: !!textContent,
+          }
+        },
         { status: 400 }
       );
     }
@@ -145,74 +178,97 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Prepare messages for each recipient with personalization
-    const messages = recipients.map((recipient) => {
-      const orderId = recipient.orderId || recipient.id;
-      const personalizedSubject = replaceVariables(subject, recipient.name, recipient.email, orderId);
-      const personalizedTextContent = replaceVariables(textContent, recipient.name, recipient.email, orderId);
-      const personalizedHtmlContent = generateHtmlEmail(
-        personalizedSubject,
-        replaceVariables(htmlContent, recipient.name, recipient.email, orderId)
-      );
-
-      return {
-        From: {
-          Email: FROM_EMAIL,
-          Name: FROM_NAME,
-        },
-        To: [
-          {
-            Email: recipient.email,
-            Name: recipient.name,
-          },
-        ],
-        Subject: personalizedSubject,
-        TextPart: personalizedTextContent,
-        HTMLPart: personalizedHtmlContent,
-        CustomID: `custom-email-${Date.now()}-${recipient.email}`,
-      };
-    });
-
     // Create Basic Auth header
     const authString = Buffer.from(`${MAILJET_API_KEY}:${MAILJET_SECRET_KEY}`).toString('base64');
 
-    // Send emails via Mailjet API
-    const response = await fetch('https://api.mailjet.com/v3.1/send', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Basic ${authString}`,
-      },
-      body: JSON.stringify({ Messages: messages }),
-    });
+    // Send emails one by one using a for loop
+    let successCount = 0;
+    let failureCount = 0;
+    const errors: Array<{ email: string; error: string }> = [];
 
-    console.log('Mailjet response status:', response.status);
+    for (let i = 0; i < recipients.length; i++) {
+      const recipient = recipients[i];
+      const orderId = recipient.orderId || recipient.id;
 
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => '');
-      console.error('Mailjet API error:', errorText);
-      return NextResponse.json(
-        { error: `Mailjet API failed: ${response.status}` },
-        { status: response.status }
-      );
+      console.log(`Sending email ${i + 1}/${recipients.length} to ${recipient.email}`);
+
+      try {
+        const personalizedSubject = replaceVariables(subject, recipient.name, recipient.email, orderId);
+        const personalizedTextContent = replaceVariables(textContent, recipient.name, recipient.email, orderId);
+        const personalizedHtmlContent = generateHtmlEmail(
+          personalizedSubject,
+          replaceVariables(htmlContent, recipient.name, recipient.email, orderId)
+        );
+
+        const message = {
+          From: {
+            Email: FROM_EMAIL,
+            Name: FROM_NAME,
+          },
+          To: [
+            {
+              Email: recipient.email,
+              Name: recipient.name,
+            },
+          ],
+          Subject: personalizedSubject,
+          TextPart: personalizedTextContent,
+          HTMLPart: personalizedHtmlContent,
+          CustomID: `custom-email-${Date.now()}-${i}-${recipient.email}`,
+        };
+
+        // Send individual email via Mailjet API
+        const response = await fetch('https://api.mailjet.com/v3.1/send', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Basic ${authString}`,
+          },
+          body: JSON.stringify({ Messages: [message] }),
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text().catch(() => '');
+          console.error(`Failed to send email to ${recipient.email}:`, errorText);
+          errors.push({ email: recipient.email, error: `API error: ${response.status}` });
+          failureCount++;
+        } else {
+          const responseData = await response.json().catch(() => ({}));
+          console.log(`Email sent successfully to ${recipient.email}:`, responseData);
+
+          // Check if Mailjet marked it as success
+          const mailjetSuccess = responseData.Messages?.[0]?.Status === 'success';
+          if (mailjetSuccess) {
+            successCount++;
+          } else {
+            failureCount++;
+            errors.push({
+              email: recipient.email,
+              error: responseData.Messages?.[0]?.Errors?.[0]?.ErrorMessage || 'Unknown error'
+            });
+          }
+        }
+      } catch (error) {
+        console.error(`Error sending email to ${recipient.email}:`, error);
+        errors.push({
+          email: recipient.email,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
+        failureCount++;
+      }
+
+      // Small delay to avoid rate limiting (50ms between emails)
+      if (i < recipients.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
     }
 
-    // Parse the response
-    const responseData = await response.json().catch(() => ({}));
-    console.log('Mailjet response data:', responseData);
-
-    // Count successful sends
-    const successCount = responseData.Messages?.filter(
-      (msg: any) => msg.Status === 'success'
-    ).length || 0;
-
-    const failureCount = recipients.length - successCount;
-
     return NextResponse.json({
-      success: true,
+      success: successCount > 0,
       successCount,
       failureCount,
       totalRecipients: recipients.length,
+      errors: errors.length > 0 ? errors : undefined,
     });
 
   } catch (error) {
