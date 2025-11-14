@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import Script from "next/script";
+import Link from "next/link";
 
 type OrderItem = {
   id: string;
@@ -385,8 +386,8 @@ export default function InternationalDeliveryPaymentPage() {
           {/* Currency Selection at the top */}
           <div className="mb-6">
             {/* Back button */}
-            <button
-              onClick={() => router.back()}
+            <Link
+              href="/home"
               className="flex items-center gap-2 text-zinc-600 hover:text-black transition-colors mb-6"
             >
             <svg
@@ -403,7 +404,7 @@ export default function InternationalDeliveryPaymentPage() {
               <path d="M19 12H5M12 19l-7-7 7-7" />
             </svg>
             <span className="text-sm font-medium">Back</span>
-          </button>
+          </Link>
             <div className="flex items-center justify-between mb-4">
               
               <h1 className="text-3xl font-semibold text-black">Delivery Fee Payment</h1>
