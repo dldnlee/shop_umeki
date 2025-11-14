@@ -33,7 +33,7 @@ export default function Header() {
   return (
     <header className="fixed top-0 z-40 bg-black/20 backdrop-blur-2xl border-b border-white/20 w-full flex flex-col items-center py-2 sm:py-3">
       <div className="max-w-6xl w-full">
-        <div className="flex items-center px-3 sm:px-8 gap-4">
+        <div className="flex items-center justify-center px-3 sm:px-8 gap-4">
           {/* Logo/Brand - Left Section */}
           <div className="flex-1 flex justify-start">
             <Link href="/" className="text-xs sm:text-xl md:text-2xl font-semibold text-white transition-opacity">
@@ -109,16 +109,8 @@ export default function Header() {
             </div>
           </div>
 
-          {/* View Order Button - Right Section */}
-          <div className="flex-1 flex justify-end">
-            <Link
-              href="/order"
-              className="text-white border border-white/30 rounded-full px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium hover:bg-white/10 transition-all duration-200 whitespace-nowrap"
-              aria-label="View order"
-            >
-              주문 조회
-            </Link>
-          </div>
+          {/* Empty Right Section for layout balance */}
+          <div className="flex-1"></div>
         </div>
       </div>
     </header>
