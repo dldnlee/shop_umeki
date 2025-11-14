@@ -37,6 +37,27 @@ export default function OrderLookupPage() {
     <div className="min-h-screen bg-zinc-50 font-sans text-foreground">
       <main className="max-w-2xl mx-auto p-8 pt-24">
         <div className="bg-white rounded-lg border border-black/6 shadow-sm p-8 md:p-12">
+          {/* Back Button */}
+          <button
+            onClick={() => router.back()}
+            className="flex items-center gap-2 text-zinc-600 hover:text-black transition-colors mb-6"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M19 12H5M12 19l-7-7 7-7" />
+            </svg>
+            <span className="text-sm font-medium">뒤로 가기</span>
+          </button>
+
           {/* Title */}
           <h1 className="text-3xl font-semibold text-black mb-2">
             주문 조회

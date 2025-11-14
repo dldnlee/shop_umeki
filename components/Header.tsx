@@ -4,7 +4,11 @@ import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { useTab } from "@/components/TabProvider";
 
-export default function Header() {
+interface HeaderProps {
+  onMenuClick?: () => void;
+}
+
+export default function Header({ onMenuClick }: HeaderProps) {
   const { activeTab, setActiveTab } = useTab();
   const fanmeetingRef = useRef<HTMLButtonElement>(null);
   const goodsRef = useRef<HTMLButtonElement>(null);
@@ -33,7 +37,7 @@ export default function Header() {
   return (
     <header className="fixed top-0 z-40 bg-black/20 backdrop-blur-2xl border-b border-white/20 w-full flex flex-col items-center py-2 sm:py-3">
       <div className="max-w-6xl w-full">
-        <div className="flex items-center px-3 sm:px-8 gap-4">
+        <div className="flex items-center justify-center px-3 sm:px-8 gap-4">
           {/* Logo/Brand - Left Section */}
           <div className="flex-1 flex justify-start">
             <Link href="/" className="text-xs sm:text-xl md:text-2xl font-semibold text-white transition-opacity">
@@ -109,15 +113,28 @@ export default function Header() {
             </div>
           </div>
 
-          {/* View Order Button - Right Section */}
+          {/* Hamburger Menu Button - Right Section */}
           <div className="flex-1 flex justify-end">
-            <Link
-              href="/order"
-              className="text-white border border-white/30 rounded-full px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium hover:bg-white/10 transition-all duration-200 whitespace-nowrap"
-              aria-label="View order"
+            <button
+              onClick={onMenuClick}
+              className="p-2 rounded-lg bg-black/20 backdrop-blur-xl border border-white/20 text-white hover:bg-black/30 transition-all duration-200"
+              aria-label="Toggle menu"
             >
-              주문 조회
-            </Link>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5 sm:h-6 sm:w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M4 6h16M4 12h16M4 18h16"
+                />
+              </svg>
+            </button>
           </div>
         </div>
       </div>
