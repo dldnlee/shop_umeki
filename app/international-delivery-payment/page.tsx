@@ -151,7 +151,7 @@ export default function InternationalDeliveryPaymentSearchPage() {
               disabled={loading}
               className="w-full px-6 py-3 bg-black text-white rounded-md font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? "Searching..." : "Search Orders"}
+              {loading ? "Searching..." : "Search Order"}
             </button>
           </form>
 
