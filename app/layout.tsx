@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "유메키 팬미팅",
-  description: "유메키 팬미팅",
+  title: "You Make It Shop | 유메키 굿즈",
+  description: "You Make It Shop | 유메키 굿즈",
 };
 
 export default function RootLayout({

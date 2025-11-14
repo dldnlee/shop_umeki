@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+type OrderType = "original" | "hypetown";
+
 /**
  * Order Lookup Page
  *
@@ -11,6 +13,7 @@ import { useRouter } from "next/navigation";
 export default function OrderLookupPage() {
   const [orderId, setOrderId] = useState("");
   const [error, setError] = useState("");
+  const [orderType, setOrderType] = useState<OrderType>("original");
   const router = useRouter();
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -25,8 +28,9 @@ export default function OrderLookupPage() {
     // Clear any previous errors
     setError("");
 
-    // Navigate to order details page
-    router.push(`/order/${orderId.trim()}`);
+    // Navigate to order details page with order type
+    const suffix = orderType === "hypetown" ? "_hypetown" : "";
+    router.push(`/order/${orderId.trim()}${suffix}`);
   };
 
   return (
@@ -40,6 +44,38 @@ export default function OrderLookupPage() {
           <p className="text-zinc-600 mb-8">
             주문번호를 입력하시면 주문 상세 정보를 확인하실 수 있습니다
           </p>
+
+          {/* Order Type Tabs */}
+          <div className="flex gap-2 mb-6 border-b border-zinc-200">
+            <button
+              type="button"
+              onClick={() => setOrderType("original")}
+              className={`px-4 py-2 font-medium text-sm transition-colors relative ${
+                orderType === "original"
+                  ? "text-black"
+                  : "text-zinc-500 hover:text-zinc-700"
+              }`}
+            >
+              일반 주문 고객
+              {orderType === "original" && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-black" />
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => setOrderType("hypetown")}
+              className={`px-4 py-2 font-medium text-sm transition-colors relative ${
+                orderType === "hypetown"
+                  ? "text-black"
+                  : "text-zinc-500 hover:text-zinc-700"
+              }`}
+            >
+              Hypetown 주문 고객
+              {orderType === "hypetown" && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-black" />
+              )}
+            </button>
+          </div>
 
           {/* Order ID Input Form */}
           <form onSubmit={handleSubmit} className="space-y-6">
