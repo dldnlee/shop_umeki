@@ -56,7 +56,7 @@ export default function OrderLookupPage() {
                   : "text-zinc-500 hover:text-zinc-700"
               }`}
             >
-              일반 주문
+              일반 주문 고객
               {orderType === "original" && (
                 <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-black" />
               )}
@@ -70,7 +70,7 @@ export default function OrderLookupPage() {
                   : "text-zinc-500 hover:text-zinc-700"
               }`}
             >
-              하이타운 주문
+              Hypetown 주문 고객
               {orderType === "hypetown" && (
                 <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-black" />
               )}

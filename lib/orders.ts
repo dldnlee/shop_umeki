@@ -171,7 +171,7 @@ export async function createOrder(
 /**
  * Get order by ID with its items
  */
-export async function getOrderById(orderId: string, type: string) {
+export async function getOrderById(orderId: string, type?: string) {
   try {
     const { data: order, error: orderError } = await supabase
       .from(`${type === 'original' ? "umeki_orders" : "umeki_orders_hypetown"}`)
