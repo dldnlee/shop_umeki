@@ -48,16 +48,20 @@ export default function OrderDetailsPage() {
   const [isSavingCustomsCode, setIsSavingCustomsCode] = useState(false);
   const [customsCodeMessage, setCustomsCodeMessage] = useState("");
 
+  // Detect order type from URL - if ID ends with "_hypetown", it's a hypetown order
+  const orderType = orderId?.endsWith("_hypetown") ? "hypetown" : "original";
+  const cleanOrderId = orderId?.replace("_hypetown", "");
+
   useEffect(() => {
     const fetchOrderDetails = async () => {
-      if (!orderId) {
+      if (!cleanOrderId) {
         setError("주문번호가 유효하지 않습니다");
         setLoading(false);
         return;
       }
 
       try {
-        const result = await getOrderById(orderId);
+        const result = await getOrderById(cleanOrderId, orderType);
 
         if (result.success && result.data) {
           setOrder(result.data.order);
@@ -75,7 +79,7 @@ export default function OrderDetailsPage() {
     };
 
     fetchOrderDetails();
-  }, [orderId]);
+  }, [cleanOrderId, orderType]);
 
   // Format date helper
   const formatDate = (dateString: string) => {
@@ -128,13 +132,13 @@ export default function OrderDetailsPage() {
 
   // Handle customs code save
   const handleSaveCustomsCode = async () => {
-    if (!orderId) return;
+    if (!cleanOrderId) return;
 
     setIsSavingCustomsCode(true);
     setCustomsCodeMessage("");
 
     try {
-      const response = await fetch(`/api/admin/orders/${orderId}`, {
+      const response = await fetch(`/api/admin/orders/${cleanOrderId}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",

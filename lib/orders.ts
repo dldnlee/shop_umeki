@@ -171,10 +171,10 @@ export async function createOrder(
 /**
  * Get order by ID with its items
  */
-export async function getOrderById(orderId: string) {
+export async function getOrderById(orderId: string, type: string) {
   try {
     const { data: order, error: orderError } = await supabase
-      .from("umeki_orders")
+      .from(`${type === 'original' ? "umeki_orders" : "umeki_orders_hypetown"}`)
       .select("*")
       .eq("id", orderId)
       .single();
@@ -184,7 +184,7 @@ export async function getOrderById(orderId: string) {
     }
 
     const { data: items, error: itemsError } = await supabase
-      .from("umeki_order_items")
+      .from(`${type === 'original' ? "umeki_order_items" : "umeki_order_items_hypetown"}`)
       .select(`
         *,
         umeki_products (
