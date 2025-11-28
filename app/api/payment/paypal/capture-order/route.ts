@@ -1,128 +1,89 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from 'next/server';
+import paypal from '@paypal/checkout-server-sdk';
+
+/**
+ * POST /api/payment/paypal/capture-order
+ *
+ * Captures payment for a PayPal order using the @paypal/checkout-server-sdk.
+ * This is step 3 of the PayPal checkout flow.
+ * Called from the client-side PayPal button after buyer approves.
+ */
+
+// Configure PayPal environment
+function getPayPalClient() {
+  const clientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID;
+  const clientSecret = process.env.PAYPAL_CLIENT_SECRET;
+  const isSandbox = process.env.NEXT_PUBLIC_PAYPAL_SANDBOX === 'true';
+
+  if (!clientId || !clientSecret) {
+    throw new Error('PayPal credentials not configured');
+  }
+
+  const environment = isSandbox
+    ? new paypal.core.SandboxEnvironment(clientId, clientSecret)
+    : new paypal.core.LiveEnvironment(clientId, clientSecret);
+
+  return new paypal.core.PayPalHttpClient(environment);
+}
 
 export async function POST(request: NextRequest) {
   try {
-    const { orderId } = await request.json();
+    const body = await request.json();
+    const { orderId } = body;
 
     // Validate required fields
     if (!orderId) {
       return NextResponse.json(
         {
           success: false,
-          message: "Missing required field: orderId"
+          error: 'Order ID required',
+          message: '주문 ID가 필요합니다'
         },
         { status: 400 }
       );
     }
 
-    // Get PayPal credentials from environment
-    const clientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID;
-    const clientSecret = process.env.PAYPAL_CLIENT_SECRET;
-    const isSandbox = process.env.NEXT_PUBLIC_PAYPAL_SANDBOX === "true";
+    // Get PayPal client
+    const client = getPayPalClient();
 
-    if (!clientId || !clientSecret) {
-      console.error("PayPal credentials not configured");
-      return NextResponse.json(
-        {
-          success: false,
-          message: "PayPal configuration error"
-        },
-        { status: 500 }
-      );
-    }
+    // Create capture request
+    const captureRequest = new paypal.orders.OrdersCaptureRequest(orderId);
+    captureRequest.prefer('return=representation');
+    // Note: requestBody is optional for capture requests
 
-    // PayPal API URL
-    const baseURL = isSandbox
-      ? "https://api-m.sandbox.paypal.com"
-      : "https://api-m.paypal.com";
+    console.log('Capturing PayPal order with SDK:', orderId);
 
-    // Step 1: Get OAuth token
-    const authResponse = await fetch(`${baseURL}/v1/oauth2/token`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        Authorization: `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString("base64")}`,
-      },
-      body: "grant_type=client_credentials",
-    });
+    // Execute request
+    const response = await client.execute(captureRequest);
 
-    if (!authResponse.ok) {
-      const errorData = await authResponse.json();
-      console.error("PayPal OAuth error:", errorData);
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Failed to authenticate with PayPal"
-        },
-        { status: 500 }
-      );
-    }
+    console.log('PayPal order captured successfully:', response.result.id);
 
-    const authData = await authResponse.json();
-    const accessToken = authData.access_token;
-
-    // Step 2: Capture payment
-    const captureResponse = await fetch(
-      `${baseURL}/v2/checkout/orders/${orderId}/capture`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-      }
-    );
-
-    if (!captureResponse.ok) {
-      const errorData = await captureResponse.json();
-      console.error("PayPal capture error:", errorData);
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Failed to capture payment",
-          details: errorData
-        },
-        { status: 500 }
-      );
-    }
-
-    const captureData = await captureResponse.json();
-
-    // Extract capture details
-    const capture = captureData.purchase_units?.[0]?.payments?.captures?.[0];
-
-    if (!capture) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "No capture data found in response"
-        },
-        { status: 500 }
-      );
-    }
-
-    // Extract original order ID from custom_id or reference_id
-    const originalOrderId = captureData.purchase_units?.[0]?.custom_id ||
-                           captureData.purchase_units?.[0]?.reference_id;
+    // Extract transaction details
+    const result = response.result;
+    const transactionId = result.id;
+    const status = result.status;
+    const purchaseUnit = result.purchase_units?.[0];
+    const capture = purchaseUnit?.payments?.captures?.[0];
 
     return NextResponse.json({
       success: true,
-      orderId: captureData.id,
-      originalOrderId: originalOrderId,
-      status: captureData.status,
-      captureId: capture.id,
-      paymentId: capture.id,
-      amount: capture.amount.value,
-      currency: capture.amount.currency_code,
-      message: "Payment captured successfully",
+      orderId: transactionId,
+      status: status,
+      captureId: capture?.id,
+      paymentId: capture?.id,
+      amount: purchaseUnit?.amount?.value,
+      currency: purchaseUnit?.amount?.currency_code,
+      message: 'Payment captured successfully'
     });
 
   } catch (error) {
-    console.error("Error in PayPal capture-order route:", error);
+    console.error('PayPal capture-order error:', error);
+    const errorMessage = error instanceof Error ? error.message : '서버 오류 발생';
     return NextResponse.json(
       {
         success: false,
-        message: error instanceof Error ? error.message : "Internal server error"
+        error: 'Server error',
+        message: errorMessage
       },
       { status: 500 }
     );
