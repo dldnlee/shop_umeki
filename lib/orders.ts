@@ -40,28 +40,7 @@ export async function createOrder(
   cartItems: CartItem[]
 ) {
   try {
-    // First, verify inventory availability
-    const inventoryCheck = await verifyInventoryAvailability(supabase, cartItems);
 
-    if (!inventoryCheck.available) {
-      const unavailableItems = inventoryCheck.unavailableItems || [];
-      const itemsList = unavailableItems
-        .map(item => `Product ${item.productId}${item.option ? ` (${item.option})` : ''}: requested ${item.requested}, available ${item.available}`)
-        .join('; ');
-
-      return {
-        success: false,
-        error: {
-          message: `Insufficient inventory: ${itemsList}`,
-          unavailableItems
-        }
-      };
-    }
-
-    // Determine order status based on payment method
-    // PayPal orders start as 'waiting' until payment is confirmed
-    // Card orders are 'paid' immediately after Easy Pay confirmation
-    const orderStatus = orderData.payment_method === "paypal" ? "waiting" : "paid";
 
     // Insert the order
     const { data: order, error: orderError } = await supabase
@@ -76,7 +55,7 @@ export async function createOrder(
           delivery_method: orderData.delivery_method,
           payment_method: orderData.payment_method || null,
           total_amount: orderData.total_amount,
-          order_status: orderStatus,
+          order_status: "paid",
         },
       ])
       .select()

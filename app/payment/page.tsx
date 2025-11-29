@@ -1,21 +1,30 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { getCart, getCartTotal, updateCartDeliveryMethod, type CartItem, type DeliveryMethod } from "@/lib/cart";
 import { formatKRW } from "@/lib/utils";
 import Link from "next/link";
 import { AddressSearch } from "@/components/AddressSearch";
+import { loadScript } from "@paypal/paypal-js";
 
 type PaymentMethod = "card" | "paypal";
+type PayPalCurrency = "USD" | "JPY";
 
 // Replace this with your actual API key
 const JUSO_API_KEY = process.env.NEXT_PUBLIC_JUSO_API_KEY || "YOUR_API_KEY_HERE";
+const PAYPAL_CLIENT_ID = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || "";
 
 // Payment method display mapping
 const PAYMENT_METHODS: { value: PaymentMethod; label: string }[] = [
   { value: "card", label: "신용카드" },
-  // { value: "paypal", label: "PayPal" },
+  { value: "paypal", label: "PayPal" },
 ];
+
+// Currency conversion rates (KRW to other currencies)
+const CONVERSION_RATES = {
+  USD: 0.00077, // 1 KRW ≈ 0.00077 USD (approximately 1300 KRW = 1 USD)
+  JPY: 0.11,    // 1 KRW ≈ 0.11 JPY (approximately 9 KRW = 1 JPY)
+};
 
 export default function PaymentPage() {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -27,8 +36,10 @@ export default function PaymentPage() {
   const [zipCode, setZipCode] = useState("");
   const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>("팬미팅현장수령");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
+  const [paypalCurrency, setPaypalCurrency] = useState<PayPalCurrency>("USD");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(true);
+  const paypalRenderingRef = useRef(false);
 
   // Initialize delivery method for cart items on mount
   useEffect(() => {
@@ -160,12 +171,19 @@ export default function PaymentPage() {
                   customerName: result.data.order.name,
                   customerEmail: result.data.order.email,
                   orderDate: orderDate,
-                  items: result.data.items.map((item) => ({
-                    productName: `상품 ID: ${item.product_id}`,
-                    productOption: item.option,
-                    quantity: item.quantity,
-                    totalPrice: item.total_price,
-                  })),
+                  items: result.data.items.map((item) => {
+                    // Find the corresponding cart item by matching product_id and option
+                    const cartItem = cartItems.find((ci: CartItem) =>
+                      ci.productId === item.product_id &&
+                      (ci.option || null) === (item.option || null)
+                    );
+                    return {
+                      productName: cartItem?.productName || 'Unknown Product',
+                      productOption: item.option,
+                      quantity: item.quantity,
+                      totalPrice: item.total_price,
+                    };
+                  }),
                   totalAmount: result.data.order.total_amount,
                   deliveryMethod: result.data.order.delivery_method,
                   address: result.data.order.address,
@@ -227,6 +245,270 @@ export default function PaymentPage() {
       window.removeEventListener("message", handleMessage);
     };
   }, []);
+
+  // Calculate totals (needed by multiple functions)
+  const total = getCartTotal();
+  const deliveryFee = deliveryMethod === "해외배송" ? 18000 : deliveryMethod === "국내배송" ? 3000 : 0;
+  const finalTotal = total + deliveryFee;
+
+  // Currency conversion helper
+  const convertKRWToCurrency = useCallback((krwAmount: number, targetCurrency: PayPalCurrency): number => {
+    if (targetCurrency === "USD") {
+      // Convert to USD cents
+      return Math.round(krwAmount * CONVERSION_RATES.USD * 100);
+    } else {
+      // Convert to JPY (whole number, no decimals)
+      return Math.round(krwAmount * CONVERSION_RATES.JPY);
+    }
+  }, []);
+
+  // PayPal initialization function
+  const initializePayPalButtons = useCallback(async () => {
+    if (paymentMethod !== "paypal" || !PAYPAL_CLIENT_ID) return;
+
+    // Prevent concurrent rendering
+    if (paypalRenderingRef.current) {
+      console.log('PayPal buttons already rendering, skipping');
+      return;
+    }
+
+    // Check if container exists and is in the DOM
+    const container = document.getElementById('paypal-button-container');
+    if (!container || !container.isConnected) {
+      console.warn('PayPal button container not found or not in DOM');
+      return;
+    }
+
+    // Only clear if there are existing children
+    if (container.children.length > 0) {
+      container.innerHTML = ''; // Clear previous buttons
+    }
+
+    paypalRenderingRef.current = true;
+
+    try {
+      // Load PayPal SDK using @paypal/paypal-js
+      const paypal = await loadScript({
+        clientId: PAYPAL_CLIENT_ID,
+        currency: paypalCurrency,
+      });
+
+      if (!paypal || !paypal.Buttons) {
+        console.error('PayPal SDK failed to load');
+        paypalRenderingRef.current = false;
+        return;
+      }
+
+      // Render PayPal buttons
+      paypal.Buttons({
+        // Create order on client side and server side
+        createOrder: async () => {
+          try {
+            // Generate unique order ID
+            const orderId = `ord-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+
+            // Call backend to create order with currency conversion
+            const response = await fetch('/api/payment/paypal/create-order', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                amount: convertKRWToCurrency(finalTotal, paypalCurrency),
+                currency: paypalCurrency,
+                orderId: orderId,
+                shippingFee: convertKRWToCurrency(deliveryFee, paypalCurrency),
+                items: cartItems.map(item => ({
+                  name: item.productName,
+                  sku: item.productId,
+                  quantity: String(item.quantity),
+                  unit_amount: {
+                    currency_code: paypalCurrency,
+                    value: String(convertKRWToCurrency(item.price, paypalCurrency))
+                  }
+                }))
+              }),
+            });
+
+            const data = await response.json();
+            if (!data.success) {
+              throw new Error(data.message || 'Order creation failed');
+            }
+
+            // Store PayPal order ID for later use
+            sessionStorage.setItem('paypalOrderId', data.orderId);
+            return data.orderId;
+          } catch (error) {
+            console.error('PayPal order creation error:', error);
+            throw error;
+          }
+        },
+
+        // Handle order approval
+        onApprove: async (data: { orderID: string }) => {
+          try {
+            const paypalOrderId = data.orderID;
+
+            // Validate form fields
+            if (!name.trim()) {
+              alert("이름을 입력해주세요");
+              return;
+            }
+            if (!email.trim()) {
+              alert("이메일을 입력해주세요");
+              return;
+            }
+            if (!phone.trim()) {
+              alert("전화번호를 입력해주세요");
+              return;
+            }
+            if (deliveryMethod !== "팬미팅현장수령" && !address.trim()) {
+              alert("주소를 입력해주세요");
+              return;
+            }
+            if (!agreedToTerms) {
+              alert("개인정보 수집 및 이용, 결제 진행에 동의해주세요");
+              return;
+            }
+
+            // Capture payment
+            const captureResponse = await fetch('/api/payment/paypal/capture-order', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                orderId: paypalOrderId
+              }),
+            });
+
+            const captureData = await captureResponse.json();
+            if (!captureData.success) {
+              throw new Error(captureData.message || 'Payment capture failed');
+            }
+
+            // Prepare address string
+            const fullAddress = deliveryMethod !== "팬미팅현장수령"
+              ? `[${zipCode}] ${address} ${addressDetail}`.trim()
+              : null;
+
+            // Create order in database
+            const orderData = {
+              name: name,
+              email: email,
+              phone_num: phone,
+              address: fullAddress,
+              delivery_method: deliveryMethod,
+              payment_method: 'paypal' as PaymentMethod,
+              total_amount: finalTotal,
+              paypal_id: captureData.paymentId || paypalOrderId,
+            };
+
+            const { createOrder } = await import('@/lib/orders');
+            const result = await createOrder(orderData, cartItems);
+
+            if (!result.success) {
+              const errorMessage = result.error && typeof result.error === 'object' && 'message' in result.error
+                ? String(result.error.message)
+                : "주문 생성 중 오류가 발생했습니다";
+              throw new Error(errorMessage);
+            }
+
+            // Send PayPal payment confirmation email
+            if (result.data?.order && result.data?.items) {
+              try {
+                const orderDate = new Date(result.data.order.created_at).toLocaleString('ko-KR', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                });
+                await fetch('/api/email/send-order-confirmation', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    orderId: result.data.order.id,
+                    customerName: result.data.order.name,
+                    customerEmail: result.data.order.email,
+                    orderDate: orderDate,
+                    items: result.data.items.map((item) => {
+                      // Find the corresponding cart item by matching product_id and option
+                      const cartItem = cartItems.find((ci: CartItem) =>
+                        ci.productId === item.product_id &&
+                        (ci.option || null) === (item.option || null)
+                      );
+                      return {
+                        productName: cartItem?.productName || 'Unknown Product',
+                        productOption: item.option,
+                        quantity: item.quantity,
+                        totalPrice: item.total_price,
+                      };
+                    }),
+                    totalAmount: result.data.order.total_amount,
+                    deliveryMethod: result.data.order.delivery_method,
+                    address: result.data.order.address,
+                    phoneNum: result.data.order.phone_num,
+                  }),
+                });
+              } catch (emailError) {
+                console.error('Email send error:', emailError);
+                // Don't fail order if email fails
+              }
+            }
+
+            // Clear cart and session
+            const { clearCart } = await import('@/lib/cart');
+            clearCart();
+            sessionStorage.removeItem('paypalOrderId');
+
+            // Redirect to complete page
+            window.location.href = `/payment/complete?orderId=${result.data?.order.id}`;
+
+          } catch (error) {
+            console.error('PayPal approval error:', error);
+            alert(error instanceof Error ? error.message : 'PayPal 결제 처리 중 오류가 발생했습니다.');
+          }
+        },
+
+        // Handle errors
+        onError: (error: unknown) => {
+          console.error('PayPal error:', error);
+          const errorMessage = (error as { message?: string })?.message || '결제 중 오류가 발생했습니다.';
+          alert(`PayPal 오류: ${errorMessage}`);
+        },
+
+        // Handle cancellation
+        onCancel: () => {
+          console.log('PayPal payment cancelled');
+          sessionStorage.removeItem('paypalOrderId');
+        },
+      }).render('#paypal-button-container')
+        .then(() => {
+          console.log('PayPal buttons rendered successfully');
+          paypalRenderingRef.current = false;
+        })
+        .catch((err: unknown) => {
+          console.error('PayPal button render error:', err);
+          paypalRenderingRef.current = false;
+        });
+    } catch (error) {
+      console.error('PayPal initialization error:', error);
+      paypalRenderingRef.current = false;
+    }
+  }, [paymentMethod, paypalCurrency, finalTotal, cartItems, name, email, phone, address, zipCode, addressDetail, deliveryMethod, agreedToTerms, convertKRWToCurrency, deliveryFee]);
+
+  // Initialize PayPal buttons when payment method or currency changes
+  useEffect(() => {
+    if (paymentMethod === 'paypal') {
+      initializePayPalButtons();
+    } else {
+      // Reset rendering flag when switching away from PayPal
+      paypalRenderingRef.current = false;
+    }
+  }, [paymentMethod, paypalCurrency, initializePayPalButtons]);
 
   // Note: Payment callback is now handled by /payment/callback page
   // which communicates with this page via postMessage for popup flow
@@ -294,89 +576,6 @@ export default function PaymentPage() {
     setZipCode(selectedZipCode);
   };
 
-  const handlePayPalPayment = async (orderData: {
-    name: string;
-    email: string;
-    phone_num: string;
-    address: string | null;
-    delivery_method: DeliveryMethod;
-    payment_method: PaymentMethod;
-    total_amount: number;
-    easy_pay_id: string | null;
-  }) => {
-    try {
-      // For PayPal, create order directly and go to complete page
-      const { createOrder } = await import('@/lib/orders');
-      const result = await createOrder(orderData, cartItems);
-
-      if (!result.success) {
-        const errorMessage = result.error && typeof result.error === 'object' && 'message' in result.error
-          ? String(result.error.message)
-          : "주문 생성 중 오류가 발생했습니다";
-        throw new Error(errorMessage);
-      }
-
-      // Send PayPal pending payment email
-      if (result.data?.order && result.data?.items) {
-        try {
-          // Format order date
-          const orderDate = new Date(result.data.order.created_at).toLocaleString('ko-KR', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-          });
-
-          // Send PayPal pending email via API route
-          const emailRes = await fetch('/api/email/send-paypal-pending', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              orderId: result.data.order.id,
-              customerName: result.data.order.name,
-              customerEmail: result.data.order.email,
-              orderDate: orderDate,
-              items: result.data.items.map((item) => ({
-                productName: `상품 ID: ${item.product_id}`,
-                productOption: item.option,
-                quantity: item.quantity,
-                totalPrice: item.total_price,
-              })),
-              totalAmount: result.data.order.total_amount,
-              deliveryMethod: result.data.order.delivery_method,
-              address: result.data.order.address,
-              phoneNum: result.data.order.phone_num,
-              paypalEmail: 'tkay@grigoent.co.kr',
-            }),
-          });
-
-          const emailData = await emailRes.json();
-          if (emailData.success) {
-            console.log('PayPal pending payment email sent successfully');
-          } else {
-            console.error('Failed to send email:', emailData.error);
-          }
-        } catch (emailError) {
-          // Log email error but don't fail the order
-          console.error('Failed to send PayPal pending payment email:', emailError);
-        }
-      }
-
-      // Clear cart
-      const { clearCart } = await import('@/lib/cart');
-      clearCart();
-
-      // Redirect to complete page
-      window.location.href = `/payment/complete?orderId=${result.data?.order.id}`;
-    } catch (error) {
-      console.error('PayPal payment error:', error);
-      throw error;
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -422,24 +621,18 @@ export default function PaymentPage() {
         easy_pay_id: null,
       };
 
-      // Route based on payment method
-      if (paymentMethod === "paypal") {
-        // PayPal: Create order directly and go to complete page
-        await handlePayPalPayment(orderData);
-      } else {
-        // Card: Use Easy Pay flow
-        // Store order data in both sessionStorage and localStorage for use after payment success
-        // sessionStorage for popup flow, localStorage as fallback for redirect flow
-        const pendingOrderJson = JSON.stringify({
-          orderData,
-          cartItems
-        });
-        sessionStorage.setItem('pendingOrder', pendingOrderJson);
-        localStorage.setItem('pendingOrder', pendingOrderJson);
+      // Card: Use Easy Pay flow
+      // Store order data in both sessionStorage and localStorage for use after payment success
+      // sessionStorage for popup flow, localStorage as fallback for redirect flow
+      const pendingOrderJson = JSON.stringify({
+        orderData,
+        cartItems
+      });
+      sessionStorage.setItem('pendingOrder', pendingOrderJson);
+      localStorage.setItem('pendingOrder', pendingOrderJson);
 
-        // Request payment - order will be created in callback after successful payment
-        await requestPayment();
-      }
+      // Request payment - order will be created in callback after successful payment
+      await requestPayment();
     } catch (error) {
       console.error("Payment error:", error);
       alert(error instanceof Error ? error.message : "결제 처리 중 오류가 발생했습니다. 다시 시도해주세요.");
@@ -451,10 +644,6 @@ export default function PaymentPage() {
       setIsSubmitting(false);
     }
   };
-
-  const total = getCartTotal();
-  const deliveryFee = deliveryMethod === "해외배송" ? 12000 : deliveryMethod === "국내배송" ? 3000 : 0;
-  const finalTotal = total + deliveryFee;
 
   // Check if all required fields are filled
   const isFormValid = () => {
@@ -661,7 +850,7 @@ export default function PaymentPage() {
                           )}
                           {method === "해외배송" && (
                             <span className="text-sm text-zinc-600">
-                              +{formatKRW(12000)}
+                              +{formatKRW(18000)}
                             </span>
                           )}
                           {method === "국내배송" && (
@@ -672,17 +861,17 @@ export default function PaymentPage() {
                         </div>
                         {method === "팬미팅현장수령" && (
                           <p className="text-xs text-zinc-600 mt-1">
-                            * 팬미팅 현장에서 직접 수령합니다.
+                            * 현장에서 직접 수령합니다.
                           </p>
                         )}
                         {method === "국내배송" && (
                           <p className="text-xs text-zinc-600 mt-1">
-                            * 팬미팅 일정 전 배송이 보장되지 않습니다.
+                            * 이벤트 일정 전 배송이 보장되지 않습니다.
                           </p>
                         )}
                         {method === "해외배송" && (
                           <p className="text-xs text-zinc-600 mt-1">
-                            * 팬미팅 일정 전 배송이 보장되지 않습니다.
+                            * 이벤트 일정 전 배송이 보장되지 않습니다.
                           </p>
                         )}
                       </div>
@@ -698,7 +887,7 @@ export default function PaymentPage() {
                       viewBox="0 0 24 24"
                       strokeWidth={2}
                       stroke="currentColor"
-                      className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5"
+                      className="w-5 h-5 text-amber-600 shrink-0 mt-0.5"
                     >
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
                     </svg>
@@ -791,6 +980,21 @@ export default function PaymentPage() {
                 </div>
               )}
 
+              {/* Agreement Checkbox */}
+              <div className="mb-6">
+                <label className="flex items-start gap-3 p-4 rounded-md border border-zinc-300 cursor-pointer hover:bg-zinc-50 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={agreedToTerms}
+                    onChange={(e) => setAgreedToTerms(e.target.checked)}
+                    className="w-5 h-5 mt-0.5 text-black rounded focus:ring-2 focus:ring-zinc-400"
+                  />
+                  <span className="text-sm text-black flex-1">
+                    개인정보 수집 및 이용, 결제 진행에 동의합니다. <span className="text-red-500">*</span>
+                  </span>
+                </label>
+              </div>
+
               {/* Payment Method */}
               <div className="mb-6">
                 <label className="block text-sm font-medium text-black mb-2">
@@ -839,32 +1043,82 @@ export default function PaymentPage() {
                 </div>
               </div>
 
-              {/* Agreement Checkbox */}
-              <div className="mb-6">
-                <label className="flex items-start gap-3 p-4 rounded-md border border-zinc-300 cursor-pointer hover:bg-zinc-50 transition-colors">
-                  <input
-                    type="checkbox"
-                    checked={agreedToTerms}
-                    onChange={(e) => setAgreedToTerms(e.target.checked)}
-                    className="w-5 h-5 mt-0.5 text-black rounded focus:ring-2 focus:ring-zinc-400"
-                  />
-                  <span className="text-sm text-black flex-1">
-                    개인정보 수집 및 이용, 결제 진행에 동의합니다. <span className="text-red-500">*</span>
-                  </span>
-                </label>
-              </div>
 
-              {/* Submit Button */}
-              <button
-                type="submit"
-                disabled={isSubmitting || !isFormValid()}
-                className="w-full py-3 px-6 bg-black text-white rounded-md font-medium text-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isSubmitting ? "Processing..." : "Complete Payment"}
-              </button>
+              {/* Submit Button or PayPal Buttons */}
+              {paymentMethod === "card" ? (
+                <button
+                  type="submit"
+                  disabled={isSubmitting || !isFormValid()}
+                  className="w-full py-3 px-6 bg-black text-white rounded-md font-medium text-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSubmitting ? "Processing..." : "Complete Payment"}
+                </button>
+              ) : (
+                <>
+                  {/* Currency Selection for PayPal */}
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-black mb-2">
+                      PayPal 결제 통화 선택 <span className="text-red-500">*</span>
+                    </label>
+                    <div className="space-y-2">
+                      <label className="flex items-center gap-3 p-3 rounded-md border border-zinc-300 cursor-pointer hover:bg-zinc-50 transition-colors">
+                        <input
+                          type="radio"
+                          name="paypalCurrency"
+                          value="USD"
+                          checked={paypalCurrency === "USD"}
+                          onChange={(e) => setPaypalCurrency(e.target.value as PayPalCurrency)}
+                          className="w-4 h-4 text-black"
+                        />
+                        <div className="flex-1">
+                          <span className="text-black font-medium">USD (미국 달러)</span>
+                          <p className="text-xs text-zinc-600 mt-1">
+                            예상 금액: ${(finalTotal * CONVERSION_RATES.USD).toFixed(2)}
+                          </p>
+                        </div>
+                      </label>
+                      <label className="flex items-center gap-3 p-3 rounded-md border border-zinc-300 cursor-pointer hover:bg-zinc-50 transition-colors">
+                        <input
+                          type="radio"
+                          name="paypalCurrency"
+                          value="JPY"
+                          checked={paypalCurrency === "JPY"}
+                          onChange={(e) => setPaypalCurrency(e.target.value as PayPalCurrency)}
+                          className="w-4 h-4 text-black"
+                        />
+                        <div className="flex-1">
+                          <span className="text-black font-medium">JPY (일본 엔화)</span>
+                          <p className="text-xs text-zinc-600 mt-1">
+                            예상 금액: ¥{Math.round(finalTotal * CONVERSION_RATES.JPY).toLocaleString()}
+                          </p>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-md">
+                    <p className="text-sm text-blue-800">
+                      PayPal로 결제하려면 아래 &quot;Pay with PayPal&quot; 버튼을 클릭하세요.
+                    </p>
+                    <p className="text-xs text-blue-700 mt-2">
+                      * 환율은 자동으로 변환되며, 실제 결제 금액은 PayPal 환율에 따라 달라질 수 있습니다.
+                    </p>
+                  </div>
+                  {PAYPAL_CLIENT_ID ? (
+                    <div id="paypal-button-container" className="w-full"></div>
+                  ) : (
+                    <div className="w-full p-4 bg-red-50 border border-red-200 rounded-md">
+                      <p className="text-sm text-red-800">
+                        PayPal이 구성되지 않았습니다. 관리자에게 문의하세요.
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
             </form>
           </div>
         </div>
+
       </main>
     </div>
   );
