@@ -8,6 +8,7 @@ import { getOrderById } from "@/lib/orders";
 type Order = {
   id: string;
   easy_pay_id?: string | null;
+  invoice_id?: string | null;
   name: string;
   email: string;
   phone_num?: string | null;
@@ -252,45 +253,7 @@ export default function OrderDetailsPage() {
           <h1 className="text-3xl font-semibold text-black">주문 상세</h1>
         </div>
 
-        <div className="space-y-6">{/* Customs Code Card */}
-          <div className="bg-white rounded-lg border border-black/6 shadow-sm p-6">
-            <h2 className="text-xl font-semibold text-black mb-4">통관 정보</h2>
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="customsCode" className="block text-sm font-medium text-zinc-700 mb-2">
-                  통관 코드
-                </label>
-                <div className="flex gap-3">
-                  <input
-                    id="customsCode"
-                    type="text"
-                    value={customsCode}
-                    onChange={(e) => setCustomsCode(e.target.value)}
-                    placeholder="통관 코드를 입력하세요"
-                    className="flex-1 px-4 py-2 border border-zinc-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
-                  />
-                  <button
-                    onClick={handleSaveCustomsCode}
-                    disabled={isSavingCustomsCode}
-                    className="px-6 py-2 bg-black text-white rounded-md font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isSavingCustomsCode ? "저장 중..." : "저장"}
-                  </button>
-                </div>
-                {customsCodeMessage && (
-                  <p className={`mt-2 text-sm ${customsCodeMessage.includes("오류") ? "text-red-600" : "text-green-600"}`}>
-                    {customsCodeMessage}
-                  </p>
-                )}
-              </div>
-              {order.customs_code && (
-                <div className="flex justify-between text-sm pt-3 border-t border-zinc-200">
-                  <span className="text-zinc-600">저장된 통관 코드</span>
-                  <span className="font-mono text-black">{order.customs_code}</span>
-                </div>
-              )}
-            </div>
-          </div>
+        <div className="space-y-6">
           {/* Order Status Card */}
           <div className="bg-white rounded-lg border border-black/6 shadow-sm p-6">
             <div className="flex items-center justify-between mb-4">
@@ -319,6 +282,12 @@ export default function OrderDetailsPage() {
                 <div className="flex justify-between">
                   <span className="text-zinc-600">결제 ID</span>
                   <span className="font-mono text-black">{order.easy_pay_id}</span>
+                </div>
+              )}
+              {order.invoice_id && (
+                <div className="flex justify-between">
+                  <span className="text-blue-500 font-extrabold">Tracking ID</span>
+                  <span className="font-mono text-black">{order.invoice_id}</span>
                 </div>
               )}
             </div>
