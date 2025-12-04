@@ -268,7 +268,6 @@ export default function OrderDetailsPage() {
         </div>
 
         <div className="space-y-6">
-          <button className="bg-blue-200 rounded-sm px-2 py-1 text-md" onClick={handleViewOrder}>주문조회하기</button>
           {/* Order Status Card */}
           <div className="bg-white rounded-lg border border-black/6 shadow-sm p-6">
             <div className="flex items-center justify-between mb-4">
