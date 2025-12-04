@@ -1,10 +1,10 @@
 
 'use client'
 
-import { useEffect } from "react";
+import { useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-export default function WidgetSuccessPage() {
+function WidgetSuccessPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -69,5 +69,20 @@ export default function WidgetSuccessPage() {
         <p className="text-lg text-zinc-700">결제를 확인하고 있습니다...</p>
       </div>
     </div>
+  );
+}
+
+export default function WidgetSuccessPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-zinc-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black mx-auto mb-4"></div>
+          <p className="text-lg text-zinc-700">결제를 확인하고 있습니다...</p>
+        </div>
+      </div>
+    }>
+      <WidgetSuccessPageContent />
+    </Suspense>
   );
 }
