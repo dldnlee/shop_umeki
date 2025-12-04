@@ -292,7 +292,6 @@ export default function DeliveryPage() {
     switch (status) {
       case 'cancel':
         return 'bg-red-100 text-red-800';
-
       case 'paid':
         return 'bg-yellow-100 text-yellow-800';
       case 'delivered':

@@ -1,3 +1,5 @@
+import { v4 as uuidv4 } from 'uuid';
+
 /**
  * Format a number as Korean Won currency
  * @param amount - The amount to format
@@ -41,4 +43,9 @@ export function formatJPY(amount: number): string {
  */
 export function formatNumber(amount: number): string {
   return amount.toLocaleString("ko-KR");
+}
+
+
+export function generateUUID() {
+  return uuidv4();
 }

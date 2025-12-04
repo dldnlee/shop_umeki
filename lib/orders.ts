@@ -2,6 +2,7 @@ import { supabase } from "./supabase";
 import { CartItem } from "./cart";
 import { deductInventoryForOrder, verifyInventoryAvailability } from "./inventory-deduction";
 import { Product } from "@/models";
+import { generateUUID } from "./utils";
 
 export type Order = {
   id?: string; // UUID
@@ -16,6 +17,7 @@ export type Order = {
   total_amount: number;
   created_at?: string;
   updated_at?: string;
+  toss_payment_id?: string;
 };
 
 export type OrderItem = {
@@ -36,7 +38,7 @@ export type OrderItem = {
  * @returns The created order with items, or null if failed
  */
 export async function createOrder(
-  orderData: Omit<Order, "id" | "created_at" | "updated_at" | "order_status">,
+  orderData: Omit<Order, "created_at" | "updated_at" | "order_status">,
   cartItems: CartItem[]
 ) {
   try {
@@ -46,7 +48,8 @@ export async function createOrder(
     const { data: order, error: orderError } = await supabase
       .from("umeki_orders")
       .insert([
-        {
+        { 
+          id: orderData.id || generateUUID(),
           easy_pay_id: orderData.easy_pay_id || null,
           name: orderData.name,
           email: orderData.email,
@@ -56,6 +59,7 @@ export async function createOrder(
           payment_method: orderData.payment_method || null,
           total_amount: orderData.total_amount,
           order_status: "paid",
+          toss_payment_id: orderData.toss_payment_id
         },
       ])
       .select()

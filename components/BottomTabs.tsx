@@ -2,7 +2,6 @@
 
 import { useTab } from "@/components/TabProvider";
 import { useCartModal } from "@/components/CartModalProvider";
-import Link from "next/link";
 
 export default function BottomTabs() {
   const { activeTab } = useTab();
@@ -64,30 +63,6 @@ export default function BottomTabs() {
           </>
         )}
       </button>
-      {/* Additional Link button (only visible when not fanmeeting) */}
-      {activeTab !== "fanmeeting" && (
-        <a
-          target="_blank"
-          href="https://www.hypetown.kr/event/mhollwh1-3dti"
-          className="px-6 bg-black text-white py-2.5 sm:px-8 sm:py-3 rounded-full text-sm sm:text-base shadow-xl hover:shadow-2xl hover:scale-105 active:scale-95 transition-all duration-200 whitespace-nowrap flex items-center justify-center gap-2"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-4 w-4 sm:h-5 sm:w-5"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M12 2a10 10 0 100 20 10 10 0 000-20zM2 12h20M12 2c2.5 2.5 4 6.5 4 10s-1.5 7.5-4 10m0-20c-2.5 2.5-4 6.5-4 10s1.5 7.5 4 10"
-            />
-          </svg>
-          For Foreign Customers
-        </a>
-      )}
     </div>
   );
 }

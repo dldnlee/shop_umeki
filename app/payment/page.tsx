@@ -2,12 +2,13 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { getCart, getCartTotal, updateCartDeliveryMethod, type CartItem, type DeliveryMethod } from "@/lib/cart";
-import { formatKRW } from "@/lib/utils";
+import { formatKRW, generateUUID } from "@/lib/utils";
 import Link from "next/link";
 import { AddressSearch } from "@/components/AddressSearch";
 import { loadScript } from "@paypal/paypal-js";
+import TossPaymentWidget from "@/components/TossPaymentWidget";
 
-type PaymentMethod = "card" | "paypal";
+type PaymentMethod = "card" | "paypal" | "toss";
 type PayPalCurrency = "USD" | "JPY";
 
 // Replace this with your actual API key
@@ -16,7 +17,8 @@ const PAYPAL_CLIENT_ID = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || "";
 
 // Payment method display mapping
 const PAYMENT_METHODS: { value: PaymentMethod; label: string }[] = [
-  { value: "card", label: "신용카드" },
+  // { value: "card", label: "신용카드" },
+  { value: "toss", label: "간편결제" },
   { value: "paypal", label: "PayPal" },
 ];
 
@@ -35,11 +37,14 @@ export default function PaymentPage() {
   const [addressDetail, setAddressDetail] = useState("");
   const [zipCode, setZipCode] = useState("");
   const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>("팬미팅현장수령");
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("toss");
   const [paypalCurrency, setPaypalCurrency] = useState<PayPalCurrency>("USD");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(true);
+  const [isFormValid, setIsFormValid] = useState(false);
+  const [orderId, setOrderId] = useState("");
   const paypalRenderingRef = useRef(false);
+
 
   // Initialize delivery method for cart items on mount
   useEffect(() => {
@@ -48,7 +53,26 @@ export default function PaymentPage() {
       updateCartDeliveryMethod(deliveryMethod);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
+    setOrderId(generateUUID());
   }, []); // Only run once on mount
+
+  // Check form validity whenever relevant fields change
+  useEffect(() => {
+    const checkValidity = () => {
+      if (!name.trim() || !email.trim() || !phone.trim()) {
+        return false;
+      }
+      if (deliveryMethod !== "팬미팅현장수령" && !address.trim()) {
+        return false;
+      }
+      if (!agreedToTerms) {
+        return false;
+      }
+      return true;
+    };
+
+    setIsFormValid(checkValidity());
+  }, [name, email, phone, address, deliveryMethod, agreedToTerms]);
 
   useEffect(() => {
     // Load cart from localStorage on mount (client-side only)
@@ -579,25 +603,9 @@ export default function PaymentPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validation
-    if (!name.trim()) {
-      alert("이름을 입력해주세요");
-      return;
-    }
-    if(!email.trim()){
-      alert("이메일을 입력해주세요")
-      return;
-    }
-    if (!phone.trim()) {
-      alert("전화번호를 입력해주세요");
-      return;
-    }
-    if (deliveryMethod !== "팬미팅현장수령" && !address.trim()) {
-      alert("주소를 입력해주세요");
-      return;
-    }
-    if (!agreedToTerms) {
-      alert("개인정보 수집 및 이용, 결제 진행에 동의해주세요");
+    // Validation - use the state
+    if (!isFormValid) {
+      alert("모든 필수 정보를 입력해주세요");
       return;
     }
 
@@ -645,20 +653,6 @@ export default function PaymentPage() {
     }
   };
 
-  // Check if all required fields are filled
-  const isFormValid = () => {
-    if (!name.trim() || !email.trim() || !phone.trim()) {
-      return false;
-    }
-    if (deliveryMethod !== "팬미팅현장수령" && !address.trim()) {
-      return false;
-    }
-    if (!agreedToTerms) {
-      return false;
-    }
-    return true;
-  };
-
   if (cartItems.length === 0) {
     return (
       <div className="min-h-screen bg-zinc-50 font-sans text-foreground">
@@ -684,7 +678,7 @@ export default function PaymentPage() {
 
   return (
     <div className="min-h-screen bg-zinc-50 font-sans text-foreground">
-      <main className="max-w-4xl mx-auto p-8">
+      <main className="max-w-4xl mx-auto p-4">
         <Link href=".." className="inline-flex items-center gap-2 text-zinc-700 hover:text-black transition-colors mb-6">
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -698,17 +692,14 @@ export default function PaymentPage() {
           </svg>
           <span className="font-medium">Back</span>
         </Link>
-        <h1 className="text-3xl font-semibold text-black mb-8">
-          Payment
-        </h1>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 gap-8">
           {/* Order Summary */}
-          <div className="order-1 lg:order-1">
+          <div className="order-1">
             <h2 className="text-xl font-semibold text-black mb-4">
               Order Summary
             </h2>
-            <div className="bg-white rounded-lg border border-black/6 shadow-sm p-6">
+            <div className="bg-white rounded-lg border border-black/6 shadow-sm p-5">
               <div className="space-y-4 mb-6">
                 {cartItems.map((item) => (
                   <div
@@ -759,14 +750,14 @@ export default function PaymentPage() {
             <h2 className="text-xl font-semibold text-black mb-4">
               Delivery Information
             </h2>
-            <form onSubmit={handleSubmit} className="bg-white rounded-lg border border-black/6 shadow-sm p-6">
+            <form onSubmit={handleSubmit} className="bg-white rounded-lg border border-black/6 shadow-sm p-5">
               {/* Name */}
               <div className="mb-6">
                 <label
                   htmlFor="name"
                   className="block text-sm font-medium text-black mb-2"
                 >
-                  Name <span className="text-red-500">*</span>
+                  이름 (Name) <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -784,7 +775,7 @@ export default function PaymentPage() {
                   htmlFor="name"
                   className="block text-sm font-medium text-black mb-2"
                 >
-                  Email <span className="text-red-500">*</span>
+                  이메일 (Email) <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="email"
@@ -803,7 +794,7 @@ export default function PaymentPage() {
                   htmlFor="phone"
                   className="block text-sm font-medium text-black mb-2"
                 >
-                  Phone Number <span className="text-red-500">*</span>
+                  전화번호 (Phone Number) <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="tel"
@@ -811,7 +802,7 @@ export default function PaymentPage() {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   className="w-full px-4 py-2 bg-white border border-zinc-300 rounded-md text-black focus:outline-none focus:ring-2 focus:ring-zinc-400"
-                  placeholder="010-1234-5678"
+                  placeholder="01012345678"
                   required
                 />
               </div>
@@ -819,7 +810,7 @@ export default function PaymentPage() {
               {/* Delivery Method */}
               <div className="mb-6">
                 <label className="block text-sm font-medium text-black mb-2">
-                  Delivery Method <span className="text-red-500">*</span>
+                  배송 수단 (Delivery Method) <span className="text-red-500">*</span>
                 </label>
                 <div className="space-y-2">
                   {(["팬미팅현장수령", "국내배송", "해외배송"] as DeliveryMethod[]).map((method) => (
@@ -918,7 +909,7 @@ export default function PaymentPage() {
                   {(zipCode || deliveryMethod === "해외배송") && (
                     <div>
                       <label className="block text-sm font-medium text-black mb-2">
-                        우편번호 <span className="text-red-500">*</span>
+                        우편번호 (Postal Code) <span className="text-red-500">*</span>
                       </label>
                       <input
                         type="text"
@@ -942,7 +933,7 @@ export default function PaymentPage() {
                       htmlFor="address"
                       className="block text-sm font-medium text-black mb-2"
                     >
-                      도로명 주소 <span className="text-red-500">*</span>
+                      도로명 주소 (Address Line 1) <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
@@ -966,7 +957,7 @@ export default function PaymentPage() {
                       htmlFor="addressDetail"
                       className="block text-sm font-medium text-black mb-2"
                     >
-                      상세 주소
+                      상세 주소 (Address Line 2)
                     </label>
                     <input
                       type="text"
@@ -995,125 +986,148 @@ export default function PaymentPage() {
                 </label>
               </div>
 
-              {/* Payment Method */}
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-black mb-2">
-                  Payment Method <span className="text-red-500">*</span>
-                </label>
-                <div className="space-y-2">
-                  {PAYMENT_METHODS.map((method) => (
-                    <label
-                      key={method.value}
-                      className="flex items-center gap-3 p-3 rounded-md border border-zinc-300 cursor-pointer hover:bg-zinc-50 transition-colors"
-                    >
-                      <input
-                        type="radio"
-                        name="paymentMethod"
-                        value={method.value}
-                        checked={paymentMethod === method.value}
-                        onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
-                        className="w-4 h-4 text-black"
-                      />
-                      {method.value === "card" ? (
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          strokeWidth={1.5}
-                          stroke="currentColor"
-                          className="w-5 h-5 text-zinc-700"
-                        >
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
-                        </svg>
-                      ) : (
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          strokeWidth={1.5}
-                          stroke="currentColor"
-                          className="w-5 h-5 text-zinc-700"
-                        >
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 21v-8.25M15.75 21v-8.25M8.25 21v-8.25M3 9l9-6 9 6m-1.5 12V10.332A48.36 48.36 0 0012 9.75c-2.551 0-5.056.2-7.5.582V21M3 21h18M12 6.75h.008v.008H12V6.75z" />
-                        </svg>
-                      )}
-                      <span className="text-black">{method.label}</span>
-                    </label>
-                  ))}
+              {/* Payment Logic */}
+              {!isFormValid && (
+                <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-md">
+                  <p className="text-sm text-amber-800">
+                    결제를 진행하려면 모든 필수 정보를 입력해주세요.
+                  </p>
                 </div>
-              </div>
+              )}
 
-
-              {/* Submit Button or PayPal Buttons */}
-              {paymentMethod === "card" ? (
-                <button
-                  type="submit"
-                  disabled={isSubmitting || !isFormValid()}
-                  className="w-full py-3 px-6 bg-black text-white rounded-md font-medium text-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isSubmitting ? "Processing..." : "Complete Payment"}
-                </button>
-              ) : (
-                <>
-                  {/* Currency Selection for PayPal */}
-                  <div className="mb-4">
+              {isFormValid && (
+                <div>
+                  {/* Payment Method */}
+                  <div className="mb-6">
                     <label className="block text-sm font-medium text-black mb-2">
-                      PayPal 결제 통화 선택 <span className="text-red-500">*</span>
+                      결제 수단 (Payment Method) <span className="text-red-500">*</span>
                     </label>
-                    <div className="space-y-2">
-                      <label className="flex items-center gap-3 p-3 rounded-md border border-zinc-300 cursor-pointer hover:bg-zinc-50 transition-colors">
-                        <input
-                          type="radio"
-                          name="paypalCurrency"
-                          value="USD"
-                          checked={paypalCurrency === "USD"}
-                          onChange={(e) => setPaypalCurrency(e.target.value as PayPalCurrency)}
-                          className="w-4 h-4 text-black"
-                        />
-                        <div className="flex-1">
-                          <span className="text-black font-medium">USD (미국 달러)</span>
-                          <p className="text-xs text-zinc-600 mt-1">
-                            예상 금액: ${(finalTotal * CONVERSION_RATES.USD).toFixed(2)}
-                          </p>
-                        </div>
-                      </label>
-                      <label className="flex items-center gap-3 p-3 rounded-md border border-zinc-300 cursor-pointer hover:bg-zinc-50 transition-colors">
-                        <input
-                          type="radio"
-                          name="paypalCurrency"
-                          value="JPY"
-                          checked={paypalCurrency === "JPY"}
-                          onChange={(e) => setPaypalCurrency(e.target.value as PayPalCurrency)}
-                          className="w-4 h-4 text-black"
-                        />
-                        <div className="flex-1">
-                          <span className="text-black font-medium">JPY (일본 엔화)</span>
-                          <p className="text-xs text-zinc-600 mt-1">
-                            예상 금액: ¥{Math.round(finalTotal * CONVERSION_RATES.JPY).toLocaleString()}
-                          </p>
-                        </div>
-                      </label>
+                    <div className="flex gap-3">
+                      {PAYMENT_METHODS.map((method) => (
+                        <label
+                          key={method.value}
+                          className="flex items-center gap-3 p-3 rounded-md border border-zinc-300 cursor-pointer hover:bg-zinc-50 transition-colors w-full"
+                        >
+                          <input
+                            type="radio"
+                            name="paymentMethod"
+                            value={method.value}
+                            checked={paymentMethod === method.value}
+                            onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
+                            className="w-4 h-4 text-black"
+                          />
+                          <span className="text-black">{method.label}</span>
+                        </label>
+                      ))}
                     </div>
                   </div>
-
-                  <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-md">
-                    <p className="text-sm text-blue-800">
-                      PayPal로 결제하려면 아래 &quot;Pay with PayPal&quot; 버튼을 클릭하세요.
-                    </p>
-                    <p className="text-xs text-blue-700 mt-2">
-                      * 환율은 자동으로 변환되며, 실제 결제 금액은 PayPal 환율에 따라 달라질 수 있습니다.
-                    </p>
-                  </div>
-                  {PAYPAL_CLIENT_ID ? (
-                    <div id="paypal-button-container" className="w-full"></div>
-                  ) : (
-                    <div className="w-full p-4 bg-red-50 border border-red-200 rounded-md">
-                      <p className="text-sm text-red-800">
-                        PayPal이 구성되지 않았습니다. 관리자에게 문의하세요.
+                {/* Toss Widget, or PayPal Buttons */}
+                {paymentMethod === "toss" ? (
+                  <>
+                    {/* Toss Payment Widget */}
+                      <TossPaymentWidget
+                        amount={finalTotal}
+                        orderId={`${orderId}`}
+                        orderName={cartItems.length === 1
+                          ? cartItems[0].productName
+                          : `${cartItems[0].productName} 외 ${cartItems.length - 1}건`}
+                        customerEmail={email}
+                        customerName={name}
+                        customerMobilePhone={phone}
+                        successUrl={window.location.origin + "/toss/success"}
+                        failUrl={window.location.origin + "/toss/fail"}
+                        enableCoupon={false}
+                        onReady={() => console.log("Toss payment widget ready")}
+                        onError={(error) => {
+                          console.error("Toss payment error:", error);
+                          alert(`결제 위젯 오류: ${error.message}`);
+                        }}
+                        onBeforePaymentRequest={() => {
+                          // Prepare address string
+                          const fullAddress = deliveryMethod !== "팬미팅현장수령"
+                            ? `[${zipCode}] ${address} ${addressDetail}`.trim()
+                            : null;
+                          // Prepare order data to be used after payment confirmation
+                          const orderData = {
+                            id: orderId,
+                            name: name,
+                            email: email,
+                            phone_num: phone,
+                            address: fullAddress,
+                            delivery_method: deliveryMethod,
+                            total_amount: finalTotal,
+                          };
+                          // Store in sessionStorage for use in success page
+                          sessionStorage.setItem('pendingTossOrder', JSON.stringify({
+                            orderData,
+                            cartItems
+                          }));
+                          console.log('Order data stored for Toss payment');
+                        }}
+                      />
+                  </>
+                ) : (
+                  <>
+                    {/* Currency Selection for PayPal */}
+                    <div className={`mb-4`}>
+                      <label className="block text-sm font-medium text-black mb-2">
+                        PayPal 결제 통화 선택 <span className="text-red-500">*</span>
+                      </label>
+                      <div className="space-y-2">
+                        <label className="flex items-center gap-3 p-3 rounded-md border border-zinc-300 cursor-pointer hover:bg-zinc-50 transition-colors">
+                          <input
+                            type="radio"
+                            name="paypalCurrency"
+                            value="USD"
+                            checked={paypalCurrency === "USD"}
+                            onChange={(e) => setPaypalCurrency(e.target.value as PayPalCurrency)}
+                            className="w-4 h-4 text-black"
+                          />
+                          <div className="flex-1">
+                            <span className="text-black font-medium">USD (미국 달러)</span>
+                            <p className="text-xs text-zinc-600 mt-1">
+                              예상 금액: ${(finalTotal * CONVERSION_RATES.USD).toFixed(2)}
+                            </p>
+                          </div>
+                        </label>
+                        <label className="flex items-center gap-3 p-3 rounded-md border border-zinc-300 cursor-pointer hover:bg-zinc-50 transition-colors">
+                          <input
+                            type="radio"
+                            name="paypalCurrency"
+                            value="JPY"
+                            checked={paypalCurrency === "JPY"}
+                            onChange={(e) => setPaypalCurrency(e.target.value as PayPalCurrency)}
+                            className="w-4 h-4 text-black"
+                          />
+                          <div className="flex-1">
+                            <span className="text-black font-medium">JPY (일본 엔화)</span>
+                            <p className="text-xs text-zinc-600 mt-1">
+                              예상 금액: ¥{Math.round(finalTotal * CONVERSION_RATES.JPY).toLocaleString()}
+                            </p>
+                          </div>
+                        </label>
+                      </div>
+                    </div>
+                    <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-md">
+                      <p className="text-sm text-blue-800">
+                        PayPal로 결제하려면 아래 &quot;Pay with PayPal&quot; 버튼을 클릭하세요.
+                      </p>
+                      <p className="text-xs text-blue-700 mt-2">
+                        * 환율은 자동으로 변환되며, 실제 결제 금액은 PayPal 환율에 따라 달라질 수 있습니다.
                       </p>
                     </div>
-                  )}
-                </>
+                    {PAYPAL_CLIENT_ID ? (
+                      <div id="paypal-button-container" className="w-full flex"></div>
+                    ) : (
+                      <div className="w-full p-4 bg-red-50 border border-red-200 rounded-md">
+                        <p className="text-sm text-red-800">
+                          Paypal is not setup properly. Please contact customer support
+                        </p>
+                      </div>
+                    )}
+                  </>
+                )}
+                </div>
               )}
             </form>
           </div>
