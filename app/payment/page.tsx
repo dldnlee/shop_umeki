@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { getCart, getCartTotal, updateCartDeliveryMethod, type CartItem, type DeliveryMethod } from "@/lib/cart";
-import { formatKRW } from "@/lib/utils";
+import { formatKRW, generateUUID } from "@/lib/utils";
 import Link from "next/link";
 import { AddressSearch } from "@/components/AddressSearch";
 import { loadScript } from "@paypal/paypal-js";
@@ -42,7 +42,9 @@ export default function PaymentPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(true);
   const [isFormValid, setIsFormValid] = useState(false);
+  const [orderId, setOrderId] = useState("");
   const paypalRenderingRef = useRef(false);
+
 
   // Initialize delivery method for cart items on mount
   useEffect(() => {
@@ -51,6 +53,7 @@ export default function PaymentPage() {
       updateCartDeliveryMethod(deliveryMethod);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
+    setOrderId(generateUUID());
   }, []); // Only run once on mount
 
   // Check form validity whenever relevant fields change
@@ -675,7 +678,7 @@ export default function PaymentPage() {
 
   return (
     <div className="min-h-screen bg-zinc-50 font-sans text-foreground">
-      <main className="max-w-4xl mx-auto p-8">
+      <main className="max-w-4xl mx-auto p-4">
         <Link href=".." className="inline-flex items-center gap-2 text-zinc-700 hover:text-black transition-colors mb-6">
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -689,17 +692,14 @@ export default function PaymentPage() {
           </svg>
           <span className="font-medium">Back</span>
         </Link>
-        <h1 className="text-3xl font-semibold text-black mb-8">
-          Payment
-        </h1>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 gap-8">
           {/* Order Summary */}
-          <div className="order-1 lg:order-1">
+          <div className="order-1">
             <h2 className="text-xl font-semibold text-black mb-4">
               Order Summary
             </h2>
-            <div className="bg-white rounded-lg border border-black/6 shadow-sm p-6">
+            <div className="bg-white rounded-lg border border-black/6 shadow-sm p-5">
               <div className="space-y-4 mb-6">
                 {cartItems.map((item) => (
                   <div
@@ -750,14 +750,14 @@ export default function PaymentPage() {
             <h2 className="text-xl font-semibold text-black mb-4">
               Delivery Information
             </h2>
-            <form onSubmit={handleSubmit} className="bg-white rounded-lg border border-black/6 shadow-sm p-6">
+            <form onSubmit={handleSubmit} className="bg-white rounded-lg border border-black/6 shadow-sm p-5">
               {/* Name */}
               <div className="mb-6">
                 <label
                   htmlFor="name"
                   className="block text-sm font-medium text-black mb-2"
                 >
-                  Name <span className="text-red-500">*</span>
+                  이름 (Name) <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -775,7 +775,7 @@ export default function PaymentPage() {
                   htmlFor="name"
                   className="block text-sm font-medium text-black mb-2"
                 >
-                  Email <span className="text-red-500">*</span>
+                  이메일 (Email) <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="email"
@@ -794,7 +794,7 @@ export default function PaymentPage() {
                   htmlFor="phone"
                   className="block text-sm font-medium text-black mb-2"
                 >
-                  Phone Number <span className="text-red-500">*</span>
+                  전화번호 (Phone Number) <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="tel"
@@ -802,7 +802,7 @@ export default function PaymentPage() {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   className="w-full px-4 py-2 bg-white border border-zinc-300 rounded-md text-black focus:outline-none focus:ring-2 focus:ring-zinc-400"
-                  placeholder="010-1234-5678"
+                  placeholder="01012345678"
                   required
                 />
               </div>
@@ -1021,13 +1021,13 @@ export default function PaymentPage() {
                       ))}
                     </div>
                   </div>
-                {/* Submit Button, Toss Widget, or PayPal Buttons */}
+                {/* Toss Widget, or PayPal Buttons */}
                 {paymentMethod === "toss" ? (
                   <>
                     {/* Toss Payment Widget */}
                       <TossPaymentWidget
                         amount={finalTotal}
-                        orderId={`ord-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`}
+                        orderId={`${orderId}`}
                         orderName={cartItems.length === 1
                           ? cartItems[0].productName
                           : `${cartItems[0].productName} 외 ${cartItems.length - 1}건`}
@@ -1049,6 +1049,7 @@ export default function PaymentPage() {
                             : null;
                           // Prepare order data to be used after payment confirmation
                           const orderData = {
+                            id: orderId,
                             name: name,
                             email: email,
                             phone_num: phone,

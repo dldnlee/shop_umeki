@@ -259,9 +259,6 @@ export default function CartModal({ isOpen, onClose }: CartModalProps) {
                                       </span>
                                     ) : (
                                       <>
-                                        <span className="text-[9px] sm:text-[10px] text-gray-500 ml-0.5">
-                                          ({maxQty})
-                                        </span>
                                         <div className="flex items-center gap-0.5">
                                           <button
                                             onClick={() => handleOptionChange(product.id, option, Math.max(0, quantity - 1))}
@@ -304,9 +301,6 @@ export default function CartModal({ isOpen, onClose }: CartModalProps) {
                                   </span>
                                 ) : (
                                   <>
-                                    <span className="text-[9px] sm:text-[10px] text-gray-500">
-                                      (Available: {maxQty})
-                                    </span>
                                     <div className="flex items-center gap-1">
                                       <button
                                         onClick={() => handleOptionChange(product.id, 'default', Math.max(0, currentQty - 1))}

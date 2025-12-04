@@ -2,6 +2,7 @@ import { supabase } from "./supabase";
 import { CartItem } from "./cart";
 import { deductInventoryForOrder, verifyInventoryAvailability } from "./inventory-deduction";
 import { Product } from "@/models";
+import { generateUUID } from "./utils";
 
 export type Order = {
   id?: string; // UUID
@@ -37,7 +38,7 @@ export type OrderItem = {
  * @returns The created order with items, or null if failed
  */
 export async function createOrder(
-  orderData: Omit<Order, "id" | "created_at" | "updated_at" | "order_status">,
+  orderData: Omit<Order, "created_at" | "updated_at" | "order_status">,
   cartItems: CartItem[]
 ) {
   try {
@@ -47,7 +48,8 @@ export async function createOrder(
     const { data: order, error: orderError } = await supabase
       .from("umeki_orders")
       .insert([
-        {
+        { 
+          id: orderData.id || generateUUID(),
           easy_pay_id: orderData.easy_pay_id || null,
           name: orderData.name,
           email: orderData.email,
