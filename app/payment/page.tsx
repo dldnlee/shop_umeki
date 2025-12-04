@@ -37,7 +37,7 @@ export default function PaymentPage() {
   const [addressDetail, setAddressDetail] = useState("");
   const [zipCode, setZipCode] = useState("");
   const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>("팬미팅현장수령");
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("toss");
   const [paypalCurrency, setPaypalCurrency] = useState<PayPalCurrency>("USD");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(true);
@@ -1069,7 +1069,7 @@ export default function PaymentPage() {
                 ) : (
                   <>
                     {/* Currency Selection for PayPal */}
-                    {/* <div className="mb-4">
+                    <div className={`mb-4`}>
                       <label className="block text-sm font-medium text-black mb-2">
                         PayPal 결제 통화 선택 <span className="text-red-500">*</span>
                       </label>
@@ -1115,9 +1115,9 @@ export default function PaymentPage() {
                       <p className="text-xs text-blue-700 mt-2">
                         * 환율은 자동으로 변환되며, 실제 결제 금액은 PayPal 환율에 따라 달라질 수 있습니다.
                       </p>
-                    </div> */}
+                    </div>
                     {PAYPAL_CLIENT_ID ? (
-                      <div id="paypal-button-container" className="w-full"></div>
+                      <div id="paypal-button-container" className="w-full flex"></div>
                     ) : (
                       <div className="w-full p-4 bg-red-50 border border-red-200 rounded-md">
                         <p className="text-sm text-red-800">
