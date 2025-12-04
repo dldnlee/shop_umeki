@@ -16,6 +16,7 @@ export type Order = {
   total_amount: number;
   created_at?: string;
   updated_at?: string;
+  toss_payment_id?: string;
 };
 
 export type OrderItem = {
@@ -56,6 +57,7 @@ export async function createOrder(
           payment_method: orderData.payment_method || null,
           total_amount: orderData.total_amount,
           order_status: "paid",
+          toss_payment_id: orderData.toss_payment_id
         },
       ])
       .select()

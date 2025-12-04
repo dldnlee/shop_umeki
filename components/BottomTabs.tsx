@@ -65,7 +65,7 @@ export default function BottomTabs() {
         )}
       </button>
       {/* Additional Link button (only visible when not fanmeeting) */}
-      {activeTab !== "fanmeeting" && (
+      {/* {activeTab !== "fanmeeting" && (
         <a
           target="_blank"
           href="https://www.hypetown.kr/event/mhollwh1-3dti"
@@ -87,7 +87,7 @@ export default function BottomTabs() {
           </svg>
           For Foreign Customers
         </a>
-      )}
+      )} */}
     </div>
   );
 }

@@ -1,95 +1,73 @@
 
 'use client'
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
 
 export default function WidgetSuccessPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [responseData, setResponseData] = useState(null);
 
   useEffect(() => {
     async function confirm() {
-      const requestData = {
-        orderId: searchParams.get("orderId"),
-        amount: searchParams.get("amount"),
-        paymentKey: searchParams.get("paymentKey"),
-      };
+      try {
+        // Get pending order data from sessionStorage
+        const pendingOrderJson = sessionStorage.getItem('pendingTossOrder');
+        if (!pendingOrderJson) {
+          throw new Error('주문 정보를 찾을 수 없습니다.');
+        }
 
-      const response = await fetch("/api/toss/confirm", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(requestData),
-      });
+        const { orderData, cartItems } = JSON.parse(pendingOrderJson);
 
-      const json = await response.json();
+        const requestData = {
+          orderId: searchParams.get("orderId"),
+          amount: searchParams.get("amount"),
+          paymentKey: searchParams.get("paymentKey"),
+          orderData,
+          cartItems,
+        };
 
-      if (!response.ok) {
-        throw { message: json.message, code: json.code };
+        const response = await fetch("/api/toss/confirm", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(requestData),
+        });
+
+        const json = await response.json();
+
+        if (!response.ok || !json.success) {
+          throw { message: json.message || json.error || '결제 확인 실패', code: json.code };
+        }
+
+        // Clear pending order data
+        sessionStorage.removeItem('pendingTossOrder');
+
+        // Clear cart
+        const { clearCart } = await import('@/lib/cart');
+        clearCart();
+
+        // Redirect to complete page with order ID
+        router.push(`/payment/complete?orderId=${json.orderId}`);
+      } catch (error) {
+        console.error('Payment confirmation error:', error);
+        sessionStorage.removeItem('pendingTossOrder');
+        const errorMessage = error instanceof Error ? error.message : '결제 확인 중 오류가 발생했습니다';
+        const errorCode = (error as { code?: string })?.code || 'UNKNOWN';
+        router.push(`/toss/fail?code=${errorCode}&message=${errorMessage}`);
       }
-
-      return json;
     }
 
-    confirm()
-      .then((data) => {
-        setResponseData(data);
-      })
-      .catch((error) => {
-        router.push(`/toss/fail?code=${error.code}&message=${error.message}`);
-      });
+    confirm();
   }, [searchParams, router]);
 
   return (
-    <>
-      <div className="box_section" style={{ width: "600px" }}>
-        <img width="100px" src="https://static.toss.im/illusts/check-blue-spot-ending-frame.png" />
-        <h2>결제를 완료했어요</h2>
-        <div className="p-grid typography--p" style={{ marginTop: "50px" }}>
-          <div className="p-grid-col text--left">
-            <b>결제금액</b>
-          </div>
-          <div className="p-grid-col text--right" id="amount">
-            {`${Number(searchParams.get("amount")).toLocaleString()}원`}
-          </div>
-        </div>
-        <div className="p-grid typography--p" style={{ marginTop: "10px" }}>
-          <div className="p-grid-col text--left">
-            <b>주문번호</b>
-          </div>
-          <div className="p-grid-col text--right" id="orderId">
-            {`${searchParams.get("orderId")}`}
-          </div>
-        </div>
-        <div className="p-grid typography--p" style={{ marginTop: "10px" }}>
-          <div className="p-grid-col text--left">
-            <b>paymentKey</b>
-          </div>
-          <div className="p-grid-col text--right" id="paymentKey" style={{ whiteSpace: "initial", width: "250px" }}>
-            {`${searchParams.get("paymentKey")}`}
-          </div>
-        </div>
-        <div className="p-grid-col">
-          <Link href="https://docs.tosspayments.com/guides/v2/payment-widget/integration">
-            <button className="button p-grid-col5">연동 문서</button>
-          </Link>
-          <Link href="https://discord.gg/A4fRFXQhRu">
-            <button className="button p-grid-col5" style={{ backgroundColor: "#e8f3ff", color: "#1b64da" }}>
-              실시간 문의
-            </button>
-          </Link>
-        </div>
+    <div className="min-h-screen bg-zinc-50 flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black mx-auto mb-4"></div>
+        <p className="text-lg text-zinc-700">결제를 확인하고 있습니다...</p>
       </div>
-      <div className="box_section" style={{ width: "600px", textAlign: "left" }}>
-        <b>Response Data :</b>
-        <div id="response" style={{ whiteSpace: "initial" }}>
-          {responseData && <pre>{JSON.stringify(responseData, null, 4)}</pre>}
-        </div>
-      </div>
-    </>
+    </div>
   );
 }
