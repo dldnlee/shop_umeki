@@ -290,8 +290,9 @@ export default function DeliveryPage() {
 
   const getStatusBadgeColor = (status?: string) => {
     switch (status) {
-      case 'waiting':
+      case 'cancel':
         return 'bg-red-100 text-red-800';
+
       case 'paid':
         return 'bg-yellow-100 text-yellow-800';
       case 'delivered':
@@ -699,6 +700,7 @@ export default function DeliveryPage() {
                             ${updatingStatus[order.id] ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-80'}
                           `}
                         >
+                          <option value="cancel">고객취소</option>
                           <option value="paid">배송전</option>
                           <option value="delivered">배송중</option>
                           <option value="complete">배송완료</option>
