@@ -12,6 +12,7 @@
     "@paypal/checkout-server-sdk": "^1.0.3",
     "@paypal/paypal-js": "^9.0.1",
     "@supabase/supabase-js": "^2.78.0",
+    "@tosspayments/tosspayments-sdk": "^2.5.0",
     "next": "16.0.1",
     "react": "19.2.0",
     "react-dom": "19.2.0",
