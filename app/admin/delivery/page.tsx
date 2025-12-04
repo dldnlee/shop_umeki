@@ -62,6 +62,7 @@ export default function DeliveryPage() {
   const [deliveryFeePaidFilter, setDeliveryFeePaidFilter] = useState<boolean | null>(null); // null = all, true = paid, false = unpaid
   const [emailSearch, setEmailSearch] = useState<string>('');
   const [updatingDeliveryFee, setUpdatingDeliveryFee] = useState<{ [orderId: string]: boolean }>({});
+  const [updatingStatus, setUpdatingStatus] = useState<{ [orderId: string]: boolean }>({});
 
   useEffect(() => {
     fetchProducts();
@@ -251,6 +252,37 @@ export default function DeliveryPage() {
     }
   };
 
+  const handleStatusChange = async (orderId: string, newStatus: string) => {
+    try {
+      setUpdatingStatus(prev => ({ ...prev, [orderId]: true }));
+
+      // Determine which table to use based on platform
+      const ordersTable = platformTab === 'hypetown' ? 'umeki_orders_hypetown' : 'umeki_orders';
+
+      const { error } = await supabase
+        .from(ordersTable)
+        .update({
+          order_status: newStatus
+        })
+        .eq('id', orderId);
+
+      if (error) throw error;
+
+      // Update the local state
+      setOrders(prev => prev.map(order =>
+        order.id === orderId
+          ? { ...order, order_status: newStatus }
+          : order
+      ));
+
+    } catch (error) {
+      console.error('Error updating order status:', error);
+      alert('주문 상태 변경에 실패했습니다.');
+    } finally {
+      setUpdatingStatus(prev => ({ ...prev, [orderId]: false }));
+    }
+  };
+
   const formatDate = (dateString?: string) => {
     if (!dateString) return '';
     return new Date(dateString).toLocaleString('ko-KR');
@@ -262,6 +294,8 @@ export default function DeliveryPage() {
         return 'bg-red-100 text-red-800';
       case 'paid':
         return 'bg-yellow-100 text-yellow-800';
+      case 'delivered':
+        return 'bg-blue-100 text-blue-800';
       case 'complete':
         return 'bg-green-100 text-green-800';
       default:
@@ -275,6 +309,8 @@ export default function DeliveryPage() {
         return '대기중';
       case 'paid':
         return '배송전';
+      case 'delivered':
+        return '배송중';
       case 'complete':
         return '배송완료';
       default:
@@ -648,14 +684,25 @@ export default function DeliveryPage() {
 
                       {/* Status */}
                       <div className="w-[105px] shrink-0">
-                        <span
+                        <select
+                          value={order.order_status || 'paid'}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            handleStatusChange(order.id, e.target.value);
+                          }}
+                          disabled={updatingStatus[order.id]}
+                          onClick={(e) => e.stopPropagation()}
                           className={`
-                            inline-block px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap
+                            w-full px-2 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap cursor-pointer
+                            border-2 transition-colors
                             ${getStatusBadgeColor(order.order_status)}
+                            ${updatingStatus[order.id] ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-80'}
                           `}
                         >
-                          {getStatusLabel(order.order_status)}
-                        </span>
+                          <option value="paid">배송전</option>
+                          <option value="delivered">배송중</option>
+                          <option value="complete">배송완료</option>
+                        </select>
                       </div>
 
                       {/* Delivery Fee Payment Status - Only for Hypetown */}
