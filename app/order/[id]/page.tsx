@@ -48,6 +48,7 @@ export default function OrderDetailsPage() {
   const [customsCode, setCustomsCode] = useState("");
   const [isSavingCustomsCode, setIsSavingCustomsCode] = useState(false);
   const [customsCodeMessage, setCustomsCodeMessage] = useState("");
+  const [copyStatus, setCopyStatus] = useState("");
 
   // Detect order type from URL - if ID ends with "_hypetown", it's a hypetown order
   const orderType = orderId?.endsWith("_hypetown") ? "hypetown" : "original";
@@ -128,6 +129,19 @@ export default function OrderDetailsPage() {
         return "bg-red-100 text-red-800";
       default:
         return "bg-zinc-100 text-zinc-800";
+    }
+  };
+
+  const handleViewOrder = async () => {
+    try {
+      await navigator.clipboard.writeText(order?.invoice_id as string);
+      setCopyStatus('Copied!');
+      alert("Invoice ID Copied to clipboard")
+      window.open("https://www.rincos.asia/out/TraceInfo_kr.do", "_blank");
+      setTimeout(() => setCopyStatus(''), 2000); // Clear status after 2 seconds
+    } catch (err) {
+      setCopyStatus('Failed to copy!');
+      console.error('Failed to copy text: ', err);
     }
   };
 
@@ -254,6 +268,7 @@ export default function OrderDetailsPage() {
         </div>
 
         <div className="space-y-6">
+          <button className="bg-blue-200 rounded-sm px-2 py-1 text-md" onClick={handleViewOrder}>주문조회하기</button>
           {/* Order Status Card */}
           <div className="bg-white rounded-lg border border-black/6 shadow-sm p-6">
             <div className="flex items-center justify-between mb-4">
@@ -285,9 +300,12 @@ export default function OrderDetailsPage() {
                 </div>
               )}
               {order.invoice_id && (
-                <div className="flex justify-between">
-                  <span className="text-blue-500 font-extrabold">Tracking ID</span>
-                  <span className="font-mono text-black">{order.invoice_id}</span>
+                <div className="flex justify-between items-center">
+                  <div className="flex gap-2">
+                    <span className="text-blue-500 font-extrabold">Tracking ID:</span>
+                    <span className="font-mono text-black">{order.invoice_id}</span>
+                  </div>
+                  <button className="bg-blue-400 rounded-sm px-2 py-1 text-md text-white hover:bg-blue-300" onClick={handleViewOrder}>주문조회하기</button>
                 </div>
               )}
             </div>
