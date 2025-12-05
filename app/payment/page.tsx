@@ -36,7 +36,7 @@ export default function PaymentPage() {
   const [address, setAddress] = useState("");
   const [addressDetail, setAddressDetail] = useState("");
   const [zipCode, setZipCode] = useState("");
-  const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>("팬미팅현장수령");
+  const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>("국내배송");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("toss");
   const [paypalCurrency, setPaypalCurrency] = useState<PayPalCurrency>("USD");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -813,7 +813,7 @@ export default function PaymentPage() {
                   배송 수단 (Delivery Method) <span className="text-red-500">*</span>
                 </label>
                 <div className="space-y-2">
-                  {(["팬미팅현장수령", "국내배송", "해외배송"] as DeliveryMethod[]).map((method) => (
+                  {(["국내배송", "해외배송"] as DeliveryMethod[]).map((method) => (
                     <label
                       key={method}
                       className="flex items-start gap-3 p-3 rounded-md border border-zinc-300 cursor-pointer hover:bg-zinc-50 transition-colors"
