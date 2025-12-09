@@ -572,7 +572,7 @@ export default function CustomerManagementPage() {
           </div>
         </div>
 
-        <div className="overflow-x-auto max-h-[300px] overflow-y-auto">
+        <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
           {loading ? (
             <div className="text-center py-12">
               <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
