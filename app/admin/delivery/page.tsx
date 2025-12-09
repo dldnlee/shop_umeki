@@ -41,6 +41,7 @@ type OrderWithItems = Order & {
 type DeliveryFilter = 'all' | '국내배송' | '해외배송';
 type PlatformTab = 'shop_umeki' | 'hypetown';
 type SortOrder = 'asc' | 'desc';
+type OrderStatusFilter = 'all' | 'cancel' | 'paid' | 'delivered' | 'complete';
 
 type ProductOption = {
   productId: string;
@@ -63,6 +64,7 @@ export default function DeliveryPage() {
   const [emailSearch, setEmailSearch] = useState<string>('');
   const [updatingDeliveryFee, setUpdatingDeliveryFee] = useState<{ [orderId: string]: boolean }>({});
   const [updatingStatus, setUpdatingStatus] = useState<{ [orderId: string]: boolean }>({});
+  const [orderStatusFilter, setOrderStatusFilter] = useState<OrderStatusFilter>('all');
 
   useEffect(() => {
     fetchProducts();
@@ -462,6 +464,11 @@ export default function DeliveryPage() {
       return false;
     }
 
+    // Apply order status filter
+    if (orderStatusFilter !== 'all' && order.order_status !== orderStatusFilter) {
+      return false;
+    }
+
     // Apply delivery fee paid filter (only for Hypetown)
     if (platformTab === 'hypetown' && deliveryFeePaidFilter !== null) {
       if (order.delivery_fee_payment !== deliveryFeePaidFilter) {
@@ -689,6 +696,26 @@ export default function DeliveryPage() {
             >
               해외배송 ({orders.filter(o => o.delivery_method === '해외배송').length})
             </button>
+
+            {/* Order Status Filter */}
+            <div className="w-px h-6 bg-gray-300 mx-2"></div>
+            <div className="flex items-center gap-2">
+              <label htmlFor="status-filter" className="text-sm font-medium text-gray-700">
+                주문 상태:
+              </label>
+              <select
+                id="status-filter"
+                value={orderStatusFilter}
+                onChange={(e) => setOrderStatusFilter(e.target.value as OrderStatusFilter)}
+                className="px-4 py-2 rounded-lg font-medium border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-indigo-500 focus:border-transparent cursor-pointer"
+              >
+                <option value="all">전체</option>
+                <option value="cancel">고객취소 ({orders.filter(o => o.order_status === 'cancel').length})</option>
+                <option value="paid">배송전 ({orders.filter(o => o.order_status === 'paid').length})</option>
+                <option value="delivered">배송중 ({orders.filter(o => o.order_status === 'delivered').length})</option>
+                <option value="complete">배송완료 ({orders.filter(o => o.order_status === 'complete').length})</option>
+              </select>
+            </div>
 
             {/* Delivery Fee Payment Filter - Only for Hypetown */}
             {platformTab === 'hypetown' && (
