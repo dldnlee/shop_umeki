@@ -574,7 +574,7 @@ export default function DeliveryPage() {
           {!loading && orders.length > 0 && allProductOptions.length > 0 && (
             <div className="mb-5 overflow-x-auto">
               <div className="bg-white rounded-lg shadow border border-gray-300 p-3">
-                <h2 className="text-base font-semibold text-gray-900 mb-2">제품별 배송 현황 (결제완료)</h2>
+                <h2 className="text-base font-semibold text-gray-900 mb-2">제품별 배송 현황 (배송전)</h2>
                 <table className="min-w-full border-collapse text-sm">
                   <thead>
                     <tr className="bg-gradient-to-r from-blue-50 to-indigo-50">
