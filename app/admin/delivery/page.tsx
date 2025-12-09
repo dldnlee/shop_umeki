@@ -325,6 +325,137 @@ export default function DeliveryPage() {
     }));
   };
 
+  const exportToCSV = () => {
+    if (filteredOrders.length === 0) {
+      alert('필터링된 주문이 없습니다.');
+      return;
+    }
+
+    // Create CSV content based on the template from youmakeit_orders.csv
+    const headers = [
+      '아이디',
+      '구매사이트주소 (http://, https:// 는 붙이지 않습니다.)',
+      '주문번호',
+      '주문액장번호',
+      '대표상품명',
+      '수령받는국가',
+      '우편번호1',
+      '우편번호2',
+      'STATE',
+      'CITY',
+      '우편번호주소',
+      '상세주소',
+      '수령인이름',
+      '수령인전화번호1',
+      '수령인전화번호2',
+      '수령인 이메일',
+      '세금',
+      '배송비',
+      '할인금액',
+      '스마트 온라인결제 여부',
+      '항공 / 해상'
+    ];
+
+    // Add product columns (up to 30 products as per template)
+    for (let i = 1; i <= 30; i++) {
+      headers.push(`상품명${i}`);
+      headers.push(`브랜드${i}`);
+      headers.push(`단가${i}`);
+      headers.push(`수량${i}`);
+      headers.push(`항목코드${i}`);
+      headers.push(`상품url${i}`);
+    }
+
+    const rows = filteredOrders.map(order => {
+      const row: string[] = [];
+
+      // Parse address to extract postal code and clean address
+      const address = order.address || '';
+      let postalCode1 = '';
+      let cleanAddress = address;
+
+      // Extract postal code from square brackets like [123-4567]
+      const postalMatch = address.match(/\[([0-9]{3}-?[0-9]{4})\]/);
+      if (postalMatch) {
+        postalCode1 = postalMatch[1].replace('-', ''); // Remove hyphen for postal code
+        // Remove the bracket part from address
+        cleanAddress = address.replace(/\[[0-9]{3}-?[0-9]{4}\]/, '').trim();
+      }
+
+      // Basic info
+      row.push(order.id || ''); // 아이디 (order ID)
+      row.push('youmakeit.shop'); // 구매사이트주소
+      row.push(order.id || ''); // 주문번호
+      row.push(''); // 주문액장번호
+
+      // 대표상품명 (first product name)
+      const firstProduct = order.items[0]?.product?.name || '';
+      row.push(order.items.length > 1 ? `${firstProduct} 외 ${order.items.length - 1}건` : firstProduct);
+
+      // Address and shipping info
+      const isInternational = order.delivery_method === '해외배송';
+
+      row.push('JP'); // 수령받는국가 (Japan)
+      row.push(postalCode1); // 우편번호1
+      row.push(''); // 우편번호2
+      row.push(''); // STATE
+      row.push(''); // CITY
+      row.push(cleanAddress); // 우편번호주소 (address without brackets)
+      row.push(''); // 상세주소
+      row.push(order.name || ''); // 수령인이름
+      row.push(order.phone_num || ''); // 수령인전화번호1
+      row.push(''); // 수령인전화번호2
+      row.push(order.email || ''); // 수령인 이메일
+      row.push(''); // 세금
+      row.push(''); // 배송비
+      row.push(''); // 할인금액
+      row.push(''); // 스마트 온라인결제 여부
+      row.push(isInternational ? '항공' : ''); // 항공 / 해상
+
+      // Add products (up to 30) - fill in actual items for each order
+      for (let i = 0; i < 30; i++) {
+        const item = order.items[i];
+        if (item && item.product) {
+          const productName = item.option
+            ? `${item.product.name} (${item.option})`
+            : item.product.name;
+          row.push(productName); // 상품명
+          row.push('YouMakeIt'); // 브랜드
+          row.push(item.product.price?.toString() || '0'); // 단가
+          row.push(item.quantity?.toString() || '1'); // 수량
+          row.push(item.product.id || ''); // 항목코드
+          row.push(''); // 상품url
+        } else {
+          // Empty product columns for unused slots
+          row.push('', '', '', '', '', '');
+        }
+      }
+
+      return row;
+    });
+
+    // Convert to CSV string
+    const csvContent = [
+      headers.map(h => `"${h}"`).join(','),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n');
+
+    // Create download
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+
+    const timestamp = new Date().toISOString().slice(0, 10);
+    const platform = platformTab === 'hypetown' ? 'hypetown' : 'umeki';
+
+    link.setAttribute('href', url);
+    link.setAttribute('download', `youmakeit_orders_${platform}_${timestamp}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const filteredOrders = orders.filter(order => {
     // Apply delivery method filter
     if (deliveryFilter !== 'all' && order.delivery_method !== deliveryFilter) {
@@ -598,6 +729,14 @@ export default function DeliveryPage() {
 
             {/* Sort Order Toggle */}
             <div className="ml-auto flex gap-2">
+              <button
+                onClick={exportToCSV}
+                disabled={filteredOrders.length === 0}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+              >
+                CSV 내보내기 ({filteredOrders.length})
+              </button>
+              <div className="w-px h-full bg-gray-300 mx-2"></div>
               <span className="text-sm text-gray-600 self-center">정렬:</span>
               <button
                 onClick={() => setSortOrder('asc')}
