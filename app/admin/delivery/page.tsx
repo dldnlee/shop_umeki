@@ -665,40 +665,25 @@ export default function DeliveryPage() {
           </div>
 
           {/* Filter Buttons */}
-          <div className="flex gap-2 items-center flex-wrap">
-            <button
-              onClick={() => setDeliveryFilter('all')}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                deliveryFilter === 'all'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-              }`}
-            >
-              전체 ({orders.length})
-            </button>
-            <button
-              onClick={() => setDeliveryFilter('국내배송')}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                deliveryFilter === '국내배송'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-              }`}
-            >
-              국내배송 ({orders.filter(o => o.delivery_method === '국내배송').length})
-            </button>
-            <button
-              onClick={() => setDeliveryFilter('해외배송')}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                deliveryFilter === '해외배송'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-              }`}
-            >
-              해외배송 ({orders.filter(o => o.delivery_method === '해외배송').length})
-            </button>
+          <div className="flex items-center flex-wrap gap-4">
+            {/* Delivery Method Filter */}
+            <div className="flex items-center gap-2">
+              <label htmlFor="delivery-filter" className="text-sm font-medium text-gray-700">
+                배송 방법:
+              </label>
+              <select
+                id="delivery-filter"
+                value={deliveryFilter}
+                onChange={(e) => setDeliveryFilter(e.target.value as DeliveryFilter)}
+                className="px-4 py-2 rounded-lg font-medium border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-indigo-500 focus:border-transparent cursor-pointer"
+              >
+                <option value="all">전체 ({orders.length})</option>
+                <option value="국내배송">국내배송 ({orders.filter(o => o.delivery_method === '국내배송').length})</option>
+                <option value="해외배송">해외배송 ({orders.filter(o => o.delivery_method === '해외배송').length})</option>
+              </select>
+            </div>
 
             {/* Order Status Filter */}
-            <div className="w-px h-6 bg-gray-300 mx-2"></div>
             <div className="flex items-center gap-2">
               <label htmlFor="status-filter" className="text-sm font-medium text-gray-700">
                 주문 상태:
