@@ -132,9 +132,9 @@ export default function AnalyticsPage() {
       {!loading && !error && salesAnalytics && (
         <div className="space-y-6">
           {/* Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="gap-6">
             <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">결제 완료 (Paid)</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">매출 현황</h3>
               <p className="text-3xl font-bold text-green-600 mb-2">
                 {formatPrice(salesAnalytics.totalPaidAmount)}
               </p>
@@ -150,28 +150,10 @@ export default function AnalyticsPage() {
                 총 {salesAnalytics.totalPaidOrders}개 주문
               </p>
             </div>
-
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">결제 대기 (Waiting)</h3>
-              <p className="text-3xl font-bold text-yellow-600 mb-2">
-                {formatPrice(salesAnalytics.totalWaitingAmount)}
-              </p>
-              <div className="flex gap-3 text-sm">
-                <span className="text-blue-600 font-medium">
-                  {formatMultiCurrency(salesAnalytics.totalWaitingAmount).jpy}
-                </span>
-                <span className="text-green-600 font-medium">
-                  {formatMultiCurrency(salesAnalytics.totalWaitingAmount).usd}
-                </span>
-              </div>
-              <p className="text-sm text-gray-600 mt-2">
-                총 {salesAnalytics.totalWaitingOrders}개 주문
-              </p>
-            </div>
           </div>
 
           {/* Delivery Methods Breakdown */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="gap-6">
             {/* Paid Orders Delivery Methods */}
             <div className="bg-white rounded-lg shadow overflow-hidden">
               <div className="px-6 py-4 border-b border-gray-200 bg-green-50">
@@ -214,7 +196,7 @@ export default function AnalyticsPage() {
             </div>
 
             {/* Waiting Orders Delivery Methods */}
-            <div className="bg-white rounded-lg shadow overflow-hidden">
+            {/* <div className="bg-white rounded-lg shadow overflow-hidden">
               <div className="px-6 py-4 border-b border-gray-200 bg-yellow-50">
                 <h3 className="text-lg font-semibold text-gray-900">배송 방법별 - 결제 대기</h3>
                 <p className="text-sm text-gray-600">Delivery Methods - Waiting Orders</p>
@@ -252,13 +234,13 @@ export default function AnalyticsPage() {
                   <p className="text-gray-500 text-center py-4">데이터 없음</p>
                 )}
               </div>
-            </div>
+            </div> */}
           </div>
 
           {/* Product Sales Accordion */}
           <div className="bg-white rounded-lg shadow overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900">판매된 상품 (Paid Orders Only)</h3>
+              <h3 className="text-lg font-semibold text-gray-900">판매된 상품</h3>
               <p className="text-sm text-gray-600 mt-1">Product sales with delivery method breakdown</p>
             </div>
             <div className="divide-y divide-gray-200">
