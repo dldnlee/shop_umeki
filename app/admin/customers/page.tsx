@@ -17,9 +17,44 @@ type Customer = {
 };
 
 
+type Product = {
+  id: string;
+  name: string;
+  price: number;
+  display_order: number;
+};
+
+type OrderItem = {
+  id: string;
+  order_id: string;
+  product_id: string;
+  option?: string | null;
+  quantity: number;
+  total_price: number;
+  product?: Product;
+};
+
+type Order = {
+  id: string;
+  name: string;
+  email: string;
+  phone_num?: string | null;
+  address?: string | null;
+  delivery_method: string;
+  order_status?: string;
+  created_at?: string;
+  invoice_id?: string | null;
+  customs_code?: string | null;
+  delivery_fee_payment?: boolean;
+};
+
+type OrderWithItems = Order & {
+  items: OrderItem[];
+};
+
 export default function CustomerManagementPage() {
-  // Tab state
-  const [activeTab, setActiveTab] = useState<'regular' | 'hypetown'>('regular');
+  // Tab state - added 'export' option
+  const [activeTab, setActiveTab] = useState<'regular' | 'hypetown' | 'export'>('regular');
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([]);
@@ -32,6 +67,14 @@ export default function CustomerManagementPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [deliveryFeePaidFilter, setDeliveryFeePaidFilter] = useState<boolean | null>(null); // null = all, true = paid, false = unpaid
   const [orderStatusFilter, setOrderStatusFilter] = useState<string>('all'); // all, paid, delivered, complete
+
+  // Export tab state
+  const [orders, setOrders] = useState<OrderWithItems[]>([]);
+  const [filteredOrders, setFilteredOrders] = useState<OrderWithItems[]>([]);
+  const [expandedOrders, setExpandedOrders] = useState<{ [orderId: string]: boolean }>({});
+  const [exportPlatform, setExportPlatform] = useState<'regular' | 'hypetown'>('regular');
+  const [exportDeliveryFilter, setExportDeliveryFilter] = useState<string>('all');
+  const [exportStatusFilter, setExportStatusFilter] = useState<string>('all');
 
   // Email Editor
   const [emailSubject, setEmailSubject] = useState('');
@@ -49,12 +92,22 @@ export default function CustomerManagementPage() {
   });
 
   useEffect(() => {
-    fetchCustomers();
-  }, [activeTab]);
+    if (activeTab === 'export') {
+      fetchOrders();
+    } else {
+      fetchCustomers();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, exportPlatform]);
 
   useEffect(() => {
-    applyFilters();
-  }, [customers, deliveryMethodFilter, searchQuery, deliveryFeePaidFilter, orderStatusFilter]);
+    if (activeTab === 'export') {
+      applyOrderFilters();
+    } else {
+      applyFilters();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [customers, deliveryMethodFilter, searchQuery, deliveryFeePaidFilter, orderStatusFilter, orders, exportDeliveryFilter, exportStatusFilter]);
 
   const fetchCustomers = async () => {
     setLoading(true);
@@ -77,6 +130,7 @@ export default function CustomerManagementPage() {
       // Group by email and aggregate data
       const customerMap = new Map<string, Customer>();
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       data?.forEach((order: any) => {
         const email = order.email;
         if (customerMap.has(email)) {
@@ -118,6 +172,57 @@ export default function CustomerManagementPage() {
     }
   };
 
+  const fetchOrders = async () => {
+    setLoading(true);
+    try {
+      const ordersTable = exportPlatform === 'hypetown' ? 'umeki_orders_hypetown' : 'umeki_orders';
+      const orderItemsTable = exportPlatform === 'hypetown' ? 'umeki_order_items_hypetown' : 'umeki_order_items';
+      const productsTable = 'umeki_products';
+
+      // Fetch all orders
+      const { data: ordersData, error: ordersError } = await supabase
+        .from(ordersTable)
+        .select('*')
+        .neq('order_status', 'waiting')
+        .order('created_at', { ascending: false });
+
+      if (ordersError) throw ordersError;
+
+      if (!ordersData || ordersData.length === 0) {
+        setOrders([]);
+        setFilteredOrders([]);
+        setLoading(false);
+        return;
+      }
+
+      // Fetch all order items for these orders with product information
+      const orderIds = ordersData.map(order => order.id);
+      const { data: itemsData, error: itemsError } = await supabase
+        .from(orderItemsTable)
+        .select(`
+          *,
+          product:${productsTable}(id, name, price)
+        `)
+        .in('order_id', orderIds);
+
+      if (itemsError) throw itemsError;
+
+      // Combine orders with their items
+      const ordersWithItems = ordersData.map(order => ({
+        ...order,
+        items: itemsData?.filter(item => item.order_id === order.id) || []
+      }));
+
+      setOrders(ordersWithItems);
+      setFilteredOrders(ordersWithItems);
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+      alert('Failed to fetch orders');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const applyFilters = () => {
     let filtered = [...customers];
 
@@ -151,6 +256,22 @@ export default function CustomerManagementPage() {
     }
 
     setFilteredCustomers(filtered);
+  };
+
+  const applyOrderFilters = () => {
+    let filtered = [...orders];
+
+    // Apply delivery method filter
+    if (exportDeliveryFilter !== 'all') {
+      filtered = filtered.filter((o) => o.delivery_method === exportDeliveryFilter);
+    }
+
+    // Apply order status filter
+    if (exportStatusFilter !== 'all') {
+      filtered = filtered.filter((o) => o.order_status === exportStatusFilter);
+    }
+
+    setFilteredOrders(filtered);
   };
 
   const toggleCustomerSelection = (customerId: string) => {
@@ -428,7 +549,7 @@ export default function CustomerManagementPage() {
   };
 
   // Clear selections and filters when switching tabs
-  const handleTabChange = (tab: 'regular' | 'hypetown') => {
+  const handleTabChange = (tab: 'regular' | 'hypetown' | 'export') => {
     setActiveTab(tab);
     setSelectedCustomers(new Set());
     setDeliveryMethodFilter('all');
@@ -438,6 +559,149 @@ export default function CustomerManagementPage() {
     setEmailSubject('');
     setEmailContent('');
     setShowPreview(false);
+
+    if (tab === 'export') {
+      setExportDeliveryFilter('all');
+      setExportStatusFilter('all');
+    }
+  };
+
+  const toggleOrder = (orderId: string) => {
+    setExpandedOrders(prev => ({
+      ...prev,
+      [orderId]: !prev[orderId]
+    }));
+  };
+
+  const exportToCSV = () => {
+    if (filteredOrders.length === 0) {
+      alert('필터링된 주문이 없습니다.');
+      return;
+    }
+
+    // Create CSV content based on the template from youmakeit_orders.csv
+    const headers = [
+      '아이디',
+      '구매사이트주소 (http://, https:// 는 붙이지 않습니다.)',
+      '주문번호',
+      '주문액장번호',
+      '대표상품명',
+      '수령받는국가',
+      '우편번호1',
+      '우편번호2',
+      'STATE',
+      'CITY',
+      '우편번호주소',
+      '상세주소',
+      '수령인이름',
+      '수령인전화번호1',
+      '수령인전화번호2',
+      '수령인 이메일',
+      '세금',
+      '배송비',
+      '할인금액',
+      '스마트 온라인결제 여부',
+      '항공 / 해상'
+    ];
+
+    // Add product columns (up to 30 products as per template)
+    for (let i = 1; i <= 30; i++) {
+      headers.push(`상품명${i}`);
+      headers.push(`브랜드${i}`);
+      headers.push(`단가${i}`);
+      headers.push(`수량${i}`);
+      headers.push(`항목코드${i}`);
+      headers.push(`상품url${i}`);
+    }
+
+    const rows = filteredOrders.map(order => {
+      const row: string[] = [];
+
+      // Parse address to extract postal code and clean address
+      const address = order.address || '';
+      let postalCode1 = '';
+      let cleanAddress = address;
+
+      // Extract postal code from square brackets like [123-4567]
+      const postalMatch = address.match(/\[([0-9]{3}-?[0-9]{4})\]/);
+      if (postalMatch) {
+        postalCode1 = postalMatch[1].replace('-', ''); // Remove hyphen for postal code
+        // Remove the bracket part from address
+        cleanAddress = address.replace(/\[[0-9]{3}-?[0-9]{4}\]/, '').trim();
+      }
+
+      // Basic info
+      row.push(order.id || ''); // 아이디 (order ID)
+      row.push('youmakeit.shop'); // 구매사이트주소
+      row.push(order.id || ''); // 주문번호
+      row.push(''); // 주문액장번호
+
+      // 대표상품명 (first product name)
+      const firstProduct = order.items[0]?.product?.name || '';
+      row.push(order.items.length > 1 ? `${firstProduct} 외 ${order.items.length - 1}건` : firstProduct);
+
+      // Address and shipping info
+      const isInternational = order.delivery_method === '해외배송';
+
+      row.push('JP'); // 수령받는국가 (Japan)
+      row.push(postalCode1); // 우편번호1
+      row.push(''); // 우편번호2
+      row.push(''); // STATE
+      row.push(''); // CITY
+      row.push(cleanAddress); // 우편번호주소 (address without brackets)
+      row.push(''); // 상세주소
+      row.push(order.name || ''); // 수령인이름
+      row.push(order.phone_num || ''); // 수령인전화번호1
+      row.push(''); // 수령인전화번호2
+      row.push(order.email || ''); // 수령인 이메일
+      row.push(''); // 세금
+      row.push(''); // 배송비
+      row.push(''); // 할인금액
+      row.push(''); // 스마트 온라인결제 여부
+      row.push(isInternational ? '항공' : ''); // 항공 / 해상
+
+      // Add products (up to 30) - fill in actual items for each order
+      for (let i = 0; i < 30; i++) {
+        const item = order.items[i];
+        if (item && item.product) {
+          const productName = item.option
+            ? `${item.product.name} (${item.option})`
+            : item.product.name;
+          row.push(productName); // 상품명
+          row.push('YouMakeIt'); // 브랜드
+          row.push(item.product.price?.toString() || '0'); // 단가
+          row.push(item.quantity?.toString() || '1'); // 수량
+          row.push(item.product.id || ''); // 항목코드
+          row.push(''); // 상품url
+        } else {
+          // Empty product columns for unused slots
+          row.push('', '', '', '', '', '');
+        }
+      }
+
+      return row;
+    });
+
+    // Convert to CSV string
+    const csvContent = [
+      headers.map(h => `"${h}"`).join(','),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n');
+
+    // Create download
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+
+    const timestamp = new Date().toISOString().slice(0, 10);
+    const platform = exportPlatform === 'hypetown' ? 'hypetown' : 'umeki';
+
+    link.setAttribute('href', url);
+    link.setAttribute('download', `youmakeit_orders_${platform}_${timestamp}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return (
@@ -473,14 +737,266 @@ export default function CustomerManagementPage() {
             >
               Hypetown 고객
             </button>
+            <button
+              onClick={() => handleTabChange('export')}
+              className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'export'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              주문 내보내기
+            </button>
           </nav>
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">필터</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Export Tab Content */}
+      {activeTab === 'export' ? (
+        <>
+          {/* Platform Selection for Export */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">플랫폼 선택</h2>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setExportPlatform('regular')}
+                className={`px-6 py-3 rounded-lg font-semibold transition-colors ${
+                  exportPlatform === 'regular'
+                    ? 'bg-indigo-600 text-white shadow-lg'
+                    : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                자사몰
+              </button>
+              <button
+                onClick={() => setExportPlatform('hypetown')}
+                className={`px-6 py-3 rounded-lg font-semibold transition-colors ${
+                  exportPlatform === 'hypetown'
+                    ? 'bg-indigo-600 text-white shadow-lg'
+                    : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                HypeTown
+              </button>
+            </div>
+          </div>
+
+          {/* Export Filters */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">필터</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  배송 방법
+                </label>
+                <select
+                  value={exportDeliveryFilter}
+                  onChange={(e) => setExportDeliveryFilter(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="all">전체</option>
+                  <option value="해외배송">해외배송</option>
+                  <option value="국내배송">국내배송</option>
+                  <option value="팬미팅현장수령">팬미팅현장수령</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  주문 상태
+                </label>
+                <select
+                  value={exportStatusFilter}
+                  onChange={(e) => setExportStatusFilter(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="all">전체</option>
+                  <option value="paid">배송전</option>
+                  <option value="delivered">배송중</option>
+                  <option value="complete">처리 완료</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Export Button */}
+            <div className="flex justify-between items-center pt-4 border-t border-gray-200">
+              <p className="text-sm text-gray-600">
+                필터링된 주문: <span className="font-semibold text-gray-900">{filteredOrders.length}개</span>
+              </p>
+              <button
+                onClick={exportToCSV}
+                disabled={filteredOrders.length === 0}
+                className="px-6 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed font-semibold"
+              >
+                CSV 다운로드
+              </button>
+            </div>
+          </div>
+
+          {/* Orders List */}
+          <div className="bg-white rounded-lg shadow">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900">
+                주문 목록 ({filteredOrders.length}개)
+              </h2>
+            </div>
+
+            <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
+              {loading ? (
+                <div className="text-center py-12">
+                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                </div>
+              ) : filteredOrders.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  조건에 맞는 주문이 없습니다.
+                </div>
+              ) : (
+                <div className="space-y-2 p-4">
+                  {filteredOrders.map((order) => {
+                    const isExpanded = expandedOrders[order.id];
+                    return (
+                      <div key={order.id} className="bg-white rounded-lg shadow hover:shadow-md transition-shadow border border-gray-300">
+                        {/* Compact Header */}
+                        <button
+                          onClick={() => toggleOrder(order.id)}
+                          className="w-full px-4 py-3 flex items-center text-left hover:bg-gray-50 transition-colors rounded-lg"
+                        >
+                          <div className="flex items-center flex-1 w-full gap-1.5">
+                            {/* Delivery Method */}
+                            <div className="w-[100px] shrink-0">
+                              <p className="text-[10px] text-gray-500 mb-0.5">배송방법</p>
+                              <p className="text-xs font-bold text-gray-900 truncate">
+                                {order.delivery_method}
+                              </p>
+                            </div>
+
+                            {/* Name */}
+                            <div className="w-[140px] shrink-0">
+                              <p className="text-[10px] text-gray-500 mb-0.5">이름</p>
+                              <p className="text-sm font-semibold text-gray-900 truncate">
+                                {order.name}
+                              </p>
+                            </div>
+
+                            {/* Phone */}
+                            <div className="w-[120px] shrink-0">
+                              <p className="text-[10px] text-gray-500 mb-0.5">전화번호</p>
+                              <p className="text-xs font-medium text-gray-700 truncate">
+                                {order.phone_num || 'N/A'}
+                              </p>
+                            </div>
+
+                            {/* Email */}
+                            <div className="w-[140px] shrink-0">
+                              <p className="text-[10px] text-gray-500 mb-0.5">이메일</p>
+                              <p className="text-xs font-medium text-gray-700 truncate">
+                                {order.email}
+                              </p>
+                            </div>
+
+                            {/* Status */}
+                            <div className="w-[90px] shrink-0">
+                              <p className="text-[10px] text-gray-500 mb-0.5">상태</p>
+                              <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                order.order_status === 'complete' ? 'bg-green-100 text-green-800' :
+                                order.order_status === 'delivered' ? 'bg-blue-100 text-blue-800' :
+                                order.order_status === 'paid' ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-gray-100 text-gray-800'
+                              }`}>
+                                {order.order_status === 'paid' ? '배송전' :
+                                 order.order_status === 'delivered' ? '배송중' :
+                                 order.order_status === 'complete' ? '완료' :
+                                 order.order_status}
+                              </span>
+                            </div>
+
+                            {/* Expand Icon */}
+                            <div className="shrink-0 ml-auto pl-2">
+                              <svg
+                                className={`w-5 h-5 text-gray-400 transition-transform ${
+                                  isExpanded ? 'transform rotate-180' : ''
+                                }`}
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M19 9l-7 7-7-7"
+                                />
+                              </svg>
+                            </div>
+                          </div>
+                        </button>
+
+                        {/* Expanded Details */}
+                        {isExpanded && (
+                          <div className="border-t border-gray-200">
+                            {/* Customer Information */}
+                            <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                                <div>
+                                  <p className="text-xs text-gray-500 mb-1">이름</p>
+                                  <p className="font-semibold text-gray-900">{order.name}</p>
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-xs text-gray-500 mb-1">전화번호</p>
+                                  <p className="font-medium text-gray-700">{order.phone_num || 'N/A'}</p>
+                                </div>
+                                <div className="min-w-0 col-span-2">
+                                  <p className="text-xs text-gray-500 mb-1">주소</p>
+                                  <p className="font-medium text-gray-700 whitespace-normal text-ellipsis">{order.address || 'N/A'}</p>
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-xs text-gray-500 mb-1">이메일</p>
+                                  <p className="font-semibold text-blue-600">{order.email}</p>
+                                </div>
+                                <div className="min-w-0 col-span-3">
+                                  <p className="text-xs text-gray-500 mb-1">주문번호</p>
+                                  <p className="font-semibold text-gray-900 truncate">#{order.id}</p>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Order Items */}
+                            <div className="px-4 py-3 bg-white">
+                              <h4 className="text-xs font-semibold mb-2 text-gray-700">주문 상품</h4>
+                              <div className="space-y-1.5">
+                                {order.items.map((item) => (
+                                  <div key={item.id} className="text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded border border-gray-200">
+                                    <div className="flex justify-between items-center">
+                                      <div>
+                                        <span className="font-semibold">{item.product?.name || '상품명 없음'}</span>
+                                        {item.option && <span className="text-gray-600 text-xs"> ({item.option})</span>}
+                                        <span className="text-gray-600 text-xs ml-2">× {item.quantity}</span>
+                                      </div>
+                                      <div className="text-right">
+                                        <div className="font-semibold text-sm text-gray-900">
+                                          {item.total_price.toLocaleString('ko-KR')}원
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      ) : (
+        <>
+          {/* Filters */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">필터</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               배송 방법
@@ -542,11 +1058,11 @@ export default function CustomerManagementPage() {
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
-        </div>
-      </div>
+            </div>
+          </div>
 
-      {/* Customer List */}
-      <div className="bg-white rounded-lg shadow">
+          {/* Customer List */}
+          <div className="bg-white rounded-lg shadow">
         <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
           <div>
             <h2 className="text-lg font-semibold text-gray-900">
@@ -748,7 +1264,9 @@ export default function CustomerManagementPage() {
             </button>
           </div>
         </div>
-      </div>
+          </div>
+        </>
+      )}
 
       {/* Email Preview Modal */}
       {showPreview && (

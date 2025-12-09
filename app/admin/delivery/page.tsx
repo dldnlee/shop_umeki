@@ -643,7 +643,7 @@ export default function DeliveryPage() {
                   >
                     <div className="flex items-center flex-1 w-full gap-1.5">
                       {/* Order ID */}
-                      <div className="w-[100px] shrink-0">
+                      <div className="w-[50px] shrink-0">
                         <p className="text-[10px] text-gray-500 mb-0.5">배송방법</p>
                         <p className="text-xs font-bold text-gray-900 truncate">
                           {order.delivery_method}
