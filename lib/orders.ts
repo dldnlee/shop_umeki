@@ -378,21 +378,21 @@ export async function getSalesAnalytics() {
         created_at,
         delivery_method
       `)
-      .in("order_status", ["paid", "complete"]);
+      .in("order_status", ["paid", "delivered", "complete"]);
 
     if (paidOrdersError) {
       return { success: false, error: paidOrdersError };
     }
 
     // Get all orders with 'waiting' status for total calculation
-    const { data: waitingOrders, error: waitingOrdersError } = await supabase
-      .from("umeki_orders")
-      .select("total_amount, delivery_method")
-      .eq("order_status", "waiting");
+    // const { data: waitingOrders, error: waitingOrdersError } = await supabase
+    //   .from("umeki_orders")
+    //   .select("total_amount, delivery_method")
+    //   .eq("order_status", "waiting");
 
-    if (waitingOrdersError) {
-      return { success: false, error: waitingOrdersError };
-    }
+    // if (waitingOrdersError) {
+    //   return { success: false, error: waitingOrdersError };
+    // }
 
     // Get all order items for paid orders with product information
     const { data: orderItems, error: itemsError } = await supabase
@@ -415,7 +415,7 @@ export async function getSalesAnalytics() {
 
     // Calculate total amounts
     const totalPaidAmount = paidOrders?.reduce((sum, order) => sum + (order.total_amount || 0), 0) || 0;
-    const totalWaitingAmount = waitingOrders?.reduce((sum, order) => sum + (order.total_amount || 0), 0) || 0;
+    // const totalWaitingAmount = waitingOrders?.reduce((sum, order) => sum + (order.total_amount || 0), 0) || 0;
 
     // Calculate delivery method breakdown for paid orders
     const paidDeliveryBreakdown = new Map<string, { count: number; amount: number }>();
@@ -430,16 +430,16 @@ export async function getSalesAnalytics() {
     });
 
     // Calculate delivery method breakdown for waiting orders
-    const waitingDeliveryBreakdown = new Map<string, { count: number; amount: number }>();
-    waitingOrders?.forEach(order => {
-      const method = order.delivery_method || 'unknown';
-      if (!waitingDeliveryBreakdown.has(method)) {
-        waitingDeliveryBreakdown.set(method, { count: 0, amount: 0 });
-      }
-      const data = waitingDeliveryBreakdown.get(method)!;
-      data.count += 1;
-      data.amount += order.total_amount || 0;
-    });
+    // const waitingDeliveryBreakdown = new Map<string, { count: number; amount: number }>();
+    // waitingOrders?.forEach(order => {
+    //   const method = order.delivery_method || 'unknown';
+    //   if (!waitingDeliveryBreakdown.has(method)) {
+    //     waitingDeliveryBreakdown.set(method, { count: 0, amount: 0 });
+    //   }
+    //   const data = waitingDeliveryBreakdown.get(method)!;
+    //   data.count += 1;
+    //   data.amount += order.total_amount || 0;
+    // });
 
     // Aggregate product sales data with delivery method tracking
     const productSalesMap = new Map<string, {
@@ -553,22 +553,22 @@ export async function getSalesAnalytics() {
       amount: data.amount,
     }));
 
-    const waitingDeliveryMethods = Array.from(waitingDeliveryBreakdown.entries()).map(([method, data]) => ({
-      method,
-      count: data.count,
-      amount: data.amount,
-    }));
+    // const waitingDeliveryMethods = Array.from(waitingDeliveryBreakdown.entries()).map(([method, data]) => ({
+    //   method,
+    //   count: data.count,
+    //   amount: data.amount,
+    // }));
 
     return {
       success: true,
       data: {
         totalPaidAmount,
-        totalWaitingAmount,
+        // totalWaitingAmount,
         productSales,
         totalPaidOrders: paidOrders?.length || 0,
-        totalWaitingOrders: waitingOrders?.length || 0,
+        // totalWaitingOrders: waitingOrders?.length || 0,
         paidDeliveryMethods,
-        waitingDeliveryMethods,
+        // waitingDeliveryMethods,
       },
     };
   } catch (error) {
