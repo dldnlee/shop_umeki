@@ -13,6 +13,7 @@ type Customer = {
   order_count: number;
   total_spent?: number;
   delivery_fee_payment?: boolean;
+  order_status?: string;
 };
 
 
@@ -30,6 +31,7 @@ export default function CustomerManagementPage() {
   const [deliveryMethodFilter, setDeliveryMethodFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [deliveryFeePaidFilter, setDeliveryFeePaidFilter] = useState<boolean | null>(null); // null = all, true = paid, false = unpaid
+  const [orderStatusFilter, setOrderStatusFilter] = useState<string>('all'); // all, paid, delivered, complete
 
   // Email Editor
   const [emailSubject, setEmailSubject] = useState('');
@@ -52,7 +54,7 @@ export default function CustomerManagementPage() {
 
   useEffect(() => {
     applyFilters();
-  }, [customers, deliveryMethodFilter, searchQuery, deliveryFeePaidFilter]);
+  }, [customers, deliveryMethodFilter, searchQuery, deliveryFeePaidFilter, orderStatusFilter]);
 
   const fetchCustomers = async () => {
     setLoading(true);
@@ -62,8 +64,8 @@ export default function CustomerManagementPage() {
       // Fetch all orders with customer info
       // Only fetch delivery_fee_payment for Hypetown customers
       const selectFields = activeTab === 'hypetown'
-        ? 'id, name, email, phone_num, delivery_method, created_at, total_amount, delivery_fee_payment'
-        : 'id, name, email, phone_num, delivery_method, created_at, total_amount';
+        ? 'id, name, email, phone_num, delivery_method, created_at, total_amount, delivery_fee_payment, order_status'
+        : 'id, name, email, phone_num, delivery_method, created_at, total_amount, order_status';
 
       const { data, error } = await supabase
         .from(tableName)
@@ -87,6 +89,10 @@ export default function CustomerManagementPage() {
           if (order.delivery_fee_payment) {
             existing.delivery_fee_payment = true;
           }
+          // Update to the most recent order_status (if newer)
+          if (order.created_at > existing.created_at) {
+            existing.order_status = order.order_status;
+          }
         } else {
           customerMap.set(email, {
             id: order.id,
@@ -98,6 +104,7 @@ export default function CustomerManagementPage() {
             order_count: 1,
             total_spent: order.total_amount || 0,
             delivery_fee_payment: order.delivery_fee_payment || false,
+            order_status: order.order_status,
           });
         }
       });
@@ -122,6 +129,14 @@ export default function CustomerManagementPage() {
     // Apply delivery fee paid filter (only for Hypetown)
     if (activeTab === 'hypetown' && deliveryFeePaidFilter !== null) {
       filtered = filtered.filter((c) => c.delivery_fee_payment === deliveryFeePaidFilter);
+    }
+
+    // Apply order status filter
+    if (orderStatusFilter !== 'all') {
+      console.log('Filtering by order status:', orderStatusFilter);
+      console.log('Sample customer order_status values:', filtered.slice(0, 3).map(c => ({ email: c.email, status: c.order_status })));
+      filtered = filtered.filter((c) => c.order_status === orderStatusFilter);
+      console.log('After filter count:', filtered.length);
     }
 
     // Apply search query
@@ -418,6 +433,7 @@ export default function CustomerManagementPage() {
     setSelectedCustomers(new Set());
     setDeliveryMethodFilter('all');
     setDeliveryFeePaidFilter(null);
+    setOrderStatusFilter('all');
     setSearchQuery('');
     setEmailSubject('');
     setEmailContent('');
@@ -464,7 +480,7 @@ export default function CustomerManagementPage() {
       {/* Filters */}
       <div className="bg-white rounded-lg shadow p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">필터</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               배송 방법
@@ -478,6 +494,21 @@ export default function CustomerManagementPage() {
               <option value="해외배송">해외배송</option>
               <option value="국내배송">국내배송</option>
               <option value="팬미팅현장수령">팬미팅현장수령</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              주문 상태
+            </label>
+            <select
+              value={orderStatusFilter}
+              onChange={(e) => setOrderStatusFilter(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="all">전체</option>
+              <option value="paid">배송전</option>
+              <option value="delivered">배송중</option>
+              <option value="complete">처리 완료</option>
             </select>
           </div>
           {activeTab === 'hypetown' && (
