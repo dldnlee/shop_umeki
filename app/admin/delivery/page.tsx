@@ -17,6 +17,7 @@ type OrderItem = {
   option?: string | null;
   quantity: number;
   total_price: number;
+  malltail_order_id?: string; 
   product?: Product;
 };
 
@@ -32,6 +33,7 @@ type Order = {
   invoice_id?: string | null;
   customs_code?: string | null;
   delivery_fee_payment?: boolean;
+  malltail_order_id?: string;
 };
 
 type OrderWithItems = Order & {
@@ -387,7 +389,7 @@ export default function DeliveryPage() {
       // Basic info
       row.push(order.id || ''); // 아이디 (order ID)
       row.push('youmakeit.shop'); // 구매사이트주소
-      row.push(order.id || ''); // 주문번호
+      row.push(order.malltail_order_id || ''); // 주문번호
       row.push(''); // 주문액장번호
 
       // 대표상품명 (first product name)
@@ -395,7 +397,7 @@ export default function DeliveryPage() {
       row.push(order.items.length > 1 ? `${firstProduct} 외 ${order.items.length - 1}건` : firstProduct);
 
       // Address and shipping info
-      const isInternational = order.delivery_method === '해외배송';
+      // const isInternational = order.delivery_method === '해외배송';
 
       row.push('JP'); // 수령받는국가 (Japan)
       row.push(postalCode1); // 우편번호1
@@ -412,7 +414,7 @@ export default function DeliveryPage() {
       row.push(''); // 배송비
       row.push(''); // 할인금액
       row.push(''); // 스마트 온라인결제 여부
-      row.push(isInternational ? '항공' : ''); // 항공 / 해상
+      row.push(''); // 항공 / 해상
 
       // Add products (up to 30) - fill in actual items for each order
       for (let i = 0; i < 30; i++) {
@@ -425,7 +427,7 @@ export default function DeliveryPage() {
           row.push('YouMakeIt'); // 브랜드
           row.push(item.product.price?.toString() || '0'); // 단가
           row.push(item.quantity?.toString() || '1'); // 수량
-          row.push(item.product.id || ''); // 항목코드
+          row.push('A01'); // 항목코드
           row.push(''); // 상품url
         } else {
           // Empty product columns for unused slots
