@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import * as XLSX from 'xlsx';
 
 type Product = {
   id: string;
@@ -17,6 +18,7 @@ type OrderItem = {
   option?: string | null;
   quantity: number;
   total_price: number;
+  malltail_order_id?: string; 
   product?: Product;
 };
 
@@ -32,6 +34,7 @@ type Order = {
   invoice_id?: string | null;
   customs_code?: string | null;
   delivery_fee_payment?: boolean;
+  malltail_order_id?: string;
 };
 
 type OrderWithItems = Order & {
@@ -41,6 +44,7 @@ type OrderWithItems = Order & {
 type DeliveryFilter = 'all' | '국내배송' | '해외배송';
 type PlatformTab = 'shop_umeki' | 'hypetown';
 type SortOrder = 'asc' | 'desc';
+type OrderStatusFilter = 'all' | 'cancel' | 'paid' | 'delivered' | 'complete';
 
 type ProductOption = {
   productId: string;
@@ -63,6 +67,7 @@ export default function DeliveryPage() {
   const [emailSearch, setEmailSearch] = useState<string>('');
   const [updatingDeliveryFee, setUpdatingDeliveryFee] = useState<{ [orderId: string]: boolean }>({});
   const [updatingStatus, setUpdatingStatus] = useState<{ [orderId: string]: boolean }>({});
+  const [orderStatusFilter, setOrderStatusFilter] = useState<OrderStatusFilter>('all');
 
   useEffect(() => {
     fetchProducts();
@@ -325,9 +330,138 @@ export default function DeliveryPage() {
     }));
   };
 
+  const exportToExcel = () => {
+    if (filteredOrders.length === 0) {
+      alert('필터링된 주문이 없습니다.');
+      return;
+    }
+
+    // Create headers based on the template from youmakeit_orders.csv
+    const headers = [
+      '아이디',
+      '구매사이트주소 (http://, https:// 는 붙이지 않습니다.)',
+      '주문번호',
+      '주문액장번호',
+      '대표상품명',
+      '수령받는국가',
+      '우편번호1',
+      '우편번호2',
+      'STATE',
+      'CITY',
+      '우편번호주소',
+      '상세주소',
+      '수령인이름',
+      '수령인전화번호1',
+      '수령인전화번호2',
+      '수령인 이메일',
+      '세금',
+      '배송비',
+      '할인금액',
+      '스마트 온라인결제 여부',
+      '항공 / 해상'
+    ];
+
+    // Add product columns (up to 30 products as per template)
+    for (let i = 1; i <= 30; i++) {
+      headers.push(`상품명${i}`);
+      headers.push(`브랜드${i}`);
+      headers.push(`단가${i}`);
+      headers.push(`수량${i}`);
+      headers.push(`항목코드${i}`);
+      headers.push(`상품url${i}`);
+    }
+
+    const rows = filteredOrders.map(order => {
+      const row: (string | number)[] = [];
+
+      // Parse address to extract postal code and clean address
+      const address = order.address || '';
+      let postalCode1 = '';
+      let cleanAddress = address;
+
+      // Extract postal code from square brackets like [123-4567]
+      const postalMatch = address.match(/\[([0-9]{3}-?[0-9]{4})\]/);
+      if (postalMatch) {
+        postalCode1 = postalMatch[1].replace('-', ''); // Remove hyphen for postal code
+        // Remove the bracket part from address
+        cleanAddress = address.replace(/\[[0-9]{3}-?[0-9]{4}\]/, '').trim();
+      }
+
+      // Basic info
+      row.push(order.id || ''); // 아이디 (order ID)
+      row.push('youmakeit.shop'); // 구매사이트주소
+      row.push(order.malltail_order_id || ''); // 주문번호
+      row.push(''); // 주문액장번호
+
+      // 대표상품명 (first product name)
+      const firstProduct = order.items[0]?.product?.name || '';
+      row.push(order.items.length > 1 ? `${firstProduct} 외 ${order.items.length - 1}건` : firstProduct);
+
+      // Address and shipping info
+      row.push('JP'); // 수령받는국가 (Japan)
+      row.push(postalCode1); // 우편번호1
+      row.push(''); // 우편번호2
+      row.push(''); // STATE
+      row.push(''); // CITY
+      row.push(cleanAddress); // 우편번호주소 (address without brackets)
+      row.push(''); // 상세주소
+      row.push(order.name || ''); // 수령인이름
+      row.push(order.phone_num || ''); // 수령인전화번호1
+      row.push(''); // 수령인전화번호2
+      row.push(order.email || ''); // 수령인 이메일
+      row.push(''); // 세금
+      row.push(''); // 배송비
+      row.push(''); // 할인금액
+      row.push(''); // 스마트 온라인결제 여부
+      row.push(''); // 항공 / 해상
+
+      // Add products (up to 30) - fill in actual items for each order
+      for (let i = 0; i < 30; i++) {
+        const item = order.items[i];
+        if (item && item.product) {
+          const productName = item.option
+            ? `${item.product.name} (${item.option})`
+            : item.product.name;
+          row.push(productName); // 상품명
+          row.push('YouMakeIt'); // 브랜드
+          row.push(item.product.price || 0); // 단가 (as number)
+          row.push(item.quantity || 1); // 수량 (as number)
+          row.push('A01'); // 항목코드
+          row.push(''); // 상품url
+        } else {
+          // Empty product columns for unused slots
+          row.push('', '', '', '', '', '');
+        }
+      }
+
+      return row;
+    });
+
+    // Create worksheet from array of arrays
+    const wsData = [headers, ...rows];
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+    // Create workbook and add worksheet
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Orders');
+
+    // Generate filename with timestamp
+    const timestamp = new Date().toISOString().slice(0, 10);
+    const platform = platformTab === 'hypetown' ? 'hypetown' : 'umeki';
+    const filename = `youmakeit_orders_${platform}_${timestamp}.xlsx`;
+
+    // Write and download file
+    XLSX.writeFile(wb, filename);
+  };
+
   const filteredOrders = orders.filter(order => {
     // Apply delivery method filter
     if (deliveryFilter !== 'all' && order.delivery_method !== deliveryFilter) {
+      return false;
+    }
+
+    // Apply order status filter
+    if (orderStatusFilter !== 'all' && order.order_status !== orderStatusFilter) {
       return false;
     }
 
@@ -436,7 +570,7 @@ export default function DeliveryPage() {
           {!loading && orders.length > 0 && allProductOptions.length > 0 && (
             <div className="mb-5 overflow-x-auto">
               <div className="bg-white rounded-lg shadow border border-gray-300 p-3">
-                <h2 className="text-base font-semibold text-gray-900 mb-2">제품별 배송 현황 (결제완료)</h2>
+                <h2 className="text-base font-semibold text-gray-900 mb-2">제품별 배송 현황 (배송전)</h2>
                 <table className="min-w-full border-collapse text-sm">
                   <thead>
                     <tr className="bg-gradient-to-r from-blue-50 to-indigo-50">
@@ -527,37 +661,42 @@ export default function DeliveryPage() {
           </div>
 
           {/* Filter Buttons */}
-          <div className="flex gap-2 items-center flex-wrap">
-            <button
-              onClick={() => setDeliveryFilter('all')}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                deliveryFilter === 'all'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-              }`}
-            >
-              전체 ({orders.length})
-            </button>
-            <button
-              onClick={() => setDeliveryFilter('국내배송')}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                deliveryFilter === '국내배송'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-              }`}
-            >
-              국내배송 ({orders.filter(o => o.delivery_method === '국내배송').length})
-            </button>
-            <button
-              onClick={() => setDeliveryFilter('해외배송')}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                deliveryFilter === '해외배송'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-              }`}
-            >
-              해외배송 ({orders.filter(o => o.delivery_method === '해외배송').length})
-            </button>
+          <div className="flex items-center flex-wrap gap-4">
+            {/* Delivery Method Filter */}
+            <div className="flex items-center gap-2">
+              <label htmlFor="delivery-filter" className="text-sm font-medium text-gray-700">
+                배송 방법:
+              </label>
+              <select
+                id="delivery-filter"
+                value={deliveryFilter}
+                onChange={(e) => setDeliveryFilter(e.target.value as DeliveryFilter)}
+                className="px-4 py-2 rounded-lg font-medium border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-indigo-500 focus:border-transparent cursor-pointer"
+              >
+                <option value="all">전체 ({orders.length})</option>
+                <option value="국내배송">국내배송 ({orders.filter(o => o.delivery_method === '국내배송').length})</option>
+                <option value="해외배송">해외배송 ({orders.filter(o => o.delivery_method === '해외배송').length})</option>
+              </select>
+            </div>
+
+            {/* Order Status Filter */}
+            <div className="flex items-center gap-2">
+              <label htmlFor="status-filter" className="text-sm font-medium text-gray-700">
+                주문 상태:
+              </label>
+              <select
+                id="status-filter"
+                value={orderStatusFilter}
+                onChange={(e) => setOrderStatusFilter(e.target.value as OrderStatusFilter)}
+                className="px-4 py-2 rounded-lg font-medium border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-indigo-500 focus:border-transparent cursor-pointer"
+              >
+                <option value="all">전체</option>
+                <option value="cancel">고객취소 ({orders.filter(o => o.order_status === 'cancel').length})</option>
+                <option value="paid">배송전 ({orders.filter(o => o.order_status === 'paid').length})</option>
+                <option value="delivered">배송중 ({orders.filter(o => o.order_status === 'delivered').length})</option>
+                <option value="complete">배송완료 ({orders.filter(o => o.order_status === 'complete').length})</option>
+              </select>
+            </div>
 
             {/* Delivery Fee Payment Filter - Only for Hypetown */}
             {platformTab === 'hypetown' && (
@@ -598,6 +737,14 @@ export default function DeliveryPage() {
 
             {/* Sort Order Toggle */}
             <div className="ml-auto flex gap-2">
+              <button
+                onClick={exportToExcel}
+                disabled={filteredOrders.length === 0}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+              >
+                Excel 내보내기 ({filteredOrders.length})
+              </button>
+              <div className="w-px h-full bg-gray-300 mx-2"></div>
               <span className="text-sm text-gray-600 self-center">정렬:</span>
               <button
                 onClick={() => setSortOrder('asc')}
@@ -643,7 +790,7 @@ export default function DeliveryPage() {
                   >
                     <div className="flex items-center flex-1 w-full gap-1.5">
                       {/* Order ID */}
-                      <div className="w-[100px] shrink-0">
+                      <div className="w-[50px] shrink-0">
                         <p className="text-[10px] text-gray-500 mb-0.5">배송방법</p>
                         <p className="text-xs font-bold text-gray-900 truncate">
                           {order.delivery_method}

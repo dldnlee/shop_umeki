@@ -13,6 +13,7 @@ type Customer = {
   order_count: number;
   total_spent?: number;
   delivery_fee_payment?: boolean;
+  order_status?: string;
 };
 
 
@@ -30,29 +31,22 @@ export default function CustomerManagementPage() {
   const [deliveryMethodFilter, setDeliveryMethodFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [deliveryFeePaidFilter, setDeliveryFeePaidFilter] = useState<boolean | null>(null); // null = all, true = paid, false = unpaid
+  const [orderStatusFilter, setOrderStatusFilter] = useState<string>('all'); // all, paid, delivered, complete
 
   // Email Editor
   const [emailSubject, setEmailSubject] = useState('');
   const [emailContent, setEmailContent] = useState('');
   const [showPreview, setShowPreview] = useState(false);
 
-  // Progress modal
-  const [showProgressModal, setShowProgressModal] = useState(false);
-  const [sendProgress, setSendProgress] = useState({
-    current: 0,
-    total: 0,
-    successCount: 0,
-    failureCount: 0,
-    currentEmail: '',
-  });
-
   useEffect(() => {
     fetchCustomers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
   useEffect(() => {
     applyFilters();
-  }, [customers, deliveryMethodFilter, searchQuery, deliveryFeePaidFilter]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [customers, deliveryMethodFilter, searchQuery, deliveryFeePaidFilter, orderStatusFilter]);
 
   const fetchCustomers = async () => {
     setLoading(true);
@@ -62,8 +56,8 @@ export default function CustomerManagementPage() {
       // Fetch all orders with customer info
       // Only fetch delivery_fee_payment for Hypetown customers
       const selectFields = activeTab === 'hypetown'
-        ? 'id, name, email, phone_num, delivery_method, created_at, total_amount, delivery_fee_payment'
-        : 'id, name, email, phone_num, delivery_method, created_at, total_amount';
+        ? 'id, name, email, phone_num, delivery_method, created_at, total_amount, delivery_fee_payment, order_status'
+        : 'id, name, email, phone_num, delivery_method, created_at, total_amount, order_status';
 
       const { data, error } = await supabase
         .from(tableName)
@@ -75,6 +69,7 @@ export default function CustomerManagementPage() {
       // Group by email and aggregate data
       const customerMap = new Map<string, Customer>();
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       data?.forEach((order: any) => {
         const email = order.email;
         if (customerMap.has(email)) {
@@ -87,6 +82,10 @@ export default function CustomerManagementPage() {
           if (order.delivery_fee_payment) {
             existing.delivery_fee_payment = true;
           }
+          // Update to the most recent order_status (if newer)
+          if (order.created_at > existing.created_at) {
+            existing.order_status = order.order_status;
+          }
         } else {
           customerMap.set(email, {
             id: order.id,
@@ -98,6 +97,7 @@ export default function CustomerManagementPage() {
             order_count: 1,
             total_spent: order.total_amount || 0,
             delivery_fee_payment: order.delivery_fee_payment || false,
+            order_status: order.order_status,
           });
         }
       });
@@ -122,6 +122,14 @@ export default function CustomerManagementPage() {
     // Apply delivery fee paid filter (only for Hypetown)
     if (activeTab === 'hypetown' && deliveryFeePaidFilter !== null) {
       filtered = filtered.filter((c) => c.delivery_fee_payment === deliveryFeePaidFilter);
+    }
+
+    // Apply order status filter
+    if (orderStatusFilter !== 'all') {
+      console.log('Filtering by order status:', orderStatusFilter);
+      console.log('Sample customer order_status values:', filtered.slice(0, 3).map(c => ({ email: c.email, status: c.order_status })));
+      filtered = filtered.filter((c) => c.order_status === orderStatusFilter);
+      console.log('After filter count:', filtered.length);
     }
 
     // Apply search query
@@ -264,16 +272,6 @@ export default function CustomerManagementPage() {
     setSending(true);
     const selectedCustomerData = filteredCustomers.filter((c) => selectedCustomers.has(c.id));
 
-    // Initialize progress modal
-    setShowProgressModal(true);
-    setSendProgress({
-      current: 0,
-      total: selectedCustomerData.length,
-      successCount: 0,
-      failureCount: 0,
-      currentEmail: '',
-    });
-
     try {
       const requestBody = {
         recipients: selectedCustomerData.map(c => ({
@@ -300,15 +298,6 @@ export default function CustomerManagementPage() {
 
       for (let i = 0; i < selectedCustomerData.length; i++) {
         const customer = selectedCustomerData[i];
-
-        // Update progress
-        setSendProgress({
-          current: i + 1,
-          total: selectedCustomerData.length,
-          successCount,
-          failureCount,
-          currentEmail: customer.email,
-        });
 
         try {
           const response = await fetch('/api/admin/send-custom-email', {
@@ -344,15 +333,6 @@ export default function CustomerManagementPage() {
           });
         }
 
-        // Update final progress for this email
-        setSendProgress({
-          current: i + 1,
-          total: selectedCustomerData.length,
-          successCount,
-          failureCount,
-          currentEmail: customer.email,
-        });
-
         // Small delay to avoid overwhelming the API
         if (i < selectedCustomerData.length - 1) {
           await new Promise(resolve => setTimeout(resolve, 100));
@@ -360,37 +340,32 @@ export default function CustomerManagementPage() {
       }
 
       // Show final results
-      setTimeout(() => {
-        setShowProgressModal(false);
+      let message = `Successfully sent ${successCount} out of ${selectedCustomerData.length} emails!`;
 
-        let message = `Successfully sent ${successCount} out of ${selectedCustomerData.length} emails!`;
-
-        if (failureCount > 0) {
-          message += `\n\nFailed: ${failureCount} emails`;
-          if (errors.length > 0) {
-            message += '\n\nFailed recipients:';
-            errors.slice(0, 5).forEach((err) => {
-              message += `\n- ${err.email}: ${err.error}`;
-            });
-            if (errors.length > 5) {
-              message += `\n... and ${errors.length - 5} more`;
-            }
+      if (failureCount > 0) {
+        message += `\n\nFailed: ${failureCount} emails`;
+        if (errors.length > 0) {
+          message += '\n\nFailed recipients:';
+          errors.slice(0, 5).forEach((err) => {
+            message += `\n- ${err.email}: ${err.error}`;
+          });
+          if (errors.length > 5) {
+            message += `\n... and ${errors.length - 5} more`;
           }
         }
+      }
 
-        alert(message);
+      alert(message);
 
-        // Clear selections and form only if all succeeded
-        if (failureCount === 0) {
-          setSelectedCustomers(new Set());
-          setEmailSubject('');
-          setEmailContent('');
-        }
-      }, 500);
+      // Clear selections and form only if all succeeded
+      if (failureCount === 0) {
+        setSelectedCustomers(new Set());
+        setEmailSubject('');
+        setEmailContent('');
+      }
 
     } catch (error) {
       console.error('Error sending emails:', error);
-      setShowProgressModal(false);
       alert('An error occurred while sending emails');
     } finally {
       setSending(false);
@@ -418,6 +393,7 @@ export default function CustomerManagementPage() {
     setSelectedCustomers(new Set());
     setDeliveryMethodFilter('all');
     setDeliveryFeePaidFilter(null);
+    setOrderStatusFilter('all');
     setSearchQuery('');
     setEmailSubject('');
     setEmailContent('');
@@ -464,7 +440,7 @@ export default function CustomerManagementPage() {
       {/* Filters */}
       <div className="bg-white rounded-lg shadow p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">필터</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               배송 방법
@@ -478,6 +454,21 @@ export default function CustomerManagementPage() {
               <option value="해외배송">해외배송</option>
               <option value="국내배송">국내배송</option>
               <option value="팬미팅현장수령">팬미팅현장수령</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              주문 상태
+            </label>
+            <select
+              value={orderStatusFilter}
+              onChange={(e) => setOrderStatusFilter(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="all">전체</option>
+              <option value="paid">배송전</option>
+              <option value="delivered">배송중</option>
+              <option value="complete">처리 완료</option>
             </select>
           </div>
           {activeTab === 'hypetown' && (
@@ -514,8 +505,8 @@ export default function CustomerManagementPage() {
         </div>
       </div>
 
-      {/* Customer List */}
-      <div className="bg-white rounded-lg shadow">
+          {/* Customer List */}
+          <div className="bg-white rounded-lg shadow">
         <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
           <div>
             <h2 className="text-lg font-semibold text-gray-900">
@@ -541,7 +532,7 @@ export default function CustomerManagementPage() {
           </div>
         </div>
 
-        <div className="overflow-x-auto max-h-[300px] overflow-y-auto">
+        <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
           {loading ? (
             <div className="text-center py-12">
               <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -751,78 +742,6 @@ export default function CustomerManagementPage() {
                 dangerouslySetInnerHTML={{ __html: generateEmailPreview() }}
                 className="bg-gray-50"
               />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Progress Modal */}
-      {showProgressModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-2xl max-w-md w-full p-6">
-            {/* Header */}
-            <div className="mb-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">
-                이메일 발송 중...
-              </h2>
-              <p className="text-sm text-gray-600">
-                잠시만 기다려주세요. 이메일을 발송하고 있습니다.
-              </p>
-            </div>
-
-            {/* Progress Bar */}
-            <div className="mb-6">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-sm font-medium text-gray-700">
-                  진행률: {sendProgress.current} / {sendProgress.total}
-                </span>
-                <span className="text-sm font-medium text-gray-700">
-                  {sendProgress.total > 0
-                    ? Math.round((sendProgress.current / sendProgress.total) * 100)
-                    : 0}%
-                </span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-                <div
-                  className="bg-blue-600 h-3 rounded-full transition-all duration-300 ease-out"
-                  style={{
-                    width: `${
-                      sendProgress.total > 0
-                        ? (sendProgress.current / sendProgress.total) * 100
-                        : 0
-                    }%`,
-                  }}
-                />
-              </div>
-            </div>
-
-            {/* Current Email */}
-            {sendProgress.currentEmail && (
-              <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
-                <p className="text-xs font-medium text-blue-900 mb-1">현재 발송 중:</p>
-                <p className="text-sm text-blue-800 truncate">{sendProgress.currentEmail}</p>
-              </div>
-            )}
-
-            {/* Stats */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="text-center p-3 bg-green-50 border border-green-200 rounded-md">
-                <div className="text-2xl font-bold text-green-600">
-                  {sendProgress.successCount}
-                </div>
-                <div className="text-xs text-green-700 mt-1">성공</div>
-              </div>
-              <div className="text-center p-3 bg-red-50 border border-red-200 rounded-md">
-                <div className="text-2xl font-bold text-red-600">
-                  {sendProgress.failureCount}
-                </div>
-                <div className="text-xs text-red-700 mt-1">실패</div>
-              </div>
-            </div>
-
-            {/* Loading Spinner */}
-            <div className="flex justify-center mt-6">
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
             </div>
           </div>
         </div>
