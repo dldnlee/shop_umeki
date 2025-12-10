@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import * as XLSX from 'xlsx';
 
 type Product = {
   id: string;
@@ -329,13 +330,13 @@ export default function DeliveryPage() {
     }));
   };
 
-  const exportToCSV = () => {
+  const exportToExcel = () => {
     if (filteredOrders.length === 0) {
       alert('필터링된 주문이 없습니다.');
       return;
     }
 
-    // Create CSV content based on the template from youmakeit_orders.csv
+    // Create headers based on the template from youmakeit_orders.csv
     const headers = [
       '아이디',
       '구매사이트주소 (http://, https:// 는 붙이지 않습니다.)',
@@ -371,7 +372,7 @@ export default function DeliveryPage() {
     }
 
     const rows = filteredOrders.map(order => {
-      const row: string[] = [];
+      const row: (string | number)[] = [];
 
       // Parse address to extract postal code and clean address
       const address = order.address || '';
@@ -397,8 +398,6 @@ export default function DeliveryPage() {
       row.push(order.items.length > 1 ? `${firstProduct} 외 ${order.items.length - 1}건` : firstProduct);
 
       // Address and shipping info
-      // const isInternational = order.delivery_method === '해외배송';
-
       row.push('JP'); // 수령받는국가 (Japan)
       row.push(postalCode1); // 우편번호1
       row.push(''); // 우편번호2
@@ -425,8 +424,8 @@ export default function DeliveryPage() {
             : item.product.name;
           row.push(productName); // 상품명
           row.push('YouMakeIt'); // 브랜드
-          row.push(item.product.price?.toString() || '0'); // 단가
-          row.push(item.quantity?.toString() || '1'); // 수량
+          row.push(item.product.price || 0); // 단가 (as number)
+          row.push(item.quantity || 1); // 수량 (as number)
           row.push('A01'); // 항목코드
           row.push(''); // 상품url
         } else {
@@ -438,26 +437,21 @@ export default function DeliveryPage() {
       return row;
     });
 
-    // Convert to CSV string
-    const csvContent = [
-      headers.map(h => `"${h}"`).join(','),
-      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
-    ].join('\n');
+    // Create worksheet from array of arrays
+    const wsData = [headers, ...rows];
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
 
-    // Create download
-    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
+    // Create workbook and add worksheet
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Orders');
 
+    // Generate filename with timestamp
     const timestamp = new Date().toISOString().slice(0, 10);
     const platform = platformTab === 'hypetown' ? 'hypetown' : 'umeki';
+    const filename = `youmakeit_orders_${platform}_${timestamp}.xlsx`;
 
-    link.setAttribute('href', url);
-    link.setAttribute('download', `youmakeit_orders_${platform}_${timestamp}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    // Write and download file
+    XLSX.writeFile(wb, filename);
   };
 
   const filteredOrders = orders.filter(order => {
@@ -744,11 +738,11 @@ export default function DeliveryPage() {
             {/* Sort Order Toggle */}
             <div className="ml-auto flex gap-2">
               <button
-                onClick={exportToCSV}
+                onClick={exportToExcel}
                 disabled={filteredOrders.length === 0}
                 className="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
-                CSV 내보내기 ({filteredOrders.length})
+                Excel 내보내기 ({filteredOrders.length})
               </button>
               <div className="w-px h-full bg-gray-300 mx-2"></div>
               <span className="text-sm text-gray-600 self-center">정렬:</span>
