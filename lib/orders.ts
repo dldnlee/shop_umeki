@@ -10,7 +10,11 @@ export type Order = {
   name: string;
   email: string;
   phone_num?: string | null;
-  address?: string | null;
+  address?: string | null; // Legacy field, kept for backward compatibility
+  country_code?: string | null;
+  postal_code?: string | null;
+  address_line_1?: string | null;
+  address_line_2?: string | null;
   order_status?: string;
   delivery_method: string;
   payment_method?: string;
@@ -48,13 +52,17 @@ export async function createOrder(
     const { data: order, error: orderError } = await supabase
       .from("umeki_orders")
       .insert([
-        { 
+        {
           id: orderData.id || generateUUID(),
           easy_pay_id: orderData.easy_pay_id || null,
           name: orderData.name,
           email: orderData.email,
           phone_num: orderData.phone_num,
           address: orderData.address,
+          country_code: orderData.country_code || null,
+          postal_code: orderData.postal_code || null,
+          address_line_1: orderData.address_line_1 || null,
+          address_line_2: orderData.address_line_2 || null,
           delivery_method: orderData.delivery_method,
           payment_method: orderData.payment_method || null,
           total_amount: orderData.total_amount,
