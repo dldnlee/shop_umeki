@@ -378,7 +378,7 @@ export default function OrderDetailsPage() {
               <div className="flex justify-between">
                 <span className="text-zinc-600">배송 방법</span>
                 <span className="text-black">
-                  {order.delivery_method === "delivery" ? "배송" : "직접 수령"}
+                  {order.delivery_method}
                 </span>
               </div>
               {order.address && (
