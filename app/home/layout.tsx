@@ -24,7 +24,12 @@ export default function HomeLayout({
     const today = new Date().toDateString();
 
     if (dismissedDate !== today) {
-      setShowPopup(true);
+      // Use setTimeout to avoid state update during render
+      const timer = setTimeout(() => {
+        setShowPopup(true);
+      }, 0);
+
+      return () => clearTimeout(timer);
     }
   }, []);
 
