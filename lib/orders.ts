@@ -372,12 +372,14 @@ export async function updateOrderCustomsCode(orderId: string, customsCode: strin
 
 /**
  * Get sales analytics data
+ * @param startDate - Optional start date for filtering (ISO string)
+ * @param endDate - Optional end date for filtering (ISO string)
  * @returns Sales analytics including product sales and total amounts by status
  */
-export async function getSalesAnalytics() {
+export async function getSalesAnalytics(startDate?: string, endDate?: string) {
   try {
     // Get all orders with 'paid' or 'complete' status and their items
-    const { data: paidOrders, error: paidOrdersError } = await supabase
+    let query = supabase
       .from("umeki_orders")
       .select(`
         id,
@@ -387,6 +389,16 @@ export async function getSalesAnalytics() {
         delivery_method
       `)
       .in("order_status", ["paid", "delivered", "complete"]);
+
+    // Apply date range filters if provided
+    if (startDate) {
+      query = query.gte("created_at", startDate);
+    }
+    if (endDate) {
+      query = query.lte("created_at", endDate);
+    }
+
+    const { data: paidOrders, error: paidOrdersError } = await query;
 
     if (paidOrdersError) {
       return { success: false, error: paidOrdersError };

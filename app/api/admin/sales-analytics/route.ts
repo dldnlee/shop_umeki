@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { getSalesAnalytics } from '@/lib/orders';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     // Check authentication
     const cookieStore = await cookies();
@@ -15,7 +15,15 @@ export async function GET() {
       );
     }
 
-    const result = await getSalesAnalytics();
+    // Parse query parameters for date range
+    const { searchParams } = new URL(request.url);
+    const startDate = searchParams.get('startDate');
+    const endDate = searchParams.get('endDate');
+
+    const result = await getSalesAnalytics(
+      startDate || undefined,
+      endDate || undefined
+    );
 
     if (!result.success) {
       return NextResponse.json(
