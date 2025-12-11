@@ -36,6 +36,7 @@ export default function PaymentPage() {
   const [address, setAddress] = useState("");
   const [addressDetail, setAddressDetail] = useState("");
   const [zipCode, setZipCode] = useState("");
+  const [country, setCountry] = useState("");
   const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>("국내배송");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("toss");
   const [paypalCurrency, setPaypalCurrency] = useState<PayPalCurrency>("USD");
@@ -65,6 +66,9 @@ export default function PaymentPage() {
       if (deliveryMethod !== "팬미팅현장수령" && !address.trim()) {
         return false;
       }
+      if (deliveryMethod === "해외배송" && !country.trim()) {
+        return false;
+      }
       if (!agreedToTerms) {
         return false;
       }
@@ -72,7 +76,7 @@ export default function PaymentPage() {
     };
 
     setIsFormValid(checkValidity());
-  }, [name, email, phone, address, deliveryMethod, agreedToTerms]);
+  }, [name, email, phone, address, country, deliveryMethod, agreedToTerms]);
 
   useEffect(() => {
     // Load cart from localStorage on mount (client-side only)
@@ -411,7 +415,7 @@ export default function PaymentPage() {
               throw new Error(captureData.message || 'Payment capture failed');
             }
 
-            // Prepare address string
+            // Prepare address string (legacy field for backward compatibility)
             const fullAddress = deliveryMethod !== "팬미팅현장수령"
               ? `[${zipCode}] ${address} ${addressDetail}`.trim()
               : null;
@@ -422,6 +426,10 @@ export default function PaymentPage() {
               email: email,
               phone_num: phone,
               address: fullAddress,
+              country_code: deliveryMethod === "해외배송" ? country : null,
+              postal_code: deliveryMethod !== "팬미팅현장수령" ? zipCode : null,
+              address_line_1: deliveryMethod !== "팬미팅현장수령" ? address : null,
+              address_line_2: deliveryMethod !== "팬미팅현장수령" ? addressDetail : null,
               delivery_method: deliveryMethod,
               payment_method: 'paypal' as PaymentMethod,
               total_amount: finalTotal,
@@ -522,7 +530,7 @@ export default function PaymentPage() {
       console.error('PayPal initialization error:', error);
       paypalRenderingRef.current = false;
     }
-  }, [paymentMethod, paypalCurrency, finalTotal, cartItems, name, email, phone, address, zipCode, addressDetail, deliveryMethod, agreedToTerms, convertKRWToCurrency, deliveryFee]);
+  }, [paymentMethod, paypalCurrency, finalTotal, cartItems, name, email, phone, address, zipCode, addressDetail, country, deliveryMethod, agreedToTerms, convertKRWToCurrency, deliveryFee]);
 
   // Initialize PayPal buttons when payment method or currency changes
   useEffect(() => {
@@ -612,7 +620,7 @@ export default function PaymentPage() {
     setIsSubmitting(true);
 
     try {
-      // Prepare address string (combine all address fields)
+      // Prepare address string (combine all address fields for legacy field)
       const fullAddress = deliveryMethod !== "팬미팅현장수령"
         ? `[${zipCode}] ${address} ${addressDetail}`.trim()
         : null;
@@ -623,6 +631,10 @@ export default function PaymentPage() {
         email: email,
         phone_num: phone,
         address: fullAddress,
+        country_code: deliveryMethod === "해외배송" ? country : null,
+        postal_code: deliveryMethod !== "팬미팅현장수령" ? zipCode : null,
+        address_line_1: deliveryMethod !== "팬미팅현장수령" ? address : null,
+        address_line_2: deliveryMethod !== "팬미팅현장수령" ? addressDetail : null,
         delivery_method: deliveryMethod,
         payment_method: paymentMethod,
         total_amount: finalTotal,
@@ -870,7 +882,7 @@ export default function PaymentPage() {
                   ))}
                 </div>
                 {/* Warning for shipping options */}
-                {(deliveryMethod === "국내배송" || deliveryMethod === "해외배송") && (
+                {/* {(deliveryMethod === "국내배송" || deliveryMethod === "해외배송") && (
                   <div className="mt-3 flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-md">
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
@@ -886,8 +898,147 @@ export default function PaymentPage() {
                       택배 수령 시 팬미팅 일정 전에 전에 수령하기 어렵습니다.
                     </p>
                   </div>
-                )}
+                )} */}
               </div>
+
+              {/* Country Selection for International Shipping */}
+              {deliveryMethod === "해외배송" && (
+                <div className="mb-6">
+                  <label
+                    htmlFor="country"
+                    className="block text-sm font-medium text-black mb-2"
+                  >
+                    국가 (Country) <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    id="country"
+                    value={country}
+                    onChange={(e) => setCountry(e.target.value)}
+                    className="w-full px-4 py-2 bg-white border border-zinc-300 rounded-md text-black focus:outline-none focus:ring-2 focus:ring-zinc-400"
+                    required
+                  >
+                    <option value="">Select Country</option>
+                    <option value="GT">Guatemala</option>
+                    <option value="GE">Georgia</option>
+                    <option value="GR">Greece</option>
+                    <option value="NG">Nigeria</option>
+                    <option value="NL">Netherlands</option>
+                    <option value="AN">Netherlands Antilles</option>
+                    <option value="NP">Nepal</option>
+                    <option value="NO">Norway</option>
+                    <option value="NZ">New Zealand</option>
+                    <option value="NE">Niger</option>
+                    <option value="TW">Taiwan</option>
+                    <option value="DK">Denmark</option>
+                    <option value="DO">Dominican Republic</option>
+                    <option value="DE">Germany</option>
+                    <option value="LA">Laos</option>
+                    <option value="LV">Latvia</option>
+                    <option value="RU">Russia</option>
+                    <option value="LS">Lesotho</option>
+                    <option value="RO">Romania</option>
+                    <option value="RW">Rwanda</option>
+                    <option value="LU">Luxembourg</option>
+                    <option value="MK">Macedonia</option>
+                    <option value="MY">Malaysia</option>
+                    <option value="MX">Mexico</option>
+                    <option value="MA">Morocco</option>
+                    <option value="MU">Mauritius</option>
+                    <option value="MZ">Mozambique</option>
+                    <option value="MV">Maldives</option>
+                    <option value="MT">Malta</option>
+                    <option value="MN">Mongolia</option>
+                    <option value="US">United States</option>
+                    <option value="MM">Myanmar</option>
+                    <option value="BH">Bahrain</option>
+                    <option value="BD">Bangladesh</option>
+                    <option value="BJ">Benin</option>
+                    <option value="VN">Vietnam</option>
+                    <option value="BE">Belgium</option>
+                    <option value="BY">Belarus</option>
+                    <option value="BA">Bosnia and Herzegovina</option>
+                    <option value="BW">Botswana</option>
+                    <option value="BT">Bhutan</option>
+                    <option value="BG">Bulgaria</option>
+                    <option value="BR">Brazil</option>
+                    <option value="BN">Brunei</option>
+                    <option value="BF">Burkina Faso</option>
+                    <option value="SA">Saudi Arabia</option>
+                    <option value="CY">Cyprus</option>
+                    <option value="SN">Senegal</option>
+                    <option value="LK">Sri Lanka</option>
+                    <option value="SE">Sweden</option>
+                    <option value="CH">Switzerland</option>
+                    <option value="ES">Spain</option>
+                    <option value="SK">Slovakia</option>
+                    <option value="SI">Slovenia</option>
+                    <option value="SY">Syria</option>
+                    <option value="SG">Singapore</option>
+                    <option value="AE">United Arab Emirates</option>
+                    <option value="AM">Armenia</option>
+                    <option value="AR">Argentina</option>
+                    <option value="IS">Iceland</option>
+                    <option value="HT">Haiti</option>
+                    <option value="IE">Ireland</option>
+                    <option value="AZ">Azerbaijan</option>
+                    <option value="AL">Albania</option>
+                    <option value="DZ">Algeria</option>
+                    <option value="AO">Angola</option>
+                    <option value="ER">Eritrea</option>
+                    <option value="EE">Estonia</option>
+                    <option value="EC">Ecuador</option>
+                    <option value="GB">United Kingdom</option>
+                    <option value="YE">Yemen</option>
+                    <option value="OM">Oman</option>
+                    <option value="AT">Austria</option>
+                    <option value="JO">Jordan</option>
+                    <option value="UZ">Uzbekistan</option>
+                    <option value="UA">Ukraine</option>
+                    <option value="ET">Ethiopia</option>
+                    <option value="IR">Iran</option>
+                    <option value="IL">Israel</option>
+                    <option value="EG">Egypt</option>
+                    <option value="IT">Italy</option>
+                    <option value="IN">India</option>
+                    <option value="ID">Indonesia</option>
+                    <option value="JP">Japan</option>
+                    <option value="ZM">Zambia</option>
+                    <option value="CN">China</option>
+                    <option value="MO">Macau</option>
+                    <option value="DJ">Djibouti</option>
+                    <option value="CZ">Czech Republic</option>
+                    <option value="CL">Chile</option>
+                    <option value="CV">Cape Verde</option>
+                    <option value="KZ">Kazakhstan</option>
+                    <option value="QA">Qatar</option>
+                    <option value="KH">Cambodia</option>
+                    <option value="CA">Canada</option>
+                    <option value="KE">Kenya</option>
+                    <option value="CR">Costa Rica</option>
+                    <option value="CI">Ivory Coast</option>
+                    <option value="CG">Congo</option>
+                    <option value="CU">Cuba</option>
+                    <option value="HR">Croatia</option>
+                    <option value="TZ">Tanzania</option>
+                    <option value="TH">Thailand</option>
+                    <option value="TR">Turkey</option>
+                    <option value="TG">Togo</option>
+                    <option value="TN">Tunisia</option>
+                    <option value="PA">Panama</option>
+                    <option value="PK">Pakistan</option>
+                    <option value="PE">Peru</option>
+                    <option value="PT">Portugal</option>
+                    <option value="PL">Poland</option>
+                    <option value="FR">France</option>
+                    <option value="FJ">Fiji</option>
+                    <option value="FI">Finland</option>
+                    <option value="PH">Philippines</option>
+                    <option value="HU">Hungary</option>
+                    <option value="AU">Australia</option>
+                    <option value="HK">Hong Kong</option>
+                  </select>
+                </div>
+              )}
 
               {/* Address */}
               {deliveryMethod !== "팬미팅현장수령" && (
@@ -1043,7 +1194,7 @@ export default function PaymentPage() {
                           alert(`결제 위젯 오류: ${error.message}`);
                         }}
                         onBeforePaymentRequest={() => {
-                          // Prepare address string
+                          // Prepare address string (legacy field for backward compatibility)
                           const fullAddress = deliveryMethod !== "팬미팅현장수령"
                             ? `[${zipCode}] ${address} ${addressDetail}`.trim()
                             : null;
@@ -1054,6 +1205,10 @@ export default function PaymentPage() {
                             email: email,
                             phone_num: phone,
                             address: fullAddress,
+                            country_code: deliveryMethod === "해외배송" ? country : null,
+                            postal_code: deliveryMethod !== "팬미팅현장수령" ? zipCode : null,
+                            address_line_1: deliveryMethod !== "팬미팅현장수령" ? address : null,
+                            address_line_2: deliveryMethod !== "팬미팅현장수령" ? addressDetail : null,
                             delivery_method: deliveryMethod,
                             total_amount: finalTotal,
                           };
