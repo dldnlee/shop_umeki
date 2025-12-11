@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { format, subDays, startOfDay, endOfDay } from 'date-fns';
 
 type SalesAnalytics = {
   totalPaidAmount: number;
@@ -49,16 +50,28 @@ export default function AnalyticsPage() {
   const [error, setError] = useState('');
   const [expandedProductId, setExpandedProductId] = useState<number | null>(null);
 
+  // Date range state - default to last 30 days
+  const [startDate, setStartDate] = useState<string>(
+    format(startOfDay(subDays(new Date(), 30)), "yyyy-MM-dd'T'HH:mm:ss")
+  );
+  const [endDate, setEndDate] = useState<string>(
+    format(endOfDay(new Date()), "yyyy-MM-dd'T'HH:mm:ss")
+  );
+
   useEffect(() => {
     fetchSalesAnalytics();
-  }, []);
+  }, [startDate, endDate]);
 
   const fetchSalesAnalytics = async () => {
     setLoading(true);
     setError('');
 
     try {
-      const response = await fetch('/api/admin/sales-analytics');
+      const params = new URLSearchParams();
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+
+      const response = await fetch(`/api/admin/sales-analytics?${params.toString()}`);
       const data = await response.json();
 
       if (response.ok) {
@@ -71,6 +84,23 @@ export default function AnalyticsPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleStartDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const date = new Date(e.target.value);
+    setStartDate(format(startOfDay(date), "yyyy-MM-dd'T'HH:mm:ss"));
+  };
+
+  const handleEndDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const date = new Date(e.target.value);
+    setEndDate(format(endOfDay(date), "yyyy-MM-dd'T'HH:mm:ss"));
+  };
+
+  const setDateRange = (days: number) => {
+    const end = new Date();
+    const start = subDays(end, days);
+    setStartDate(format(startOfDay(start), "yyyy-MM-dd'T'HH:mm:ss"));
+    setEndDate(format(endOfDay(end), "yyyy-MM-dd'T'HH:mm:ss"));
   };
 
   const formatPrice = (price: number) => {
@@ -115,6 +145,73 @@ export default function AnalyticsPage() {
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-gray-900">매출 분석</h2>
         <p className="text-gray-600 mt-1">Sales Analytics</p>
+      </div>
+
+      {/* Date Range Picker */}
+      <div className="bg-white rounded-lg shadow p-6 mb-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">기간 선택</h3>
+
+        {/* Quick Date Range Buttons */}
+        <div className="flex flex-wrap gap-2 mb-4">
+          <button
+            onClick={() => setDateRange(7)}
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+          >
+            최근 7일
+          </button>
+          <button
+            onClick={() => setDateRange(30)}
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+          >
+            최근 30일
+          </button>
+          <button
+            onClick={() => setDateRange(90)}
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+          >
+            최근 90일
+          </button>
+          <button
+            onClick={() => {
+              setStartDate(format(startOfDay(new Date(2024, 0, 1)), "yyyy-MM-dd'T'HH:mm:ss"));
+              setEndDate(format(endOfDay(new Date()), "yyyy-MM-dd'T'HH:mm:ss"));
+            }}
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+          >
+            전체 기간
+          </button>
+        </div>
+
+        {/* Custom Date Range Inputs */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              시작일
+            </label>
+            <input
+              type="date"
+              value={format(new Date(startDate), 'yyyy-MM-dd')}
+              onChange={handleStartDateChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              종료일
+            </label>
+            <input
+              type="date"
+              value={format(new Date(endDate), 'yyyy-MM-dd')}
+              onChange={handleEndDateChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+        </div>
+
+        {/* Display Selected Range */}
+        <div className="mt-4 text-sm text-gray-600">
+          선택된 기간: {format(new Date(startDate), 'yyyy년 MM월 dd일')} ~ {format(new Date(endDate), 'yyyy년 MM월 dd일')}
+        </div>
       </div>
 
       {loading && (
