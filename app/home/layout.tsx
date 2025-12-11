@@ -74,10 +74,10 @@ export default function HomeLayout({
               </button>
 
               {/* Popup content */}
-              <div className="mb-6">
-                <h2 className="text-lg font-bold mb-4">Important Notice / お知らせ / 중요 공지</h2>
+              <div className="mb-6 max-">
+                <h2 className="text-md md:text-lg font-bold mb-4">Important Notice / お知らせ / 중요 공지</h2>
 
-                <div className="space-y-4 text-sm">
+                <div className="space-y-4 text-sm max-h-70 overflow-y-auto">
                   {/* Korean */}
                   <div className="border-b pb-3">
                     <h3 className="font-semibold text-gray-800 mb-2">🇰🇷 한국어</h3>
