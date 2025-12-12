@@ -125,12 +125,23 @@ export default function DeliveryPage() {
       // Determine which tables to use based on platform
       const ordersTable = platformTab === 'hypetown' ? 'umeki_orders_hypetown' : 'umeki_orders';
       const orderItemsTable = platformTab === 'hypetown' ? 'umeki_order_items_hypetown' : 'umeki_order_items';
-      const productsTable = 'umeki_products';
 
-      // Fetch orders where delivery_method is NOT 팬미팅현장수령
+      // Fetch orders with their items in a single query using embedded resources
+      // This avoids the limitation of .in() with large arrays
       const { data: ordersData, error: ordersError } = await supabase
         .from(ordersTable)
-        .select('*')
+        .select(`
+          *,
+          items:${orderItemsTable}(
+            id,
+            order_id,
+            product_id,
+            option,
+            quantity,
+            total_price,
+            product:umeki_products(id, name, price)
+          )
+        `)
         .neq('delivery_method', '팬미팅현장수령')
         .neq('delivery_method', '팬미팅 현장수령')
         .neq('order_status', 'waiting')
@@ -144,25 +155,8 @@ export default function DeliveryPage() {
         return;
       }
 
-      // Fetch all order items for these orders with product information
-      const orderIds = ordersData.map(order => order.id);
-      const { data: itemsData, error: itemsError } = await supabase
-        .from(orderItemsTable)
-        .select(`
-          *,
-          product:${productsTable}(id, name, price)
-        `)
-        .in('order_id', orderIds);
-
-      if (itemsError) throw itemsError;
-
-      // Combine orders with their items
-      const ordersWithItems = ordersData.map(order => ({
-        ...order,
-        items: itemsData?.filter(item => item.order_id === order.id) || []
-      }));
-
-      setOrders(ordersWithItems);
+      // Data is already in the correct format with items embedded
+      setOrders(ordersData as OrderWithItems[]);
 
       // Initialize invoice numbers state
       const initialInvoiceNumbers: { [orderId: string]: string } = {};
