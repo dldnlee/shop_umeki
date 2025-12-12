@@ -68,12 +68,15 @@ export default function DeliveryPage() {
   const [updatingDeliveryFee, setUpdatingDeliveryFee] = useState<{ [orderId: string]: boolean }>({});
   const [updatingStatus, setUpdatingStatus] = useState<{ [orderId: string]: boolean }>({});
   const [orderStatusFilter, setOrderStatusFilter] = useState<OrderStatusFilter>('all');
+  const [displayCount, setDisplayCount] = useState(20);
+  const ITEMS_PER_PAGE = 20;
 
   useEffect(() => {
     fetchProducts();
   }, []);
 
   useEffect(() => {
+    setDisplayCount(20); // Reset display count when platform or sort changes
     fetchDeliveryOrders();
   }, [platformTab, sortOrder]);
 
@@ -125,12 +128,23 @@ export default function DeliveryPage() {
       // Determine which tables to use based on platform
       const ordersTable = platformTab === 'hypetown' ? 'umeki_orders_hypetown' : 'umeki_orders';
       const orderItemsTable = platformTab === 'hypetown' ? 'umeki_order_items_hypetown' : 'umeki_order_items';
-      const productsTable = 'umeki_products';
 
-      // Fetch orders where delivery_method is NOT 팬미팅현장수령
+      // Fetch orders with their items in a single query using embedded resources
+      // This avoids the limitation of .in() with large arrays
       const { data: ordersData, error: ordersError } = await supabase
         .from(ordersTable)
-        .select('*')
+        .select(`
+          *,
+          items:${orderItemsTable}(
+            id,
+            order_id,
+            product_id,
+            option,
+            quantity,
+            total_price,
+            product:umeki_products(id, name, price)
+          )
+        `)
         .neq('delivery_method', '팬미팅현장수령')
         .neq('delivery_method', '팬미팅 현장수령')
         .neq('order_status', 'waiting')
@@ -144,25 +158,8 @@ export default function DeliveryPage() {
         return;
       }
 
-      // Fetch all order items for these orders with product information
-      const orderIds = ordersData.map(order => order.id);
-      const { data: itemsData, error: itemsError } = await supabase
-        .from(orderItemsTable)
-        .select(`
-          *,
-          product:${productsTable}(id, name, price)
-        `)
-        .in('order_id', orderIds);
-
-      if (itemsError) throw itemsError;
-
-      // Combine orders with their items
-      const ordersWithItems = ordersData.map(order => ({
-        ...order,
-        items: itemsData?.filter(item => item.order_id === order.id) || []
-      }));
-
-      setOrders(ordersWithItems);
+      // Data is already in the correct format with items embedded
+      setOrders(ordersData as OrderWithItems[]);
 
       // Initialize invoice numbers state
       const initialInvoiceNumbers: { [orderId: string]: string } = {};
@@ -482,6 +479,14 @@ export default function DeliveryPage() {
     return true;
   });
 
+  // Client-side pagination: only render a subset of filtered orders
+  const displayedOrders = filteredOrders.slice(0, displayCount);
+  const hasMoreToDisplay = displayCount < filteredOrders.length;
+
+  const loadMore = () => {
+    setDisplayCount(prev => prev + ITEMS_PER_PAGE);
+  };
+
   // Calculate product counts by delivery method for paid orders
   const calculateProductCountsByDeliveryMethod = () => {
     const countsByDeliveryMethod: Record<string, Record<string, number>> = {
@@ -777,8 +782,23 @@ export default function DeliveryPage() {
             </p>
           </div>
         ) : (
-          <div className="space-y-2">
-            {filteredOrders.map((order) => {
+          <>
+            <div className="mb-4 flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
+              <p className="text-sm text-gray-700">
+                전체 <span className="font-semibold">{filteredOrders.length}</span>개의 주문 중{' '}
+                <span className="font-semibold">{displayedOrders.length}</span>개 표시
+              </p>
+              {hasMoreToDisplay && (
+                <button
+                  onClick={loadMore}
+                  className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  더 보기 ({ITEMS_PER_PAGE}개)
+                </button>
+              )}
+            </div>
+            <div className="space-y-2">
+              {displayedOrders.map((order) => {
               const isExpanded = expandedOrders[order.id];
 
               return (
@@ -1021,6 +1041,17 @@ export default function DeliveryPage() {
               );
             })}
           </div>
+          {hasMoreToDisplay && (
+            <div className="mt-4 flex justify-center">
+              <button
+                onClick={loadMore}
+                className="px-6 py-3 bg-indigo-600 text-white font-semibold hover:bg-indigo-700 transition-colors shadow-lg"
+              >
+                더 보기 ({ITEMS_PER_PAGE}개씩)
+              </button>
+            </div>
+          )}
+          </>
         )}
       </div>
     </div>
