@@ -68,12 +68,15 @@ export default function DeliveryPage() {
   const [updatingDeliveryFee, setUpdatingDeliveryFee] = useState<{ [orderId: string]: boolean }>({});
   const [updatingStatus, setUpdatingStatus] = useState<{ [orderId: string]: boolean }>({});
   const [orderStatusFilter, setOrderStatusFilter] = useState<OrderStatusFilter>('all');
+  const [displayCount, setDisplayCount] = useState(20);
+  const ITEMS_PER_PAGE = 20;
 
   useEffect(() => {
     fetchProducts();
   }, []);
 
   useEffect(() => {
+    setDisplayCount(20); // Reset display count when platform or sort changes
     fetchDeliveryOrders();
   }, [platformTab, sortOrder]);
 
@@ -476,6 +479,14 @@ export default function DeliveryPage() {
     return true;
   });
 
+  // Client-side pagination: only render a subset of filtered orders
+  const displayedOrders = filteredOrders.slice(0, displayCount);
+  const hasMoreToDisplay = displayCount < filteredOrders.length;
+
+  const loadMore = () => {
+    setDisplayCount(prev => prev + ITEMS_PER_PAGE);
+  };
+
   // Calculate product counts by delivery method for paid orders
   const calculateProductCountsByDeliveryMethod = () => {
     const countsByDeliveryMethod: Record<string, Record<string, number>> = {
@@ -771,8 +782,23 @@ export default function DeliveryPage() {
             </p>
           </div>
         ) : (
-          <div className="space-y-2">
-            {filteredOrders.map((order) => {
+          <>
+            <div className="mb-4 flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
+              <p className="text-sm text-gray-700">
+                전체 <span className="font-semibold">{filteredOrders.length}</span>개의 주문 중{' '}
+                <span className="font-semibold">{displayedOrders.length}</span>개 표시
+              </p>
+              {hasMoreToDisplay && (
+                <button
+                  onClick={loadMore}
+                  className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  더 보기 ({ITEMS_PER_PAGE}개)
+                </button>
+              )}
+            </div>
+            <div className="space-y-2">
+              {displayedOrders.map((order) => {
               const isExpanded = expandedOrders[order.id];
 
               return (
@@ -1015,6 +1041,17 @@ export default function DeliveryPage() {
               );
             })}
           </div>
+          {hasMoreToDisplay && (
+            <div className="mt-4 flex justify-center">
+              <button
+                onClick={loadMore}
+                className="px-6 py-3 bg-indigo-600 text-white font-semibold hover:bg-indigo-700 transition-colors shadow-lg"
+              >
+                더 보기 ({ITEMS_PER_PAGE}개씩)
+              </button>
+            </div>
+          )}
+          </>
         )}
       </div>
     </div>
