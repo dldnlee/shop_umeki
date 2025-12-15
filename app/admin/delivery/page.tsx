@@ -9,6 +9,8 @@ type Product = {
   name: string;
   price: number;
   display_order: number;
+  eng_name: string;
+  malltail_item_code: string;
 };
 
 type OrderItem = {
@@ -18,7 +20,7 @@ type OrderItem = {
   option?: string | null;
   quantity: number;
   total_price: number;
-  malltail_order_id?: string; 
+  // malltail_order_id?: string; 
   product?: Product;
 };
 
@@ -35,6 +37,12 @@ type Order = {
   customs_code?: string | null;
   delivery_fee_payment?: boolean;
   malltail_order_id?: string;
+  country_code?: string | null;
+  postal_code?: string | null;
+  address_line_1?: string | null;
+  address_line_2?: string | null;
+  state?: string | null;
+  city?: string | null;
 };
 
 type OrderWithItems = Order & {
@@ -51,6 +59,7 @@ type ProductOption = {
   productName: string;
   option: string | null;
   displayOrder: number;
+  mallTailCode: string;
 };
 
 export default function DeliveryPage() {
@@ -100,7 +109,8 @@ export default function DeliveryPage() {
             (product.options as string[]).forEach((option: string) => {
               options.push({
                 productId: product.id.toString(),
-                productName: product.name as string,
+                productName: product.eng_name as string,
+                mallTailCode: product.malltail_item_code as string,
                 option,
                 displayOrder: product.display_order as number,
               });
@@ -108,7 +118,8 @@ export default function DeliveryPage() {
           } else {
             options.push({
               productId: product.id.toString(),
-              productName: product.name as string,
+              productName: product.eng_name as string,
+              mallTailCode: product.malltail_item_code as string,
               option: null,
               displayOrder: product.display_order as number,
             });
@@ -142,7 +153,7 @@ export default function DeliveryPage() {
             option,
             quantity,
             total_price,
-            product:umeki_products(id, name, price)
+            product:umeki_products(id, name, price, eng_name, malltail_item_code)
           )
         `)
         .neq('delivery_method', '팬미팅현장수령')
@@ -156,6 +167,14 @@ export default function DeliveryPage() {
         setOrders([]);
         setLoading(false);
         return;
+      }
+
+      // Debug: Log first order to check data structure
+      if (ordersData.length > 0) {
+        console.log('First order sample:', JSON.stringify(ordersData[0], null, 2));
+        if (ordersData[0].items && ordersData[0].items.length > 0) {
+          console.log('First item product data:', ordersData[0].items[0].product);
+        }
       }
 
       // Data is already in the correct format with items embedded
@@ -335,6 +354,13 @@ export default function DeliveryPage() {
       return;
     }
 
+    // Debug: Check first order's product data
+    if (filteredOrders.length > 0 && filteredOrders[0].items.length > 0) {
+      console.log('Excel Export - First item product:', filteredOrders[0].items[0].product);
+      console.log('Excel Export - eng_name:', filteredOrders[0].items[0].product?.eng_name);
+      console.log('Excel Export - malltail_item_code:', filteredOrders[0].items[0].product?.malltail_item_code);
+    }
+
     // Create headers based on the template from youmakeit_orders.csv
     const headers = [
       '아이디',
@@ -393,17 +419,17 @@ export default function DeliveryPage() {
       row.push(''); // 주문액장번호
 
       // 대표상품명 (first product name)
-      const firstProduct = order.items[0]?.product?.name || '';
-      row.push(order.items.length > 1 ? `${firstProduct} 외 ${order.items.length - 1}건` : firstProduct);
+      const firstProduct = order.items[0]?.product?.eng_name || '';
+      row.push(order.items.length > 1 ? `${firstProduct} and ${order.items.length - 1} others` : firstProduct);
 
       // Address and shipping info
-      row.push('JP'); // 수령받는국가 (Japan)
-      row.push(postalCode1); // 우편번호1
+      row.push(order.country_code || 'JP'); // 수령받는국가 (Japan)
+      row.push(order.postal_code || postalCode1); // 우편번호1
       row.push(''); // 우편번호2
-      row.push(''); // STATE
-      row.push(''); // CITY
-      row.push(cleanAddress); // 우편번호주소 (address without brackets)
-      row.push(''); // 상세주소
+      row.push(order.state || ''); // STATE
+      row.push(order.city || ''); // CITY
+      row.push(order.address_line_1 || cleanAddress); // 우편번호주소 (address without brackets)
+      row.push(order.address_line_2 || ''); // 상세주소
       row.push(order.name || ''); // 수령인이름
       row.push(order.phone_num || ''); // 수령인전화번호1
       row.push(''); // 수령인전화번호2
@@ -419,13 +445,13 @@ export default function DeliveryPage() {
         const item = order.items[i];
         if (item && item.product) {
           const productName = item.option
-            ? `${item.product.name} (${item.option})`
-            : item.product.name;
+            ? `${item.product.eng_name || ''} (${item.option})`
+            : (item.product.eng_name || '');
           row.push(productName); // 상품명
           row.push('YouMakeIt'); // 브랜드
           row.push(item.product.price || 0); // 단가 (as number)
           row.push(item.quantity || 1); // 수량 (as number)
-          row.push('A01'); // 항목코드
+          row.push(item.product.malltail_item_code || ''); // 항목코드
           row.push(''); // 상품url
         } else {
           // Empty product columns for unused slots
