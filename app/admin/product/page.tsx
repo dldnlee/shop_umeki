@@ -153,9 +153,10 @@ export default function AdminProductPage() {
                       <h4 className="text-xs font-semibold text-gray-700 mb-2">재고 관리</h4>
                       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
                         {inventoryOptions.map(({ option, quantity }) => {
-                          const currentValue: number = typeof editingInventory[product.id] === 'number'
-                            ? editingInventory[product.id]
-                            : (editingInventory[product.id] as Inventory)?.[option] ?? 0;
+                          const editingValue = editingInventory[product.id];
+                          const currentValue: number = typeof editingValue === 'number'
+                            ? editingValue
+                            : (editingValue as Inventory)?.[option] ?? 0;
 
                           return (
                             <div key={option} className="bg-gray-50 rounded p-2 border border-gray-200">
