@@ -298,6 +298,8 @@ export default function DeliveryPage() {
         return 'bg-yellow-100 text-yellow-800';
       case 'delivered':
         return 'bg-blue-100 text-blue-800';
+      case 'packed':
+        return 'bg-purple-100 text-purple-800'
       case 'complete':
         return 'bg-green-100 text-green-800';
       default:
@@ -868,6 +870,7 @@ export default function DeliveryPage() {
                         >
                           <option value="cancel">고객취소</option>
                           <option value="paid">배송전</option>
+                          <option value="packed">포장완료</option>
                           <option value="delivered">배송중</option>
                           <option value="complete">배송완료</option>
                         </select>
