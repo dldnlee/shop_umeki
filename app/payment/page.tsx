@@ -37,6 +37,8 @@ export default function PaymentPage() {
   const [addressDetail, setAddressDetail] = useState("");
   const [zipCode, setZipCode] = useState("");
   const [country, setCountry] = useState("");
+  const [state, setState] = useState("");
+  const [city, setCity] = useState("");
   const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>("국내배송");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("toss");
   const [paypalCurrency, setPaypalCurrency] = useState<PayPalCurrency>("USD");
@@ -66,7 +68,7 @@ export default function PaymentPage() {
       if (deliveryMethod !== "팬미팅현장수령" && !address.trim()) {
         return false;
       }
-      if (deliveryMethod === "해외배송" && !country.trim()) {
+      if (deliveryMethod === "해외배송" && (!country.trim() || !state.trim() || !city.trim())) {
         return false;
       }
       if (!agreedToTerms) {
@@ -76,7 +78,7 @@ export default function PaymentPage() {
     };
 
     setIsFormValid(checkValidity());
-  }, [name, email, phone, address, country, deliveryMethod, agreedToTerms]);
+  }, [name, email, phone, address, country, state, city, deliveryMethod, agreedToTerms]);
 
   useEffect(() => {
     // Load cart from localStorage on mount (client-side only)
@@ -427,6 +429,8 @@ export default function PaymentPage() {
               phone_num: phone,
               address: fullAddress,
               country_code: deliveryMethod === "해외배송" ? country : null,
+              state: deliveryMethod === "해외배송" ? state : null,
+              city: deliveryMethod === "해외배송" ? city : null,
               postal_code: deliveryMethod !== "팬미팅현장수령" ? zipCode : null,
               address_line_1: deliveryMethod !== "팬미팅현장수령" ? address : null,
               address_line_2: deliveryMethod !== "팬미팅현장수령" ? addressDetail : null,
@@ -530,7 +534,7 @@ export default function PaymentPage() {
       console.error('PayPal initialization error:', error);
       paypalRenderingRef.current = false;
     }
-  }, [paymentMethod, paypalCurrency, finalTotal, cartItems, name, email, phone, address, zipCode, addressDetail, country, deliveryMethod, agreedToTerms, convertKRWToCurrency, deliveryFee]);
+  }, [paymentMethod, paypalCurrency, finalTotal, cartItems, name, email, phone, address, zipCode, addressDetail, country, state, city, deliveryMethod, agreedToTerms, convertKRWToCurrency, deliveryFee]);
 
   // Initialize PayPal buttons when payment method or currency changes
   useEffect(() => {
@@ -632,6 +636,8 @@ export default function PaymentPage() {
         phone_num: phone,
         address: fullAddress,
         country_code: deliveryMethod === "해외배송" ? country : null,
+        state: deliveryMethod === "해외배송" ? state : null,
+        city: deliveryMethod === "해외배송" ? city : null,
         postal_code: deliveryMethod !== "팬미팅현장수령" ? zipCode : null,
         address_line_1: deliveryMethod !== "팬미팅현장수령" ? address : null,
         address_line_2: deliveryMethod !== "팬미팅현장수령" ? addressDetail : null,
@@ -903,21 +909,22 @@ export default function PaymentPage() {
 
               {/* Country Selection for International Shipping */}
               {deliveryMethod === "해외배송" && (
-                <div className="mb-6">
-                  <label
-                    htmlFor="country"
-                    className="block text-sm font-medium text-black mb-2"
-                  >
-                    국가 (Country) <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    id="country"
-                    value={country}
-                    onChange={(e) => setCountry(e.target.value)}
-                    className="w-full px-4 py-2 bg-white border border-zinc-300 rounded-md text-black focus:outline-none focus:ring-2 focus:ring-zinc-400"
-                    required
-                  >
-                    <option value="">Select Country</option>
+                <div className="mb-6 space-y-4">
+                  <div>
+                    <label
+                      htmlFor="country"
+                      className="block text-sm font-medium text-black mb-2"
+                    >
+                      국가 (Country) <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      id="country"
+                      value={country}
+                      onChange={(e) => setCountry(e.target.value)}
+                      className="w-full px-4 py-2 bg-white border border-zinc-300 rounded-md text-black focus:outline-none focus:ring-2 focus:ring-zinc-400"
+                      required
+                    >
+                      <option value="">Select Country</option>
                     <option value="GT">Guatemala</option>
                     <option value="GE">Georgia</option>
                     <option value="GR">Greece</option>
@@ -1038,6 +1045,43 @@ export default function PaymentPage() {
                     <option value="HK">Hong Kong</option>
                   </select>
                 </div>
+
+                <div>
+                  <label
+                    htmlFor="state"
+                    className="block text-sm font-medium text-black mb-2"
+                  >
+                    주/도 (State/Province) <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="state"
+                    value={state}
+                    onChange={(e) => setState(e.target.value)}
+                    className="w-full px-4 py-2 bg-white border border-zinc-300 rounded-md text-black focus:outline-none focus:ring-2 focus:ring-zinc-400"
+                    placeholder="예: California, Ontario"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="city"
+                    className="block text-sm font-medium text-black mb-2"
+                  >
+                    도시 (City) <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="city"
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    className="w-full px-4 py-2 bg-white border border-zinc-300 rounded-md text-black focus:outline-none focus:ring-2 focus:ring-zinc-400"
+                    placeholder="예: Los Angeles, Toronto"
+                    required
+                  />
+                </div>
+              </div>
               )}
 
               {/* Address */}
@@ -1206,6 +1250,8 @@ export default function PaymentPage() {
                             phone_num: phone,
                             address: fullAddress,
                             country_code: deliveryMethod === "해외배송" ? country : null,
+                            state: deliveryMethod === "해외배송" ? state : null,
+                            city: deliveryMethod === "해외배송" ? city : null,
                             postal_code: deliveryMethod !== "팬미팅현장수령" ? zipCode : null,
                             address_line_1: deliveryMethod !== "팬미팅현장수령" ? address : null,
                             address_line_2: deliveryMethod !== "팬미팅현장수령" ? addressDetail : null,
