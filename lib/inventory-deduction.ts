@@ -82,42 +82,6 @@ async function deductInventoryForItem(
   product: Product
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    // If inventory is a simple number (product without options)
-    if (typeof product.inventory === 'number') {
-      // First fetch the current inventory
-      const { data: currentProduct, error: fetchError } = await supabaseClient
-        .from("umeki_products")
-        .select("inventory")
-        .eq("id", productId)
-        .single();
-
-      if (fetchError || !currentProduct) {
-        console.error("Error fetching product inventory:", fetchError);
-        return { success: false, error: fetchError?.message || "Product not found" };
-      }
-
-      const newInventory = Math.max(0, (currentProduct.inventory as number) - quantity);
-
-      const { error } = await supabaseClient
-        .from("umeki_products")
-        .update({
-          inventory: newInventory,
-        })
-        .eq("id", productId);
-
-      if (error) {
-        console.error("Error deducting simple product inventory:", error);
-        return { success: false, error: error.message };
-      }
-
-      return { success: true };
-    }
-
-    // Product with options - update inventory JSON object
-    if (!option) {
-      return { success: false, error: "Option is required for products with options" };
-    }
-
     // First, fetch current inventory
     const { data: currentProduct, error: fetchError } = await supabaseClient
       .from("umeki_products")
@@ -136,18 +100,35 @@ async function deductInventoryForItem(
       return { success: false, error: "Invalid inventory data" };
     }
 
-    if (!(option in inventoryObj)) {
-      return { success: false, error: `Option "${option}" not found in inventory` };
+    // Determine the inventory key to use
+    // If product has no options, use "default" key
+    // If product has options, use the specific option
+    let inventoryKey: string;
+
+    if (!product.options || product.options.length === 0) {
+      // Product without options - use "default" key
+      inventoryKey = "default";
+    } else {
+      // Product with options - option must be provided
+      if (!option) {
+        return { success: false, error: "Option is required for products with options" };
+      }
+      inventoryKey = option;
+    }
+
+    // Check if the inventory key exists
+    if (!(inventoryKey in inventoryObj)) {
+      return { success: false, error: `Inventory key "${inventoryKey}" not found in inventory` };
     }
 
     // Calculate new value
-    const currentQuantity = inventoryObj[option];
+    const currentQuantity = inventoryObj[inventoryKey];
     const newQuantity = Math.max(0, currentQuantity - quantity);
 
     // Update the inventory object
     const updatedInventory = {
       ...inventoryObj,
-      [option]: newQuantity,
+      [inventoryKey]: newQuantity,
     };
 
     const { error: updateError } = await supabaseClient
@@ -222,29 +203,30 @@ export async function verifyInventoryAvailability(
       }
 
       // Check inventory availability
-      if (typeof product.inventory === 'number') {
-        // Simple product
-        if (item.quantity > product.inventory) {
-          unavailableItems.push({
-            productId: item.productId,
-            option: item.option,
-            requested: item.quantity,
-            available: product.inventory,
-          });
-        }
-      } else if (typeof product.inventory === 'object') {
-        // Product with options
-        if (!item.option) {
-          unavailableItems.push({
-            productId: item.productId,
-            option: item.option,
-            requested: item.quantity,
-            available: 0,
-          });
-          continue;
+      if (typeof product.inventory === 'object') {
+        const inventoryObj = product.inventory as Record<string, number>;
+
+        // Determine the inventory key to use
+        let inventoryKey: string;
+
+        if (!product.options || product.options.length === 0) {
+          // Product without options - use "default" key
+          inventoryKey = "default";
+        } else {
+          // Product with options - option must be provided
+          if (!item.option) {
+            unavailableItems.push({
+              productId: item.productId,
+              option: item.option,
+              requested: item.quantity,
+              available: 0,
+            });
+            continue;
+          }
+          inventoryKey = item.option;
         }
 
-        const availableQuantity = product.inventory[item.option] ?? 0;
+        const availableQuantity = inventoryObj[inventoryKey] ?? 0;
 
         if (item.quantity > availableQuantity) {
           unavailableItems.push({
@@ -254,6 +236,14 @@ export async function verifyInventoryAvailability(
             available: availableQuantity,
           });
         }
+      } else {
+        // Invalid inventory format
+        unavailableItems.push({
+          productId: item.productId,
+          option: item.option,
+          requested: item.quantity,
+          available: 0,
+        });
       }
     }
 
