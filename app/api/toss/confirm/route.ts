@@ -67,6 +67,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Deduct inventory after successful order creation
+    try {
+      const inventoryRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/inventory/deduct`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          cartItems: cartItems,
+        }),
+      });
+
+      const inventoryData = await inventoryRes.json();
+      if (!inventoryData.success) {
+        console.error('Failed to deduct inventory:', inventoryData.error);
+        // Don't fail the order if inventory deduction fails, just log it
+      }
+    } catch (inventoryError) {
+      console.error('Error deducting inventory:', inventoryError);
+      // Don't fail the order if inventory deduction fails
+    }
+
     // Send order confirmation email
     if (orderResult.data?.order && orderResult.data?.items) {
       try {

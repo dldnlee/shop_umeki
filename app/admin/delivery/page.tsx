@@ -544,7 +544,6 @@ export default function DeliveryPage() {
       <div className="max-w-7xl mx-auto">
         <div className="mb-6">
           <h1 className="text-3xl font-bold mb-2">배송 관리</h1>
-          <p className="text-gray-600 mb-4">팬미팅 현장수령을 제외한 모든 배송 주문</p>
 
           {/* Platform Tabs */}
           <div className="flex gap-2 mb-4">
@@ -700,6 +699,7 @@ export default function DeliveryPage() {
                 <option value="all">전체</option>
                 <option value="cancel">고객취소 ({orders.filter(o => o.order_status === 'cancel').length})</option>
                 <option value="paid">배송전 ({orders.filter(o => o.order_status === 'paid').length})</option>
+                <option value="paid">포장완료 ({orders.filter(o => o.order_status === 'packed').length})</option>
                 <option value="delivered">배송중 ({orders.filter(o => o.order_status === 'delivered').length})</option>
                 <option value="complete">배송완료 ({orders.filter(o => o.order_status === 'complete').length})</option>
               </select>

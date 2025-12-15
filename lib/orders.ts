@@ -48,8 +48,6 @@ export async function createOrder(
   cartItems: CartItem[]
 ) {
   try {
-
-
     // Insert the order
     const { data: order, error: orderError } = await supabase
       .from("umeki_orders")
@@ -105,49 +103,6 @@ export async function createOrder(
       console.error("Error creating order items:", itemsError);
       // If order items fail, you might want to delete the order or handle this appropriately
       return { success: false, error: itemsError };
-    }
-
-    // Fetch product details for inventory deduction
-    const productIds = [...new Set(cartItems.map(item => item.productId))];
-    const { data: products, error: productsError } = await supabase
-      .from("umeki_products")
-      .select("*")
-      .in("id", productIds);
-
-    if (productsError || !products) {
-      console.error("Error fetching products for inventory deduction:", productsError);
-      // Order was created but inventory wasn't deducted - log this critical error
-      console.error("CRITICAL: Order created but inventory not deducted for order:", order.id);
-      return {
-        success: true,
-        data: {
-          order,
-          items,
-        },
-        warning: "Inventory was not deducted - manual intervention required"
-      };
-    }
-
-    // Deduct inventory
-    const deductionResult = await deductInventoryForOrder(
-      supabase,
-      cartItems,
-      products as Product[]
-    );
-
-    if (!deductionResult.success) {
-      console.error("Error deducting inventory:", deductionResult.error);
-      console.error("Failed items:", deductionResult.failedItems);
-      // Order was created but inventory wasn't fully deducted - log this critical error
-      console.error("CRITICAL: Order created but inventory deduction failed for order:", order.id);
-      return {
-        success: true,
-        data: {
-          order,
-          items,
-        },
-        warning: `Inventory deduction partially failed: ${deductionResult.error}`
-      };
     }
 
     return {

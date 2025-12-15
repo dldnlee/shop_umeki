@@ -178,6 +178,28 @@ export default function PaymentPage() {
             throw new Error(errorMessage);
           }
 
+          // Deduct inventory after successful order creation
+          try {
+            const inventoryResponse = await fetch('/api/inventory/deduct', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                cartItems: cartItems,
+              }),
+            });
+
+            const inventoryData = await inventoryResponse.json();
+            if (!inventoryData.success) {
+              console.error('Failed to deduct inventory:', inventoryData.error);
+              // Don't fail the order if inventory deduction fails, just log it
+            }
+          } catch (inventoryError) {
+            console.error('Error deducting inventory:', inventoryError);
+            // Don't fail the order if inventory deduction fails
+          }
+
           // Send order confirmation email
           if (result.data?.order && result.data?.items) {
             try {
@@ -448,6 +470,28 @@ export default function PaymentPage() {
                 ? String(result.error.message)
                 : "주문 생성 중 오류가 발생했습니다";
               throw new Error(errorMessage);
+            }
+
+            // Deduct inventory after successful order creation
+            try {
+              const inventoryResponse = await fetch('/api/inventory/deduct', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  cartItems: cartItems,
+                }),
+              });
+
+              const inventoryData = await inventoryResponse.json();
+              if (!inventoryData.success) {
+                console.error('Failed to deduct inventory:', inventoryData.error);
+                // Don't fail the order if inventory deduction fails, just log it
+              }
+            } catch (inventoryError) {
+              console.error('Error deducting inventory:', inventoryError);
+              // Don't fail the order if inventory deduction fails
             }
 
             // Send PayPal payment confirmation email

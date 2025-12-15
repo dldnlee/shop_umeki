@@ -5,7 +5,6 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { Product } from "@/models";
-import { calculateInventoryDeduction } from "./inventory";
 import type { CartItem } from "./cart";
 
 /**
@@ -36,21 +35,13 @@ export async function deductInventoryForOrder(
         continue;
       }
 
-      // Calculate deduction based on delivery method
-      const deduction = calculateInventoryDeduction(
-        product,
-        item.quantity,
-        item.option,
-        item.deliveryMethod
-      );
-
       // Deduct inventory
       const result = await deductInventoryForItem(
         supabaseClient,
         item.productId,
-        deduction.option,
-        deduction.onsiteDeduction,
-        deduction.deliveryDeduction
+        item.option,
+        item.quantity,
+        product
       );
 
       if (!result.success) {
@@ -86,91 +77,69 @@ export async function deductInventoryForOrder(
 async function deductInventoryForItem(
   supabaseClient: SupabaseClient,
   productId: number,
-  option: string | null,
-  onsiteDeduction: number,
-  deliveryDeduction: number
+  option: string | undefined,
+  quantity: number,
+  product: Product
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    if (!option) {
-      // Simple product without options - deduct from main inventory
-      const totalDeduction = onsiteDeduction + deliveryDeduction;
-
-      // First fetch the current inventory
-      const { data: currentProduct, error: fetchError } = await supabaseClient
-        .from("umeki_products")
-        .select("inventory")
-        .eq("id", productId)
-        .single();
-
-      if (fetchError || !currentProduct) {
-        console.error("Error fetching product inventory:", fetchError);
-        return { success: false, error: fetchError?.message || "Product not found" };
-      }
-
-      const newInventory = Math.max(0, currentProduct.inventory - totalDeduction);
-
-      const { error } = await supabaseClient
-        .from("umeki_products")
-        .update({
-          inventory: newInventory,
-        })
-        .eq("id", productId);
-
-      if (error) {
-        console.error("Error deducting simple product inventory:", error);
-        return { success: false, error: error.message };
-      }
-
-      return { success: true };
-    }
-
-    // Product with options - update inventory_by_option JSONB
     // First, fetch current inventory
-    const { data: product, error: fetchError } = await supabaseClient
+    const { data: currentProduct, error: fetchError } = await supabaseClient
       .from("umeki_products")
-      .select("inventory_by_option")
+      .select("inventory")
       .eq("id", productId)
       .single();
 
-    if (fetchError || !product) {
+    if (fetchError || !currentProduct) {
       console.error("Error fetching product:", fetchError);
       return { success: false, error: fetchError?.message || "Product not found" };
     }
 
-    const inventoryByOption = product.inventory_by_option as Record<
-      string,
-      { onsite?: number; delivery?: number }
-    >;
+    const inventoryObj = currentProduct.inventory as Record<string, number>;
 
-    if (!inventoryByOption || !inventoryByOption[option]) {
-      return { success: false, error: `Option "${option}" not found in inventory` };
+    if (!inventoryObj || typeof inventoryObj !== 'object') {
+      return { success: false, error: "Invalid inventory data" };
     }
 
-    // Calculate new values
-    const currentOnsite = inventoryByOption[option].onsite ?? 0;
-    const currentDelivery = inventoryByOption[option].delivery ?? 0;
+    // Determine the inventory key to use
+    // If product has no options, use "default" key
+    // If product has options, use the specific option
+    let inventoryKey: string;
 
-    const newOnsite = Math.max(0, currentOnsite - onsiteDeduction);
-    const newDelivery = Math.max(0, currentDelivery - deliveryDeduction);
+    if (!product.options || product.options.length === 0) {
+      // Product without options - use "default" key
+      inventoryKey = "default";
+    } else {
+      // Product with options - option must be provided
+      if (!option) {
+        return { success: false, error: "Option is required for products with options" };
+      }
+      inventoryKey = option;
+    }
 
-    // Update the inventory_by_option
+    // Check if the inventory key exists
+    if (!(inventoryKey in inventoryObj)) {
+      return { success: false, error: `Inventory key "${inventoryKey}" not found in inventory` };
+    }
+
+    // Calculate new value
+    const currentQuantity = inventoryObj[inventoryKey];
+    const newQuantity = Math.max(0, currentQuantity - quantity);
+
+    // Update the inventory object
     const updatedInventory = {
-      ...inventoryByOption,
-      [option]: {
-        onsite: newOnsite,
-        delivery: newDelivery,
-      },
+      ...inventoryObj,
+      [inventoryKey]: newQuantity,
     };
 
     const { error: updateError } = await supabaseClient
       .from("umeki_products")
       .update({
-        inventory_by_option: updatedInventory,
+        inventory: updatedInventory,
       })
       .eq("id", productId);
 
     if (updateError) {
-      console.error("Error updating inventory_by_option:", updateError);
+      console.error("Error updating inventory:", updateError);
       return { success: false, error: updateError.message };
     }
 
@@ -233,64 +202,48 @@ export async function verifyInventoryAvailability(
         continue;
       }
 
-      // Calculate deduction to determine which inventory to check
-      const deduction = calculateInventoryDeduction(
-        product,
-        item.quantity,
-        item.option,
-        item.deliveryMethod
-      );
+      // Check inventory availability
+      if (typeof product.inventory === 'object') {
+        const inventoryObj = product.inventory as Record<string, number>;
 
-      // Check if sufficient inventory is available
-      if (product.options && product.options.length > 0 && deduction.option) {
-        const inventoryByOption = product.inventory_by_option as Record<
-          string,
-          { onsite?: number; delivery?: number }
-        > | null;
+        // Determine the inventory key to use
+        let inventoryKey: string;
 
-        if (!inventoryByOption || !inventoryByOption[deduction.option]) {
-          unavailableItems.push({
-            productId: item.productId,
-            option: item.option,
-            requested: item.quantity,
-            available: 0,
-          });
-          continue;
+        if (!product.options || product.options.length === 0) {
+          // Product without options - use "default" key
+          inventoryKey = "default";
+        } else {
+          // Product with options - option must be provided
+          if (!item.option) {
+            unavailableItems.push({
+              productId: item.productId,
+              option: item.option,
+              requested: item.quantity,
+              available: 0,
+            });
+            continue;
+          }
+          inventoryKey = item.option;
         }
 
-        const optionInventory = inventoryByOption[deduction.option];
-        const availableOnsite = optionInventory.onsite ?? 0;
-        const availableDelivery = optionInventory.delivery ?? 0;
+        const availableQuantity = inventoryObj[inventoryKey] ?? 0;
 
-        // Check based on deduction type
-        if (deduction.onsiteDeduction > 0 && deduction.onsiteDeduction > availableOnsite) {
+        if (item.quantity > availableQuantity) {
           unavailableItems.push({
             productId: item.productId,
             option: item.option,
             requested: item.quantity,
-            available: availableOnsite,
-          });
-        } else if (
-          deduction.deliveryDeduction > 0 &&
-          deduction.deliveryDeduction > availableDelivery
-        ) {
-          unavailableItems.push({
-            productId: item.productId,
-            option: item.option,
-            requested: item.quantity,
-            available: availableDelivery,
+            available: availableQuantity,
           });
         }
       } else {
-        // Simple product
-        if (item.quantity > product.inventory) {
-          unavailableItems.push({
-            productId: item.productId,
-            option: item.option,
-            requested: item.quantity,
-            available: product.inventory,
-          });
-        }
+        // Invalid inventory format
+        unavailableItems.push({
+          productId: item.productId,
+          option: item.option,
+          requested: item.quantity,
+          available: 0,
+        });
       }
     }
 

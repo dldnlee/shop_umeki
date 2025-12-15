@@ -1,84 +1,45 @@
-import { Product, InventoryByOption } from "@/models";
-import type { DeliveryMethod as CartDeliveryMethod } from "./cart";
-
-export type InventoryDeliveryMethod = "onsite" | "delivery";
+import { Product } from "@/models";
 
 /**
- * Map cart delivery method to inventory delivery method
- * 팬미팅현장수령 = onsite (deducts from both onsite and delivery/total)
- * 국내배송 = delivery (deducts only from delivery)
- * 해외배송 = delivery (deducts only from delivery)
- */
-export function mapDeliveryMethod(
-  cartDeliveryMethod?: CartDeliveryMethod
-): InventoryDeliveryMethod | undefined {
-  if (!cartDeliveryMethod) return undefined;
-
-  switch (cartDeliveryMethod) {
-    case "팬미팅현장수령":
-      return "onsite";
-    case "국내배송":
-    case "해외배송":
-      return "delivery";
-    default:
-      return undefined;
-  }
-}
-
-/**
- * Get available inventory for a specific product option and delivery method
+ * Get available inventory for a specific product option
  */
 export function getAvailableInventory(
   product: Product,
-  option?: string,
-  deliveryMethod?: InventoryDeliveryMethod
+  option?: string
 ): number {
-  // If product has no options (simple product)
-  if (!product.options || product.options.length === 0) {
+  // If inventory is a number (simple product without options)
+  if (typeof product.inventory === 'number') {
     return product.inventory;
   }
 
-  // If product has options but no inventory_by_option data, fall back to general inventory
-  if (!product.inventory_by_option) {
-    return product.inventory;
+  // If inventory is an object (product with options)
+  if (typeof product.inventory === 'object') {
+    // If option is not specified, check if this is a simple product with "default" key
+    if (!option) {
+      // For simple products stored as {"default": quantity}
+      if ('default' in product.inventory) {
+        return product.inventory['default'] ?? 0;
+      }
+      // For products with actual options, return 0
+      return 0;
+    }
+
+    // Return inventory for the specific option, or 0 if not found
+    return product.inventory[option] ?? 0;
   }
 
-  // If option is not specified, return 0 (must specify option for products with options)
-  if (!option) {
-    return 0;
-  }
-
-  // Get inventory for the specific option
-  const optionInventory = product.inventory_by_option[option];
-
-  if (!optionInventory) {
-    return 0;
-  }
-
-  // If delivery method is specified, return that specific inventory
-  if (deliveryMethod) {
-    const inventory = deliveryMethod === "onsite"
-      ? optionInventory.onsite
-      : optionInventory.delivery;
-    return inventory ?? 0;
-  }
-
-  // If no delivery method specified, return the sum of onsite and delivery
-  const onsite = optionInventory.onsite ?? 0;
-  const delivery = optionInventory.delivery ?? 0;
-  return onsite + delivery;
+  return 0;
 }
 
 /**
- * Check if a quantity is available for a specific product option and delivery method
+ * Check if a quantity is available for a specific product option
  */
 export function isInventoryAvailable(
   product: Product,
   quantity: number,
-  option?: string,
-  deliveryMethod?: InventoryDeliveryMethod
+  option?: string
 ): boolean {
-  const available = getAvailableInventory(product, option, deliveryMethod);
+  const available = getAvailableInventory(product, option);
   return quantity <= available;
 }
 
@@ -87,10 +48,9 @@ export function isInventoryAvailable(
  */
 export function getMaxQuantity(
   product: Product,
-  option?: string,
-  deliveryMethod?: InventoryDeliveryMethod
+  option?: string
 ): number {
-  return getAvailableInventory(product, option, deliveryMethod);
+  return getAvailableInventory(product, option);
 }
 
 /**
@@ -98,10 +58,9 @@ export function getMaxQuantity(
  */
 export function isOutOfStock(
   product: Product,
-  option?: string,
-  deliveryMethod?: InventoryDeliveryMethod
+  option?: string
 ): boolean {
-  return getAvailableInventory(product, option, deliveryMethod) === 0;
+  return getAvailableInventory(product, option) === 0;
 }
 
 /**
@@ -110,14 +69,13 @@ export function isOutOfStock(
 export function validateCartItemInventory(
   product: Product,
   quantity: number,
-  option?: string,
-  deliveryMethod?: InventoryDeliveryMethod
+  option?: string
 ): {
   isValid: boolean;
   availableQuantity: number;
   message?: string;
 } {
-  const availableQuantity = getAvailableInventory(product, option, deliveryMethod);
+  const availableQuantity = getAvailableInventory(product, option);
 
   if (quantity <= 0) {
     return {
@@ -142,160 +100,18 @@ export function validateCartItemInventory(
 }
 
 /**
- * Get inventory breakdown for a product option
+ * Get all options with their inventory quantities
  */
-export function getInventoryBreakdown(
-  product: Product,
-  option?: string
-): {
-  total: number;
-  onsite: number;
-  delivery: number;
-} {
-  if (!product.options || product.options.length === 0) {
-    return {
-      total: product.inventory,
-      onsite: product.inventory,
-      delivery: product.inventory,
-    };
-  }
-
-  if (!product.inventory_by_option || !option) {
-    return {
-      total: 0,
-      onsite: 0,
-      delivery: 0,
-    };
-  }
-
-  const optionInventory = product.inventory_by_option[option];
-
-  if (!optionInventory) {
-    return {
-      total: 0,
-      onsite: 0,
-      delivery: 0,
-    };
-  }
-
-  const onsite = optionInventory.onsite ?? 0;
-  const delivery = optionInventory.delivery ?? 0;
-
-  return {
-    total: onsite + delivery,
-    onsite,
-    delivery,
-  };
-}
-
-/**
- * Calculate inventory deduction based on delivery method
- *
- * Deduction Logic:
- * - 팬미팅현장수령 (onsite): Deducts from "onsite" count
- * - 국내배송 (delivery): Deducts from "delivery" count
- * - 해외배송 (delivery): Deducts from "delivery" count
- *
- * @returns Object containing the fields to deduct from inventory_by_option
- */
-export function calculateInventoryDeduction(
-  product: Product,
-  quantity: number,
-  option?: string,
-  cartDeliveryMethod?: CartDeliveryMethod
-): {
-  option: string | null;
-  onsiteDeduction: number;
-  deliveryDeduction: number;
-} {
-  // For simple products without options, return null option
-  if (!product.options || product.options.length === 0) {
-    return {
-      option: null,
-      onsiteDeduction: 0,
-      deliveryDeduction: 0,
-    };
-  }
-
-  if (!option) {
-    throw new Error("Option is required for products with options");
-  }
-
-  // Map cart delivery method to inventory delivery method
-  const inventoryMethod = mapDeliveryMethod(cartDeliveryMethod);
-
-  // If no delivery method specified, don't deduct (shouldn't happen in production)
-  if (!inventoryMethod) {
-    return {
+export function getInventoryByOptions(
+  product: Product
+): { option: string; quantity: number }[] {
+  if (typeof product.inventory === 'object') {
+    return Object.entries(product.inventory).map(([option, quantity]) => ({
       option,
-      onsiteDeduction: 0,
-      deliveryDeduction: 0,
-    };
+      quantity,
+    }));
   }
 
-  // Calculate deduction based on delivery method
-  if (inventoryMethod === "onsite") {
-    // 팬미팅현장수령: Deduct from onsite
-    return {
-      option,
-      onsiteDeduction: quantity,
-      deliveryDeduction: 0,
-    };
-  } else {
-    // 국내배송 or 해외배송: Deduct from delivery
-    return {
-      option,
-      onsiteDeduction: 0,
-      deliveryDeduction: quantity,
-    };
-  }
-}
-
-/**
- * Generate SQL update statement for inventory deduction
- * This should be called on the server side after successful payment
- */
-export function generateInventoryUpdateSQL(
-  productId: number,
-  option: string | null,
-  onsiteDeduction: number,
-  deliveryDeduction: number
-): string {
-  if (!option) {
-    // Simple product without options - deduct from main inventory
-    return `
-      UPDATE umeki_products
-      SET inventory = inventory - ${onsiteDeduction + deliveryDeduction}
-      WHERE id = ${productId}
-    `.trim();
-  }
-
-  // Product with options - update inventory_by_option JSONB
-  const updates: string[] = [];
-
-  if (onsiteDeduction > 0) {
-    updates.push(`
-      inventory_by_option = jsonb_set(
-        inventory_by_option,
-        '{${option},onsite}',
-        to_jsonb(COALESCE((inventory_by_option->'${option}'->>'onsite')::int, 0) - ${onsiteDeduction})
-      )
-    `.trim());
-  }
-
-  if (deliveryDeduction > 0) {
-    updates.push(`
-      inventory_by_option = jsonb_set(
-        ${onsiteDeduction > 0 ? 'inventory_by_option' : 'inventory_by_option'},
-        '{${option},delivery}',
-        to_jsonb(COALESCE((inventory_by_option->'${option}'->>'delivery')::int, 0) - ${deliveryDeduction})
-      )
-    `.trim());
-  }
-
-  return `
-    UPDATE umeki_products
-    SET ${updates.join(', ')}
-    WHERE id = ${productId}
-  `.trim();
+  // Simple product - return single entry
+  return [{ option: 'default', quantity: product.inventory as number }];
 }
