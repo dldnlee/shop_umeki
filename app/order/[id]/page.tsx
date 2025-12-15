@@ -105,11 +105,11 @@ export default function OrderDetailsPage() {
     switch (status) {
       case "paid":
         return "결제 완료";
-      case "shipped":
-        return "배송 중";
       case "delivered":
+        return "배송중";
+      case "complete":
         return "배송 완료";
-      case "cancelled":
+      case "cancel":
         return "주문 취소";
       default:
         return "처리 중";
