@@ -22,8 +22,8 @@ export type Order = {
   created_at?: string;
   updated_at?: string;
   toss_payment_id?: string;
-  state?: string;
-  city?: string;
+  state?: string | null;
+  city?: string | null;
 };
 
 export type OrderItem = {
