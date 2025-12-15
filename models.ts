@@ -1,8 +1,6 @@
-export type InventoryByOption = {
-  [option: string]: {
-    onsite?: number;
-    delivery?: number;
-  };
+// Simple inventory mapping: option name -> quantity
+export type Inventory = {
+  [optionName: string]: number;
 };
 
 export type Product = {
@@ -11,7 +9,6 @@ export type Product = {
   price: number;
   image_urls: string[]; // Array of image URLs
   options?: string[];
-  inventory: number;
-  inventory_by_option?: InventoryByOption;
+  inventory: number | Inventory; // Can be a simple number or a JSON object mapping options to quantities
   display_order: number;
 };

@@ -5,7 +5,6 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { Product } from "@/models";
-import { calculateInventoryDeduction } from "./inventory";
 import type { CartItem } from "./cart";
 
 /**
@@ -36,21 +35,13 @@ export async function deductInventoryForOrder(
         continue;
       }
 
-      // Calculate deduction based on delivery method
-      const deduction = calculateInventoryDeduction(
-        product,
-        item.quantity,
-        item.option,
-        item.deliveryMethod
-      );
-
       // Deduct inventory
       const result = await deductInventoryForItem(
         supabaseClient,
         item.productId,
-        deduction.option,
-        deduction.onsiteDeduction,
-        deduction.deliveryDeduction
+        item.option,
+        item.quantity,
+        product
       );
 
       if (!result.success) {
@@ -86,15 +77,13 @@ export async function deductInventoryForOrder(
 async function deductInventoryForItem(
   supabaseClient: SupabaseClient,
   productId: number,
-  option: string | null,
-  onsiteDeduction: number,
-  deliveryDeduction: number
+  option: string | undefined,
+  quantity: number,
+  product: Product
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    if (!option) {
-      // Simple product without options - deduct from main inventory
-      const totalDeduction = onsiteDeduction + deliveryDeduction;
-
+    // If inventory is a simple number (product without options)
+    if (typeof product.inventory === 'number') {
       // First fetch the current inventory
       const { data: currentProduct, error: fetchError } = await supabaseClient
         .from("umeki_products")
@@ -107,7 +96,7 @@ async function deductInventoryForItem(
         return { success: false, error: fetchError?.message || "Product not found" };
       }
 
-      const newInventory = Math.max(0, currentProduct.inventory - totalDeduction);
+      const newInventory = Math.max(0, (currentProduct.inventory as number) - quantity);
 
       const { error } = await supabaseClient
         .from("umeki_products")
@@ -124,53 +113,52 @@ async function deductInventoryForItem(
       return { success: true };
     }
 
-    // Product with options - update inventory_by_option JSONB
+    // Product with options - update inventory JSON object
+    if (!option) {
+      return { success: false, error: "Option is required for products with options" };
+    }
+
     // First, fetch current inventory
-    const { data: product, error: fetchError } = await supabaseClient
+    const { data: currentProduct, error: fetchError } = await supabaseClient
       .from("umeki_products")
-      .select("inventory_by_option")
+      .select("inventory")
       .eq("id", productId)
       .single();
 
-    if (fetchError || !product) {
+    if (fetchError || !currentProduct) {
       console.error("Error fetching product:", fetchError);
       return { success: false, error: fetchError?.message || "Product not found" };
     }
 
-    const inventoryByOption = product.inventory_by_option as Record<
-      string,
-      { onsite?: number; delivery?: number }
-    >;
+    const inventoryObj = currentProduct.inventory as Record<string, number>;
 
-    if (!inventoryByOption || !inventoryByOption[option]) {
+    if (!inventoryObj || typeof inventoryObj !== 'object') {
+      return { success: false, error: "Invalid inventory data" };
+    }
+
+    if (!(option in inventoryObj)) {
       return { success: false, error: `Option "${option}" not found in inventory` };
     }
 
-    // Calculate new values
-    const currentOnsite = inventoryByOption[option].onsite ?? 0;
-    const currentDelivery = inventoryByOption[option].delivery ?? 0;
+    // Calculate new value
+    const currentQuantity = inventoryObj[option];
+    const newQuantity = Math.max(0, currentQuantity - quantity);
 
-    const newOnsite = Math.max(0, currentOnsite - onsiteDeduction);
-    const newDelivery = Math.max(0, currentDelivery - deliveryDeduction);
-
-    // Update the inventory_by_option
+    // Update the inventory object
     const updatedInventory = {
-      ...inventoryByOption,
-      [option]: {
-        onsite: newOnsite,
-        delivery: newDelivery,
-      },
+      ...inventoryObj,
+      [option]: newQuantity,
     };
 
     const { error: updateError } = await supabaseClient
       .from("umeki_products")
       .update({
-        inventory_by_option: updatedInventory,
+        inventory: updatedInventory,
       })
       .eq("id", productId);
 
     if (updateError) {
-      console.error("Error updating inventory_by_option:", updateError);
+      console.error("Error updating inventory:", updateError);
       return { success: false, error: updateError.message };
     }
 
@@ -233,22 +221,20 @@ export async function verifyInventoryAvailability(
         continue;
       }
 
-      // Calculate deduction to determine which inventory to check
-      const deduction = calculateInventoryDeduction(
-        product,
-        item.quantity,
-        item.option,
-        item.deliveryMethod
-      );
-
-      // Check if sufficient inventory is available
-      if (product.options && product.options.length > 0 && deduction.option) {
-        const inventoryByOption = product.inventory_by_option as Record<
-          string,
-          { onsite?: number; delivery?: number }
-        > | null;
-
-        if (!inventoryByOption || !inventoryByOption[deduction.option]) {
+      // Check inventory availability
+      if (typeof product.inventory === 'number') {
+        // Simple product
+        if (item.quantity > product.inventory) {
+          unavailableItems.push({
+            productId: item.productId,
+            option: item.option,
+            requested: item.quantity,
+            available: product.inventory,
+          });
+        }
+      } else if (typeof product.inventory === 'object') {
+        // Product with options
+        if (!item.option) {
           unavailableItems.push({
             productId: item.productId,
             option: item.option,
@@ -258,37 +244,14 @@ export async function verifyInventoryAvailability(
           continue;
         }
 
-        const optionInventory = inventoryByOption[deduction.option];
-        const availableOnsite = optionInventory.onsite ?? 0;
-        const availableDelivery = optionInventory.delivery ?? 0;
+        const availableQuantity = product.inventory[item.option] ?? 0;
 
-        // Check based on deduction type
-        if (deduction.onsiteDeduction > 0 && deduction.onsiteDeduction > availableOnsite) {
+        if (item.quantity > availableQuantity) {
           unavailableItems.push({
             productId: item.productId,
             option: item.option,
             requested: item.quantity,
-            available: availableOnsite,
-          });
-        } else if (
-          deduction.deliveryDeduction > 0 &&
-          deduction.deliveryDeduction > availableDelivery
-        ) {
-          unavailableItems.push({
-            productId: item.productId,
-            option: item.option,
-            requested: item.quantity,
-            available: availableDelivery,
-          });
-        }
-      } else {
-        // Simple product
-        if (item.quantity > product.inventory) {
-          unavailableItems.push({
-            productId: item.productId,
-            option: item.option,
-            requested: item.quantity,
-            available: product.inventory,
+            available: availableQuantity,
           });
         }
       }
