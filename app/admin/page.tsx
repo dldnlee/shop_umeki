@@ -1,131 +1,106 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import { Order } from '@/lib/orders';
+import { useEffect, useState } from 'react';
+import { format, subDays, startOfDay, endOfDay } from 'date-fns';
 
-type OrderWithItems = Order & {
-  items: Array<{
-    id: number;
-    order_id: number;
-    product_id: number;
-    product_name?: string;
-    option?: string;
-    quantity: number;
-    unit_price?: number;
-    total_price: number;
+type SalesAnalytics = {
+  totalPaidAmount: number;
+  totalWaitingAmount: number;
+  totalPaidOrders: number;
+  totalWaitingOrders: number;
+  paidDeliveryMethods: Array<{
+    method: string;
+    count: number;
+    amount: number;
+  }>;
+  waitingDeliveryMethods: Array<{
+    method: string;
+    count: number;
+    amount: number;
+  }>;
+  productSales: Array<{
+    productId: number;
+    productName: string;
+    totalQuantity: number;
+    totalRevenue: number;
+    deliveryMethods: Array<{
+      method: string;
+      quantity: number;
+      revenue: number;
+    }>;
+    options: Array<{
+      option: string;
+      quantity: number;
+      revenue: number;
+      deliveryMethods: Array<{
+        method: string;
+        quantity: number;
+        revenue: number;
+      }>;
+    }>;
   }>;
 };
-
-type TabType = 'waiting' | 'paid' | 'complete';
 
 const JPY_RATE = 0.11; // 1 KRW = ~0.11 JPY
 const USD_RATE = 0.00075; // 1 KRW = ~0.00075 USD
 
-export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState<TabType>('waiting');
-  const [orders, setOrders] = useState<OrderWithItems[]>([]);
+export default function AdminPage() {
+  const [salesAnalytics, setSalesAnalytics] = useState<SalesAnalytics | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [searchName, setSearchName] = useState('');
-  const [searchOrderId, setSearchOrderId] = useState('');
-  const [searchEmail, setSearchEmail] = useState('');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
+  const [expandedProductId, setExpandedProductId] = useState<number | null>(null);
 
-  const fetchOrders = useCallback(async () => {
+  // Date range state - default to last 30 days
+  const [startDate, setStartDate] = useState<string>(
+    format(startOfDay(subDays(new Date(), 30)), "yyyy-MM-dd'T'HH:mm:ss")
+  );
+  const [endDate, setEndDate] = useState<string>(
+    format(endOfDay(new Date()), "yyyy-MM-dd'T'HH:mm:ss")
+  );
+
+  useEffect(() => {
+    fetchSalesAnalytics();
+  }, [startDate, endDate]);
+
+  const fetchSalesAnalytics = async () => {
     setLoading(true);
     setError('');
 
     try {
-      const params = new URLSearchParams({
-        status: activeTab,
-        sort: sortOrder,
-      });
+      const params = new URLSearchParams();
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
 
-      if (searchName.trim()) {
-        params.append('name', searchName.trim());
-      }
-      if (searchOrderId.trim()) {
-        params.append('order_id', searchOrderId.trim());
-      }
-      if (searchEmail.trim()) {
-        params.append('email', searchEmail.trim());
-      }
-
-      const response = await fetch(`/api/admin/orders?${params.toString()}`);
+      const response = await fetch(`/api/admin/sales-analytics?${params.toString()}`);
       const data = await response.json();
 
       if (response.ok) {
-        setOrders(data);
+        setSalesAnalytics(data);
       } else {
-        setError('Failed to load orders');
+        setError('Failed to load sales analytics');
       }
     } catch (err) {
-      setError('An error occurred while loading orders');
+      setError('An error occurred while loading sales analytics');
     } finally {
       setLoading(false);
     }
-  }, [activeTab, searchName, searchOrderId, searchEmail, sortOrder]);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchOrders();
-    }, 300); // Debounce search by 300ms
-
-    return () => clearTimeout(timer);
-  }, [fetchOrders]);
-
-  const handleStatusChange = async (orderId: string, newStatus: string) => {
-    try {
-      const response = await fetch(`/api/admin/orders/${orderId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ status: newStatus }),
-      });
-
-      if (response.ok) {
-        // Refresh orders after update
-        fetchOrders();
-      } else {
-        alert('Failed to update order status');
-      }
-    } catch (err) {
-      alert('An error occurred while updating order');
-    }
   };
 
-  const handleSendWarningEmail = async (orderId: string) => {
-    if (!confirm('Send payment cancellation warning email to the customer?')) {
-      return;
-    }
-
-    try {
-      const response = await fetch(`/api/admin/orders/${orderId}/send-warning`, {
-        method: 'POST',
-      });
-
-      if (response.ok) {
-        alert('Warning email sent successfully');
-      } else {
-        const data = await response.json();
-        alert(`Failed to send warning email: ${data.error || 'Unknown error'}`);
-      }
-    } catch (err) {
-      alert('An error occurred while sending warning email');
-    }
+  const handleStartDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const date = new Date(e.target.value);
+    setStartDate(format(startOfDay(date), "yyyy-MM-dd'T'HH:mm:ss"));
   };
 
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleString('ko-KR', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+  const handleEndDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const date = new Date(e.target.value);
+    setEndDate(format(endOfDay(date), "yyyy-MM-dd'T'HH:mm:ss"));
+  };
+
+  const setDateRange = (days: number) => {
+    const end = new Date();
+    const start = subDays(end, days);
+    setStartDate(format(startOfDay(start), "yyyy-MM-dd'T'HH:mm:ss"));
+    setEndDate(format(endOfDay(end), "yyyy-MM-dd'T'HH:mm:ss"));
   };
 
   const formatPrice = (price: number) => {
@@ -152,93 +127,90 @@ export default function AdminDashboard() {
     };
   };
 
-  const toggleAccordion = (orderId: string) => {
-    setExpandedOrderId(expandedOrderId === orderId ? null : orderId);
+  const getDeliveryMethodLabel = (method: string) => {
+    const labels: Record<string, string> = {
+      'pickup': '픽업',
+      'shipping': '배송',
+      'unknown': '알 수 없음',
+    };
+    return labels[method] || method;
   };
 
-  const tabs: { key: TabType; label: string }[] = [
-    { key: 'waiting', label: '대기' },
-    { key: 'paid', label: '결제완료' },
-    { key: 'complete', label: '완료' },
-  ];
+  const toggleProduct = (productId: number) => {
+    setExpandedProductId(expandedProductId === productId ? null : productId);
+  };
 
   return (
     <div>
-      {/* Search and Sort Controls */}
-      <div className="mb-6 space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              주문번호
-            </label>
-            <input
-              type="text"
-              placeholder="주문번호로 검색..."
-              value={searchOrderId}
-              onChange={(e) => setSearchOrderId(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              이름
-            </label>
-            <input
-              type="text"
-              placeholder="이름으로 검색..."
-              value={searchName}
-              onChange={(e) => setSearchName(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              이메일
-            </label>
-            <input
-              type="text"
-              placeholder="이메일로 검색..."
-              value={searchEmail}
-              onChange={(e) => setSearchEmail(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
-        </div>
-        <div className="flex justify-end">
-          <div className="w-full sm:w-48">
-            <select
-              value={sortOrder}
-              onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="desc">최신순</option>
-              <option value="asc">오래된순</option>
-            </select>
-          </div>
-        </div>
+      <div className="mb-6">
+        <h2 className="text-2xl font-bold text-gray-900">매출 분석</h2>
+        <p className="text-gray-600 mt-1">Sales Analytics</p>
       </div>
 
-      {/* Tabs */}
-      <div className="mb-6">
-        <div className="border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8">
-            {tabs.map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                className={`
-                  py-4 px-1 border-b-2 font-medium text-sm transition-colors
-                  ${
-                    activeTab === tab.key
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }
-                `}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </nav>
+      {/* Date Range Picker */}
+      <div className="bg-white rounded-lg shadow p-6 mb-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">기간 선택</h3>
+
+        {/* Quick Date Range Buttons */}
+        <div className="flex flex-wrap gap-2 mb-4">
+          <button
+            onClick={() => setDateRange(7)}
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+          >
+            최근 7일
+          </button>
+          <button
+            onClick={() => setDateRange(30)}
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+          >
+            최근 30일
+          </button>
+          <button
+            onClick={() => setDateRange(90)}
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+          >
+            최근 90일
+          </button>
+          <button
+            onClick={() => {
+              setStartDate(format(startOfDay(new Date(2024, 0, 1)), "yyyy-MM-dd'T'HH:mm:ss"));
+              setEndDate(format(endOfDay(new Date()), "yyyy-MM-dd'T'HH:mm:ss"));
+            }}
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+          >
+            전체 기간
+          </button>
+        </div>
+
+        {/* Custom Date Range Inputs */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              시작일
+            </label>
+            <input
+              type="date"
+              value={format(new Date(startDate), 'yyyy-MM-dd')}
+              onChange={handleStartDateChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              종료일
+            </label>
+            <input
+              type="date"
+              value={format(new Date(endDate), 'yyyy-MM-dd')}
+              onChange={handleEndDateChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+        </div>
+
+        {/* Display Selected Range */}
+        <div className="mt-4 text-sm text-gray-600">
+          선택된 기간: {format(new Date(startDate), 'yyyy년 MM월 dd일')} ~ {format(new Date(endDate), 'yyyy년 MM월 dd일')}
         </div>
       </div>
 
@@ -254,217 +226,263 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {!loading && !error && orders.length === 0 && (
-        <div className="text-center py-8 text-gray-500">
-          이 카테고리에 주문이 없습니다.
-        </div>
-      )}
+      {!loading && !error && salesAnalytics && (
+        <div className="space-y-6">
+          {/* Summary Cards */}
+          <div className="gap-6">
+            <div className="bg-white rounded-lg shadow p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">매출 현황</h3>
+              <p className="text-3xl font-bold text-green-600 mb-2">
+                {formatPrice(salesAnalytics.totalPaidAmount)}
+              </p>
+              <div className="flex gap-3 text-sm">
+                <span className="text-blue-600 font-medium">
+                  {formatMultiCurrency(salesAnalytics.totalPaidAmount).jpy}
+                </span>
+                <span className="text-green-600 font-medium">
+                  {formatMultiCurrency(salesAnalytics.totalPaidAmount).usd}
+                </span>
+              </div>
+              <p className="text-sm text-gray-600 mt-2">
+                총 {salesAnalytics.totalPaidOrders}개 주문
+              </p>
+            </div>
+          </div>
 
-      {!loading && !error && orders.length > 0 && (
-        <div className="space-y-3">
-          {orders.map((order) => {
-            const isExpanded = expandedOrderId === order.id;
-            const currencies = formatMultiCurrency(order.total_amount);
-
-            return (
-              <div
-                key={order.id}
-                className="bg-white rounded-lg shadow hover:shadow-md transition-shadow"
-              >
-                {/* Collapsed View - Always Visible */}
-                <button
-                  onClick={() => toggleAccordion(order.id!)}
-                  className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-gray-50 transition-colors rounded-lg"
-                >
-                  <div className="flex items-center gap-4 flex-1">
-                    <div className="flex-shrink-0">
-                      <h3 className="text-base font-semibold text-gray-900">
-                        #{order.id?.substring(0, 8)}
-                      </h3>
-                      <p className="text-xs text-gray-500">
-                        {formatDate(order.created_at)}
-                      </p>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-gray-900 truncate">
-                        {order.name}
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        {order.items.length}개 상품
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold text-gray-900">
-                        {currencies.krw}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {currencies.jpy} / {currencies.usd}
-                      </p>
-                    </div>
-                    <span
-                      className={`
-                        px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap
-                        ${
-                          order.order_status === 'waiting'
-                            ? 'bg-yellow-100 text-yellow-800'
-                            : order.order_status === 'paid'
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-blue-100 text-blue-800'
-                        }
-                      `}
-                    >
-                      {order.order_status}
-                    </span>
-                  </div>
-                  <div className="ml-4 flex-shrink-0">
-                    <svg
-                      className={`w-5 h-5 text-gray-400 transition-transform ${
-                        isExpanded ? 'transform rotate-180' : ''
-                      }`}
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 9l-7 7-7-7"
-                      />
-                    </svg>
-                  </div>
-                </button>
-
-                {/* Expanded View - Details */}
-                {isExpanded && (
-                  <div className="px-6 pb-6 pt-2 border-t">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                      <div>
-                        <p className="text-sm font-medium text-gray-700 mb-1">
-                          고객 정보
-                        </p>
-                        <p className="font-medium">{order.name}</p>
-                        <p className="text-sm text-gray-600">{order.email}</p>
-                        <p className="text-sm text-gray-600">{order.phone_num}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-700 mb-1">
-                          배송 정보
-                        </p>
-                        <p className="font-medium capitalize">
-                          {order.delivery_method}
-                        </p>
-                        {order.address && (
-                          <p className="text-sm text-gray-600">{order.address}</p>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="mb-4">
-                      <p className="text-sm font-medium text-gray-700 mb-2">
-                        주문 상품
-                      </p>
-                      <div className="space-y-2 bg-gray-50 rounded-md p-3">
-                        {order.items.map((item) => {
-                          const itemCurrencies = formatMultiCurrency(
-                            item.total_price
-                          );
-                          return (
-                            <div
-                              key={item.id}
-                              className="flex justify-between text-sm"
-                            >
-                              <span className="text-gray-700">
-                                {item.product_name || `상품 #${item.product_id}`}
-                                {item.option && ` (${item.option})`} x{' '}
-                                {item.quantity}
-                              </span>
-                              <div className="text-right">
-                                <p className="font-medium text-gray-900">
-                                  {itemCurrencies.krw}
-                                </p>
-                                <p className="text-xs text-gray-500">
-                                  {itemCurrencies.jpy} / {itemCurrencies.usd}
-                                </p>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between pt-4 border-t">
-                      <div>
-                        <p className="text-sm text-gray-600 mb-1">총 금액</p>
-                        <p className="text-xl font-bold text-gray-900">
-                          {currencies.krw}
-                        </p>
-                        <div className="flex gap-3 mt-1">
-                          <p className="text-sm font-medium text-blue-600">
-                            {currencies.jpy}
-                          </p>
-                          <p className="text-sm font-medium text-green-600">
-                            {currencies.usd}
-                          </p>
+          {/* Delivery Methods Breakdown */}
+          <div className="gap-6">
+            {/* Paid Orders Delivery Methods */}
+            <div className="bg-white rounded-lg shadow overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-200 bg-green-50">
+                <h3 className="text-lg font-semibold text-gray-900">배송 방법별 - 결제 완료</h3>
+                <p className="text-sm text-gray-600">Delivery Methods - Paid Orders</p>
+              </div>
+              <div className="p-6">
+                {salesAnalytics.paidDeliveryMethods.length > 0 ? (
+                  <div className="space-y-4">
+                    {salesAnalytics.paidDeliveryMethods.map((dm) => (
+                      <div key={dm.method} className="border-b border-gray-200 pb-4 last:border-0">
+                        <div className="flex justify-between items-start mb-2">
+                          <div>
+                            <p className="font-semibold text-gray-900 capitalize">
+                              {getDeliveryMethodLabel(dm.method)}
+                            </p>
+                            <p className="text-sm text-gray-600">{dm.count}개 주문</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-bold text-gray-900">
+                              {formatPrice(dm.amount)}
+                            </p>
+                          </div>
                         </div>
-                        <p className="text-xs text-gray-500 mt-1">
-                          결제 방법: {order.payment_method}
-                        </p>
+                        <div className="flex gap-2 text-xs">
+                          <span className="text-blue-600">
+                            {formatMultiCurrency(dm.amount).jpy}
+                          </span>
+                          <span className="text-green-600">
+                            {formatMultiCurrency(dm.amount).usd}
+                          </span>
+                        </div>
                       </div>
-
-                      <div className="flex gap-2">
-                        {activeTab === 'waiting' && (
-                          <>
-                            <button
-                              onClick={() => handleSendWarningEmail(order.id!)}
-                              className="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors text-sm"
-                              title="Send payment cancellation warning email"
-                            >
-                              Send Warning Email
-                            </button>
-                            <button
-                              onClick={() => handleStatusChange(order.id!, 'paid')}
-                              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-sm"
-                            >
-                              결제완료로 변경
-                            </button>
-                          </>
-                        )}
-                        {activeTab === 'paid' && (
-                          <>
-                            <button
-                              onClick={() =>
-                                handleStatusChange(order.id!, 'complete')
-                              }
-                              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm"
-                            >
-                              완료로 변경
-                            </button>
-                            <button
-                              onClick={() =>
-                                handleStatusChange(order.id!, 'waiting')
-                              }
-                              className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors text-sm"
-                            >
-                              대기로 변경
-                            </button>
-                          </>
-                        )}
-                        {activeTab === 'complete' && (
-                          <button
-                            onClick={() => handleStatusChange(order.id!, 'paid')}
-                            className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors text-sm"
-                          >
-                            결제완료로 변경
-                          </button>
-                        )}
-                      </div>
-                    </div>
+                    ))}
                   </div>
+                ) : (
+                  <p className="text-gray-500 text-center py-4">데이터 없음</p>
                 )}
               </div>
-            );
-          })}
+            </div>
+
+            {/* Waiting Orders Delivery Methods */}
+            {/* <div className="bg-white rounded-lg shadow overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-200 bg-yellow-50">
+                <h3 className="text-lg font-semibold text-gray-900">배송 방법별 - 결제 대기</h3>
+                <p className="text-sm text-gray-600">Delivery Methods - Waiting Orders</p>
+              </div>
+              <div className="p-6">
+                {salesAnalytics.waitingDeliveryMethods.length > 0 ? (
+                  <div className="space-y-4">
+                    {salesAnalytics.waitingDeliveryMethods.map((dm) => (
+                      <div key={dm.method} className="border-b border-gray-200 pb-4 last:border-0">
+                        <div className="flex justify-between items-start mb-2">
+                          <div>
+                            <p className="font-semibold text-gray-900 capitalize">
+                              {getDeliveryMethodLabel(dm.method)}
+                            </p>
+                            <p className="text-sm text-gray-600">{dm.count}개 주문</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-bold text-gray-900">
+                              {formatPrice(dm.amount)}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex gap-2 text-xs">
+                          <span className="text-blue-600">
+                            {formatMultiCurrency(dm.amount).jpy}
+                          </span>
+                          <span className="text-green-600">
+                            {formatMultiCurrency(dm.amount).usd}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-500 text-center py-4">데이터 없음</p>
+                )}
+              </div>
+            </div> */}
+          </div>
+
+          {/* Product Sales Accordion */}
+          <div className="bg-white rounded-lg shadow overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">판매된 상품</h3>
+              <p className="text-sm text-gray-600 mt-1">Product sales with delivery method breakdown</p>
+            </div>
+            <div className="divide-y divide-gray-200">
+              {salesAnalytics.productSales.map((product) => {
+                const isExpanded = expandedProductId === product.productId;
+                // Filter out "No Option" entries
+                const hasRealOptions = product.options.length > 1 ||
+                  (product.options.length === 1 && product.options[0].option !== 'No Option');
+                const displayOptions = product.options.filter(opt => opt.option !== 'No Option');
+
+                return (
+                  <div key={`product-${product.productId}`} className="border-b border-gray-200 last:border-0">
+                    {/* Product Header - Clickable */}
+                    <button
+                      onClick={() => toggleProduct(product.productId)}
+                      className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="flex-1 text-left">
+                        <div className="flex items-center gap-3">
+                          <svg
+                            className={`w-5 h-5 text-gray-400 transition-transform ${
+                              isExpanded ? 'transform rotate-90' : ''
+                            }`}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M9 5l7 7-7 7"
+                            />
+                          </svg>
+                          <div>
+                            <h4 className="font-bold text-gray-900 text-base">{product.productName}</h4>
+                            <div className="flex gap-3 mt-1 text-xs text-gray-600">
+                              {product.deliveryMethods.map((dm) => (
+                                <span key={dm.method}>
+                                  {getDeliveryMethodLabel(dm.method)}: {dm.quantity}개
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right ml-4">
+                        <div className="font-bold text-gray-900 text-base">{product.totalQuantity}개</div>
+                        <div className="font-bold text-gray-900">
+                          {formatPrice(product.totalRevenue)}
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          {formatMultiCurrency(product.totalRevenue).jpy} / {formatMultiCurrency(product.totalRevenue).usd}
+                        </div>
+                      </div>
+                    </button>
+
+                    {/* Expanded Content */}
+                    {isExpanded && (
+                      <div className="px-6 pb-4 bg-gray-50">
+                        <div className="space-y-4">
+                          {/* Delivery Method Breakdown for Product Total */}
+                          <div className="bg-white rounded-lg p-4 shadow-sm">
+                            <h5 className="text-sm font-semibold text-gray-700 mb-3">배송 방법별 판매</h5>
+                            <div className="space-y-2">
+                              {product.deliveryMethods.map((dm) => (
+                                <div
+                                  key={`delivery-${dm.method}`}
+                                  className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0"
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                                      {getDeliveryMethodLabel(dm.method)}
+                                    </span>
+                                    <span className="text-sm text-gray-600">{dm.quantity}개</span>
+                                  </div>
+                                  <div className="text-right">
+                                    <div className="text-sm font-medium text-gray-900">
+                                      {formatPrice(dm.revenue)}
+                                    </div>
+                                    <div className="text-xs text-gray-500">
+                                      {formatMultiCurrency(dm.revenue).jpy} / {formatMultiCurrency(dm.revenue).usd}
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Options Breakdown (only if there are real options) */}
+                          {hasRealOptions && displayOptions.length > 0 && (
+                            <div className="bg-white rounded-lg p-4 shadow-sm">
+                              <h5 className="text-sm font-semibold text-gray-700 mb-3">옵션별 판매</h5>
+                              <div className="space-y-4">
+                                {displayOptions.map((opt) => (
+                                  <div key={`option-${opt.option}`} className="border-l-2 border-blue-200 pl-4">
+                                    <div className="flex justify-between items-start mb-2">
+                                      <div className="font-medium text-gray-900">{opt.option}</div>
+                                      <div className="text-right">
+                                        <div className="text-sm font-medium text-gray-900">{opt.quantity}개</div>
+                                        <div className="text-sm text-gray-900">
+                                          {formatPrice(opt.revenue)}
+                                        </div>
+                                        <div className="text-xs text-gray-500">
+                                          {formatMultiCurrency(opt.revenue).jpy} / {formatMultiCurrency(opt.revenue).usd}
+                                        </div>
+                                      </div>
+                                    </div>
+                                    {/* Delivery methods for this option */}
+                                    <div className="space-y-1 mt-2">
+                                      {opt.deliveryMethods.map((dm) => (
+                                        <div
+                                          key={`option-delivery-${dm.method}`}
+                                          className="flex justify-between items-center py-1.5 text-sm"
+                                        >
+                                          <div className="flex items-center gap-2">
+                                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">
+                                              {getDeliveryMethodLabel(dm.method)}
+                                            </span>
+                                            <span className="text-gray-600">{dm.quantity}개</span>
+                                          </div>
+                                          <div className="text-right">
+                                            <div className="text-sm text-gray-700">
+                                              {formatPrice(dm.revenue)}
+                                            </div>
+                                            <div className="text-xs text-gray-500">
+                                              {formatMultiCurrency(dm.revenue).jpy} / {formatMultiCurrency(dm.revenue).usd}
+                                            </div>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       )}
     </div>
