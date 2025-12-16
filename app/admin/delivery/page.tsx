@@ -536,8 +536,8 @@ export default function DeliveryPage() {
       if (order.order_status === 'paid' && (order.delivery_method === '국내배송' || order.delivery_method === '해외배송')) {
         order.items.forEach(item => {
           const key = item.option
-            ? `${item.product?.name} (${item.option})`
-            : item.product?.name || '상품명 없음';
+            ? `${item.product?.eng_name} (${item.option})`
+            : item.product?.eng_name || '상품명 없음';
 
           if (countsByDeliveryMethod[order.delivery_method][key] !== undefined) {
             countsByDeliveryMethod[order.delivery_method][key] += item.quantity;
@@ -725,7 +725,7 @@ export default function DeliveryPage() {
                 <option value="all">전체</option>
                 <option value="cancel">고객취소 ({orders.filter(o => o.order_status === 'cancel').length})</option>
                 <option value="paid">배송전 ({orders.filter(o => o.order_status === 'paid').length})</option>
-                <option value="paid">포장완료 ({orders.filter(o => o.order_status === 'packed').length})</option>
+                <option value="packed">포장완료 ({orders.filter(o => o.order_status === 'packed').length})</option>
                 <option value="delivered">배송중 ({orders.filter(o => o.order_status === 'delivered').length})</option>
                 <option value="complete">배송완료 ({orders.filter(o => o.order_status === 'complete').length})</option>
               </select>
