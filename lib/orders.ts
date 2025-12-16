@@ -347,7 +347,7 @@ export async function getSalesAnalytics(startDate?: string, endDate?: string) {
         created_at,
         delivery_method
       `)
-      .in("order_status", ["paid", "delivered", "complete"]);
+      .neq("order_status", "waiting");
 
     // Apply date range filters if provided
     if (startDate) {
