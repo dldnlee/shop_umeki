@@ -215,7 +215,7 @@ export default function DeliveryPage() {
         .from(ordersTable)
         .update({
           invoice_id: invoiceNumbers[orderId] || null,
-          order_status: "complete"
+          order_status: "delivered"
         })
         .eq('id', orderId);
 
@@ -1055,7 +1055,7 @@ export default function DeliveryPage() {
                             disabled={updatingInvoice[order.id]}
                             className="px-6 py-2 bg-green-600 text-white text-sm font-semibold rounded-md hover:bg-green-700 transition-colors shadow-sm disabled:bg-gray-400 disabled:cursor-not-allowed"
                           >
-                            {updatingInvoice[order.id] ? '저장중...' : '저장 & 배송완료'}
+                            {updatingInvoice[order.id] ? '저장중...' : '저장 & 배송중으로 변경'}
                           </button>
                         </div>
                         {order.invoice_id && (
