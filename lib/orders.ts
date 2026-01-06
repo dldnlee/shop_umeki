@@ -1,8 +1,7 @@
 import { supabase } from "./supabase";
 import { CartItem } from "./cart";
-import { deductInventoryForOrder, verifyInventoryAvailability } from "./inventory-deduction";
-import { Product } from "@/models";
 import { generateUUID } from "./utils";
+import type { PostgrestError } from "@supabase/supabase-js";
 
 export type Order = {
   id?: string; // UUID
@@ -36,6 +35,23 @@ export type OrderItem = {
   unit_price: number;
   total_price: number;
 };
+
+type SalesAnalyticsOrderItem = {
+  product_id: number;
+  quantity: number;
+  option: string | null;
+  total_price: number;
+  order_id: string;
+  umeki_products: { name?: string } | { name?: string }[] | null;
+};
+
+type SalesAnalyticsOrderRecord = {
+  id: string;
+  total_amount: number;
+  order_status: string;
+  created_at: string;
+  delivery_method: string;
+} & Record<string, unknown>;
 
 /**
  * Create a new order and associated order items
@@ -337,69 +353,109 @@ export async function updateOrderCustomsCode(orderId: string, customsCode: strin
  */
 export async function getSalesAnalytics(startDate?: string, endDate?: string) {
   try {
-    // Get all orders with 'paid' or 'complete' status and their items
-    let query = supabase
-      .from("umeki_orders")
-      .select(`
-        id,
-        total_amount,
-        order_status,
-        created_at,
-        delivery_method
-      `)
-      .neq("order_status", "waiting");
+    const tableSources = [
+      { orders: "umeki_orders", items: "umeki_order_items" },
+      { orders: "umeki_orders_hypetown", items: "umeki_order_items_hypetown" },
+    ];
 
-    // Apply date range filters if provided
-    if (startDate) {
-      query = query.gte("created_at", startDate);
+    const allPaidOrders: Array<{
+      id: string;
+      total_amount: number;
+      order_status: string;
+      created_at: string;
+      delivery_method: string;
+    }> = [];
+    const allOrderItems: SalesAnalyticsOrderItem[] = [];
+
+    const isTableMissingError = (error: PostgrestError | null | undefined) =>
+      error?.code === "42P01" ||
+      (typeof error?.message === "string" &&
+        error.message.toLowerCase().includes("relation") &&
+        error.message.toLowerCase().includes("does not exist"));
+
+    for (const source of tableSources) {
+      let query = supabase
+        .from(source.orders)
+        .select(`
+          id,
+          total_amount,
+          order_status,
+          created_at,
+          delivery_method,
+          ${source.items} (
+            product_id,
+            quantity,
+            option,
+            total_price,
+            order_id,
+            umeki_products (
+              name
+            )
+          )
+        `)
+        .neq("order_status", "waiting");
+
+      if (startDate) {
+        query = query.gte("created_at", startDate);
+      }
+      if (endDate) {
+        query = query.lte("created_at", endDate);
+      }
+
+      const { data: paidOrders, error: paidOrdersError } = await query;
+
+      if (paidOrdersError) {
+        if (isTableMissingError(paidOrdersError)) {
+          console.warn(`Skipping ${source.orders} - table missing:`, paidOrdersError.message);
+          continue;
+        }
+
+        return { success: false, error: paidOrdersError };
+      }
+
+      const relationKey = source.items;
+      const paidOrdersList = paidOrders as unknown as
+        | SalesAnalyticsOrderRecord[]
+        | null
+        | undefined;
+      const extractedItems =
+        paidOrdersList?.flatMap(order => {
+          const relationItems = order[relationKey];
+          if (!Array.isArray(relationItems)) {
+            return [];
+          }
+          return relationItems as SalesAnalyticsOrderItem[];
+        }) || [];
+      allOrderItems.push(...extractedItems);
+
+      const validOrders =
+        (paidOrdersList ?? []).filter(
+          (
+            order
+          ): order is SalesAnalyticsOrderRecord =>
+            typeof order?.id === "string" &&
+            typeof order?.total_amount === "number" &&
+            typeof order?.order_status === "string" &&
+            typeof order?.created_at === "string" &&
+            typeof order?.delivery_method === "string"
+        );
+      allPaidOrders.push(
+        ...validOrders.map(order => ({
+          id: order.id,
+          total_amount: order.total_amount,
+          order_status: order.order_status,
+          created_at: order.created_at,
+          delivery_method: order.delivery_method,
+        }))
+      );
     }
-    if (endDate) {
-      query = query.lte("created_at", endDate);
-    }
 
-    const { data: paidOrders, error: paidOrdersError } = await query;
+    const totalPaidAmount =
+      allPaidOrders.reduce((sum, order) => sum + (order.total_amount || 0), 0) || 0;
 
-    if (paidOrdersError) {
-      return { success: false, error: paidOrdersError };
-    }
-
-    // Get all orders with 'waiting' status for total calculation
-    // const { data: waitingOrders, error: waitingOrdersError } = await supabase
-    //   .from("umeki_orders")
-    //   .select("total_amount, delivery_method")
-    //   .eq("order_status", "waiting");
-
-    // if (waitingOrdersError) {
-    //   return { success: false, error: waitingOrdersError };
-    // }
-
-    // Get all order items for paid orders with product information
-    const { data: orderItems, error: itemsError } = await supabase
-      .from("umeki_order_items")
-      .select(`
-        product_id,
-        quantity,
-        option,
-        total_price,
-        order_id,
-        umeki_products (
-          name
-        )
-      `)
-      .in("order_id", paidOrders?.map(o => o.id) || []);
-
-    if (itemsError) {
-      return { success: false, error: itemsError };
-    }
-
-    // Calculate total amounts
-    const totalPaidAmount = paidOrders?.reduce((sum, order) => sum + (order.total_amount || 0), 0) || 0;
-    // const totalWaitingAmount = waitingOrders?.reduce((sum, order) => sum + (order.total_amount || 0), 0) || 0;
-
-    // Calculate delivery method breakdown for paid orders
     const paidDeliveryBreakdown = new Map<string, { count: number; amount: number }>();
-    paidOrders?.forEach(order => {
-      const method = order.delivery_method || 'unknown';
+    allPaidOrders.forEach(order => {
+      const method = order.delivery_method || "unknown";
       if (!paidDeliveryBreakdown.has(method)) {
         paidDeliveryBreakdown.set(method, { count: 0, amount: 0 });
       }
@@ -408,49 +464,40 @@ export async function getSalesAnalytics(startDate?: string, endDate?: string) {
       data.amount += order.total_amount || 0;
     });
 
-    // Calculate delivery method breakdown for waiting orders
-    // const waitingDeliveryBreakdown = new Map<string, { count: number; amount: number }>();
-    // waitingOrders?.forEach(order => {
-    //   const method = order.delivery_method || 'unknown';
-    //   if (!waitingDeliveryBreakdown.has(method)) {
-    //     waitingDeliveryBreakdown.set(method, { count: 0, amount: 0 });
-    //   }
-    //   const data = waitingDeliveryBreakdown.get(method)!;
-    //   data.count += 1;
-    //   data.amount += order.total_amount || 0;
-    // });
+    const orderLookup = new Map(allPaidOrders.map(order => [order.id, order]));
 
-    // Aggregate product sales data with delivery method tracking
-    const productSalesMap = new Map<string, {
-      productId: number;
-      productName: string;
-      totalQuantity: number;
-      totalRevenue: number;
-      deliveryMethods: Map<string, {
-        quantity: number;
-        revenue: number;
-      }>;
-      options: Map<string, {
-        quantity: number;
-        revenue: number;
-        deliveryMethods: Map<string, {
-          quantity: number;
-          revenue: number;
-        }>;
-      }>;
-    }>();
+    const productSalesMap = new Map<
+      string,
+      {
+        productId: number;
+        productName: string;
+        totalQuantity: number;
+        totalRevenue: number;
+        deliveryMethods: Map<string, { quantity: number; revenue: number }>;
+        options: Map<
+          string,
+          {
+            quantity: number;
+            revenue: number;
+            deliveryMethods: Map<string, { quantity: number; revenue: number }>;
+          }
+        >;
+      }
+    >();
 
-    orderItems?.forEach(item => {
+    allOrderItems.forEach(item => {
       const productId = item.product_id;
-      const productInfo = item.umeki_products as any;
+      const rawProductInfo = item.umeki_products;
+      const productInfo = Array.isArray(rawProductInfo)
+        ? rawProductInfo[0]
+        : rawProductInfo;
       const productName = productInfo?.name || `Product #${productId}`;
-      const option = item.option || 'No Option';
-      const quantity = item.quantity;
-      const revenue = item.total_price;
+      const option = item.option || "No Option";
+      const quantity = item.quantity || 0;
+      const revenue = item.total_price || 0;
 
-      // Find the order for this item to get delivery method
-      const order = paidOrders?.find(o => o.id === item.order_id);
-      const deliveryMethod = order?.delivery_method || 'unknown';
+      const order = orderLookup.get(item.order_id);
+      const deliveryMethod = order?.delivery_method || "unknown";
 
       const key = `${productId}`;
 
@@ -469,7 +516,6 @@ export async function getSalesAnalytics(startDate?: string, endDate?: string) {
       productData.totalQuantity += quantity;
       productData.totalRevenue += revenue;
 
-      // Track delivery method for product
       if (!productData.deliveryMethods.has(deliveryMethod)) {
         productData.deliveryMethods.set(deliveryMethod, { quantity: 0, revenue: 0 });
       }
@@ -477,7 +523,6 @@ export async function getSalesAnalytics(startDate?: string, endDate?: string) {
       productDeliveryData.quantity += quantity;
       productDeliveryData.revenue += revenue;
 
-      // Track options
       if (!productData.options.has(option)) {
         productData.options.set(option, {
           quantity: 0,
@@ -490,7 +535,6 @@ export async function getSalesAnalytics(startDate?: string, endDate?: string) {
       optionData.quantity += quantity;
       optionData.revenue += revenue;
 
-      // Track delivery method for option
       if (!optionData.deliveryMethods.has(deliveryMethod)) {
         optionData.deliveryMethods.set(deliveryMethod, { quantity: 0, revenue: 0 });
       }
@@ -499,55 +543,49 @@ export async function getSalesAnalytics(startDate?: string, endDate?: string) {
       optionDeliveryData.revenue += revenue;
     });
 
-    // Convert Map to array format
-    const productSales = Array.from(productSalesMap.values()).map(product => ({
-      productId: product.productId,
-      productName: product.productName,
-      totalQuantity: product.totalQuantity,
-      totalRevenue: product.totalRevenue,
-      deliveryMethods: Array.from(product.deliveryMethods.entries()).map(([method, data]) => ({
-        method,
-        quantity: data.quantity,
-        revenue: data.revenue,
-      })),
-      options: Array.from(product.options.entries()).map(([option, data]) => ({
-        option,
-        quantity: data.quantity,
-        revenue: data.revenue,
-        deliveryMethods: Array.from(data.deliveryMethods.entries()).map(([method, dmData]) => ({
-          method,
-          quantity: dmData.quantity,
-          revenue: dmData.revenue,
+    const productSales = Array.from(productSalesMap.values())
+      .map(product => ({
+        productId: product.productId,
+        productName: product.productName,
+        totalQuantity: product.totalQuantity,
+        totalRevenue: product.totalRevenue,
+        deliveryMethods: Array.from(product.deliveryMethods.entries()).map(
+          ([method, data]) => ({
+            method,
+            quantity: data.quantity,
+            revenue: data.revenue,
+          })
+        ),
+        options: Array.from(product.options.entries()).map(([option, data]) => ({
+          option,
+          quantity: data.quantity,
+          revenue: data.revenue,
+          deliveryMethods: Array.from(data.deliveryMethods.entries()).map(
+            ([method, dmData]) => ({
+              method,
+              quantity: dmData.quantity,
+              revenue: dmData.revenue,
+            })
+          ),
         })),
-      })),
-    }));
+      }))
+      .sort((a, b) => b.totalQuantity - a.totalQuantity);
 
-    // Sort by total quantity sold (descending)
-    productSales.sort((a, b) => b.totalQuantity - a.totalQuantity);
-
-    // Convert delivery method Maps to arrays
-    const paidDeliveryMethods = Array.from(paidDeliveryBreakdown.entries()).map(([method, data]) => ({
-      method,
-      count: data.count,
-      amount: data.amount,
-    }));
-
-    // const waitingDeliveryMethods = Array.from(waitingDeliveryBreakdown.entries()).map(([method, data]) => ({
-    //   method,
-    //   count: data.count,
-    //   amount: data.amount,
-    // }));
+    const paidDeliveryMethods = Array.from(paidDeliveryBreakdown.entries()).map(
+      ([method, data]) => ({
+        method,
+        count: data.count,
+        amount: data.amount,
+      })
+    );
 
     return {
       success: true,
       data: {
         totalPaidAmount,
-        // totalWaitingAmount,
         productSales,
-        totalPaidOrders: paidOrders?.length || 0,
-        // totalWaitingOrders: waitingOrders?.length || 0,
+        totalPaidOrders: allPaidOrders.length,
         paidDeliveryMethods,
-        // waitingDeliveryMethods,
       },
     };
   } catch (error) {

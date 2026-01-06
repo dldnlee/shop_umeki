@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { format, subDays, startOfDay, endOfDay } from 'date-fns';
 
 type SalesAnalytics = {
@@ -49,6 +49,7 @@ export default function AnalyticsPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [expandedProductId, setExpandedProductId] = useState<number | null>(null);
+  const requestSeq = useRef(0);
 
   // Date range state - default to last 30 days
   const [startDate, setStartDate] = useState<string>(
@@ -58,33 +59,48 @@ export default function AnalyticsPage() {
     format(endOfDay(new Date()), "yyyy-MM-dd'T'HH:mm:ss")
   );
 
-  useEffect(() => {
-    fetchSalesAnalytics();
-  }, [startDate, endDate]);
+  const fetchSalesAnalytics = useCallback(
+    async (signal: AbortSignal, requestId: number) => {
+      setLoading(true);
+      setError('');
 
-  const fetchSalesAnalytics = async () => {
-    setLoading(true);
-    setError('');
+      try {
+        const params = new URLSearchParams();
+        if (startDate) params.append('startDate', startDate);
+        if (endDate) params.append('endDate', endDate);
 
-    try {
-      const params = new URLSearchParams();
-      if (startDate) params.append('startDate', startDate);
-      if (endDate) params.append('endDate', endDate);
+        const response = await fetch(`/api/admin/sales-analytics?${params.toString()}`, {
+          signal,
+          cache: 'no-store',
+        });
+        const data = await response.json();
 
-      const response = await fetch(`/api/admin/sales-analytics?${params.toString()}`);
-      const data = await response.json();
+        if (requestId !== requestSeq.current) return;
 
-      if (response.ok) {
-        setSalesAnalytics(data);
-      } else {
-        setError('Failed to load sales analytics');
+        if (response.ok) {
+          setSalesAnalytics(data);
+        } else {
+          setError('Failed to load sales analytics');
+        }
+      } catch (err) {
+        if ((err as { name?: string }).name === 'AbortError') return;
+        if (requestId !== requestSeq.current) return;
+        setError('An error occurred while loading sales analytics');
+      } finally {
+        if (requestId !== requestSeq.current) return;
+        setLoading(false);
       }
-    } catch (err) {
-      setError('An error occurred while loading sales analytics');
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+    [endDate, startDate]
+  );
+
+  useEffect(() => {
+    const controller = new AbortController();
+    requestSeq.current += 1;
+    const requestId = requestSeq.current;
+    void fetchSalesAnalytics(controller.signal, requestId);
+    return () => controller.abort();
+  }, [fetchSalesAnalytics]);
 
   const handleStartDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const date = new Date(e.target.value);
