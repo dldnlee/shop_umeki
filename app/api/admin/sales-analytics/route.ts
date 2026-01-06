@@ -26,8 +26,12 @@ export async function GET(request: Request) {
     );
 
     if (!result.success) {
+      console.error('Sales analytics query failed:', result.error);
+      const errorMessage =
+        (result.error as { message?: string | undefined })?.message ||
+        'Failed to fetch sales analytics';
       return NextResponse.json(
-        { error: 'Failed to fetch sales analytics' },
+        { error: errorMessage },
         { status: 500 }
       );
     }
