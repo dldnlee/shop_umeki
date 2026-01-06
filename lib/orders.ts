@@ -1,8 +1,7 @@
 import { supabase } from "./supabase";
 import { CartItem } from "./cart";
-import { deductInventoryForOrder, verifyInventoryAvailability } from "./inventory-deduction";
-import { Product } from "@/models";
 import { generateUUID } from "./utils";
+import type { PostgrestError } from "@supabase/supabase-js";
 
 export type Order = {
   id?: string; // UUID
@@ -36,6 +35,23 @@ export type OrderItem = {
   unit_price: number;
   total_price: number;
 };
+
+type SalesAnalyticsOrderItem = {
+  product_id: number;
+  quantity: number;
+  option: string | null;
+  total_price: number;
+  order_id: string;
+  umeki_products: { name?: string } | { name?: string }[] | null;
+};
+
+type SalesAnalyticsOrderRecord = {
+  id: string;
+  total_amount: number;
+  order_status: string;
+  created_at: string;
+  delivery_method: string;
+} & Record<string, unknown>;
 
 /**
  * Create a new order and associated order items
@@ -349,16 +365,9 @@ export async function getSalesAnalytics(startDate?: string, endDate?: string) {
       created_at: string;
       delivery_method: string;
     }> = [];
-    const allOrderItems: Array<{
-      product_id: number;
-      quantity: number;
-      option: string | null;
-      total_price: number;
-      order_id: string;
-      umeki_products: { name?: string } | { name?: string }[] | null;
-    }> = [];
+    const allOrderItems: SalesAnalyticsOrderItem[] = [];
 
-    const isTableMissingError = (error: any) =>
+    const isTableMissingError = (error: PostgrestError | null | undefined) =>
       error?.code === "42P01" ||
       (typeof error?.message === "string" &&
         error.message.toLowerCase().includes("relation") &&
@@ -405,11 +414,31 @@ export async function getSalesAnalytics(startDate?: string, endDate?: string) {
       }
 
       const relationKey = source.items;
+      const paidOrdersList = paidOrders as unknown as
+        | SalesAnalyticsOrderRecord[]
+        | null
+        | undefined;
       const extractedItems =
-        paidOrders?.flatMap(order => (order as any)?.[relationKey] || []) || [];
+        paidOrdersList?.flatMap(order => {
+          const relationItems = order[relationKey];
+          if (!Array.isArray(relationItems)) {
+            return [];
+          }
+          return relationItems as SalesAnalyticsOrderItem[];
+        }) || [];
       allOrderItems.push(...extractedItems);
 
-      const validOrders = paidOrders?.filter(order => order?.id) || [];
+      const validOrders =
+        (paidOrdersList ?? []).filter(
+          (
+            order
+          ): order is SalesAnalyticsOrderRecord =>
+            typeof order?.id === "string" &&
+            typeof order?.total_amount === "number" &&
+            typeof order?.order_status === "string" &&
+            typeof order?.created_at === "string" &&
+            typeof order?.delivery_method === "string"
+        );
       allPaidOrders.push(
         ...validOrders.map(order => ({
           id: order.id,
