@@ -6,6 +6,7 @@ import type { PostgrestError } from "@supabase/supabase-js";
 export type Order = {
   id?: string; // UUID
   easy_pay_id?: string | null;
+  paypal_id?: string | null;
   name: string;
   email: string;
   phone_num?: string | null;
@@ -71,6 +72,7 @@ export async function createOrder(
         {
           id: orderData.id || generateUUID(),
           easy_pay_id: orderData.easy_pay_id || null,
+          paypal_id: orderData.paypal_id || null,
           name: orderData.name,
           email: orderData.email,
           phone_num: orderData.phone_num,
