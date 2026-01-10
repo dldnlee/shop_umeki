@@ -84,7 +84,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
           {/* Sidebar Footer */}
           <div className="p-6 border-t border-zinc-200">
             <p className="text-xs text-zinc-500 text-center">
-              유메키 팬미팅 굿즈샵
+              Powered By | ModooGoods
             </p>
           </div>
         </div>
