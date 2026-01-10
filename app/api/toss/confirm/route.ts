@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createOrder } from "@/lib/orders";
 import { CartItem } from "@/lib/cart";
+import { supabase } from "@/lib/supabase";
 
 
 const widgetSecretKey = process.env.TOSS_SECRET_KEY;
@@ -15,6 +16,23 @@ const encryptedWidgetSecretKey = "Basic " + Buffer.from(widgetSecretKey + ":").t
 export async function POST(request: NextRequest) {
   const body = await request.json();
   const { paymentKey, orderId, amount, orderData, cartItems } = body;
+
+  // Idempotency check: If order already exists with this toss_payment_id, return success
+  // This prevents duplicate orders when users refresh or retry
+  const { data: existingOrder } = await supabase
+    .from("umeki_orders")
+    .select("id")
+    .eq("toss_payment_id", paymentKey)
+    .single();
+
+  if (existingOrder) {
+    console.log('Order already exists for payment key:', paymentKey);
+    return NextResponse.json({
+      success: true,
+      orderId: existingOrder.id,
+      message: 'Order already processed',
+    });
+  }
 
   // 결제 승인 API를 호출하세요.
   // 결제를 승인하면 결제수단에서 금액이 차감돼요.

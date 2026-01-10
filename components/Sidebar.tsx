@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -57,7 +58,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
               </Link>
 
               {/* International Delivery Payment Button */}
-              <Link
+              {/* <Link
                 href="/international-delivery-payment"
                 onClick={() => setIsOpen(false)}
                 className="flex items-center gap-3 px-4 py-3 rounded-lg text-black hover:bg-zinc-100 transition-all duration-200 group"
@@ -77,15 +78,44 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                   />
                 </svg>
                 <span className="font-medium">HypeTown 배송비 결제</span>
+              </Link> */}
+
+              {/* Contact Button */}
+              <Link
+                href="/contact"
+                onClick={() => setIsOpen(false)}
+                className="flex items-center gap-3 px-4 py-3 rounded-lg text-black hover:bg-zinc-100 transition-all duration-200 group"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5 text-zinc-600 group-hover:text-black transition-colors"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                  />
+                </svg>
+                <span className="font-medium">문의하기</span>
               </Link>
             </div>
           </nav>
 
           {/* Sidebar Footer */}
-          <div className="p-6 border-t border-zinc-200">
-            <p className="text-xs text-zinc-500 text-center">
-              유메키 팬미팅 굿즈샵
-            </p>
+          <div className="p-6 border-t border-zinc-200 flex flex-col items-center gap-2">
+            <span className="text-xs text-zinc-500">Powered By</span>
+            <Link href="https://modoogoods.com" target="_blank">
+              <Image
+                src="/modoo_logo.png"
+                alt="ModooGoods"
+                width={120}
+                height={40}
+              />
+            </Link>
           </div>
         </div>
       </aside>

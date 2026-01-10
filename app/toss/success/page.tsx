@@ -11,10 +11,15 @@ function WidgetSuccessPageContent() {
   useEffect(() => {
     async function confirm() {
       try {
-        // Get pending order data from sessionStorage
-        const pendingOrderJson = sessionStorage.getItem('pendingTossOrder');
+        // Get pending order data from sessionStorage first, then localStorage as fallback
+        // localStorage is more reliable across redirects (Toss redirects can lose sessionStorage)
+        let pendingOrderJson = sessionStorage.getItem('pendingTossOrder');
         if (!pendingOrderJson) {
-          throw new Error('주문 정보를 찾을 수 없습니다.');
+          pendingOrderJson = localStorage.getItem('pendingTossOrder');
+        }
+
+        if (!pendingOrderJson) {
+          throw new Error('주문 정보를 찾을 수 없습니다. 결제가 완료되었다면 고객센터에 문의해주세요.');
         }
 
         const { orderData, cartItems } = JSON.parse(pendingOrderJson);
@@ -41,8 +46,9 @@ function WidgetSuccessPageContent() {
           throw { message: json.message || json.error || '결제 확인 실패', code: json.code };
         }
 
-        // Clear pending order data
+        // Clear pending order data from both storages
         sessionStorage.removeItem('pendingTossOrder');
+        localStorage.removeItem('pendingTossOrder');
 
         // Clear cart
         const { clearCart } = await import('@/lib/cart');
@@ -52,10 +58,16 @@ function WidgetSuccessPageContent() {
         router.push(`/payment/complete?orderId=${json.orderId}`);
       } catch (error) {
         console.error('Payment confirmation error:', error);
-        sessionStorage.removeItem('pendingTossOrder');
+        // Only clear storage if it's not a "order not found" error
+        // This preserves data for retry or customer service recovery
+        const isOrderNotFound = error instanceof Error && error.message.includes('주문 정보를 찾을 수 없습니다');
+        if (!isOrderNotFound) {
+          sessionStorage.removeItem('pendingTossOrder');
+          localStorage.removeItem('pendingTossOrder');
+        }
         const errorMessage = error instanceof Error ? error.message : '결제 확인 중 오류가 발생했습니다';
         const errorCode = (error as { code?: string })?.code || 'UNKNOWN';
-        router.push(`/toss/fail?code=${errorCode}&message=${errorMessage}`);
+        router.push(`/toss/fail?code=${errorCode}&message=${encodeURIComponent(errorMessage)}`);
       }
     }
 

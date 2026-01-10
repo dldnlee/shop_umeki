@@ -59,6 +59,7 @@ export default function CartModal({ isOpen, onClose }: CartModalProps) {
       const { data, error } = await supabase
         .from('umeki_products')
         .select('*')
+        .eq('is_active', true)
         .order('display_order')
         ;
 

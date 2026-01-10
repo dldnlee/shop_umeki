@@ -47,9 +47,8 @@ export default function Header({ onMenuClick }: HeaderProps) {
           </div>
 
           {/* Tab Navigation - Center Section */}
-          <div className="flex-1 flex justify-center">
+          {/* <div className="flex-1 flex justify-center">
             <div ref={containerRef} className="relative flex gap-2 rounded-full bg-black/30 backdrop-blur-xl p-1.5">
-            {/* Sliding background indicator */}
             <div
               className="absolute bg-white rounded-full shadow-md transition-all duration-300 ease-out"
               style={{
@@ -111,7 +110,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
               <span className="hidden sm:inline">굿즈 정보</span>
             </button>
             </div>
-          </div>
+          </div> */}
 
           {/* Hamburger Menu Button - Right Section */}
           <div className="flex-1 flex justify-end">
