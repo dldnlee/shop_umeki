@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -105,10 +106,13 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
           </nav>
 
           {/* Sidebar Footer */}
-          <div className="p-6 border-t border-zinc-200">
-            <p className="text-xs text-zinc-500 text-center">
-              Powered By | ModooGoods
-            </p>
+          <div className="p-6 border-t border-zinc-200 flex justify-center">
+            <Image
+              src="/modoo_logo.png"
+              alt="ModooGoods"
+              width={120}
+              height={40}
+            />
           </div>
         </div>
       </aside>

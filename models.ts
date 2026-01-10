@@ -11,4 +11,9 @@ export type Product = {
   options?: string[];
   inventory: number | Inventory; // Can be a simple number or a JSON object mapping options to quantities
   display_order: number;
+  eng_name?: string;
+  malltail_item_code?: string;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
 };
