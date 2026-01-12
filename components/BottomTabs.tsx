@@ -19,7 +19,7 @@ export default function BottomTabs() {
   };
 
   return (
-    <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 flex gap-4">
+    <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-20 flex gap-4">
       {/* Floating Action Button */}
       <button
         onClick={handleActionButtonClick}
