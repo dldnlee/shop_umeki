@@ -82,6 +82,7 @@ export default function HomeLayout({
                   <div className="border-b pb-3">
                     <h3 className="font-semibold text-gray-800 mb-2">🇰🇷 한국어</h3>
                     <ul className="list-disc list-inside space-y-1 text-gray-600">
+                      <li className="text-yellow-600">후드집업 구매 시 배송까지 약 2주 정도 소요됩니다.</li>
                       <li>일본인 고객님께서는 배송 시 11자리 전화번호를 제공해 주셔야 합니다.</li>
                       <li>주문 후 배송 시작까지 최대 일주일이 걸릴 수 있습니다.</li>
                       <li>환불 요청시 개봉영상을 첨부해주시기 바랍니다.</li>
@@ -92,6 +93,7 @@ export default function HomeLayout({
                   <div className="border-b pb-3">
                     <h3 className="font-semibold text-gray-800 mb-2">🇯🇵 日本語</h3>
                     <ul className="list-disc list-inside space-y-1 text-gray-600">
+                      <li className="text-yellow-600">フードジップアップをご購入の場合、配送まで約2週間ほどお時間をいただいております。</li>
                       <li>日本のお客様は配送時に11桁の電話番号をご提供ください。</li>
                       <li>ご注文後、韓国から発送されるまで最大1週間かかる場合がございます。</li>
                       <li>返金を申請される際は、開封動画の添付をお願いいたします</li>
@@ -102,6 +104,7 @@ export default function HomeLayout({
                   <div>
                     <h3 className="font-semibold text-gray-800 mb-2">🇺🇸 English</h3>
                     <ul className="list-disc list-inside space-y-1 text-gray-600">
+                      <li className="text-yellow-600">Please note that hoodie zip-up orders may take approximately 2 weeks for delivery.</li>
                       <li>Japanese customers must provide an 11-digit phone number for delivery.</li>
                       <li>After placing your order, it may take up to one week for your order to be sent from Korea.</li>
                       <li>Please attach an unboxing video when requesting a refund.</li>
