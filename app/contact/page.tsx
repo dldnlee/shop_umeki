@@ -8,7 +8,7 @@ export default function ContactPage() {
 
   return (
     <div className="min-h-screen bg-zinc-50 font-sans text-foreground">
-      <main className="max-w-2xl mx-auto p-8 pt-24">
+      <main className="max-w-2xl mx-auto p-2 pt-24">
         <div className="bg-white rounded-lg border border-black/6 shadow-sm p-8 md:p-12">
           {/* Back Button */}
           <button
@@ -40,8 +40,8 @@ export default function ContactPage() {
           {/* Contact Info */}
           <div className="space-y-6">
             {/* Email */}
-            <div className="flex items-start gap-4 p-4 bg-zinc-50 rounded-lg border border-zinc-200">
-              <div className="w-12 h-12 bg-black rounded-full flex items-center justify-center flex-shrink-0">
+            <div className="flex items-start gap-4 p-3 bg-zinc-50 rounded-lg border border-zinc-200">
+              <div className="size-10 bg-black rounded-full flex items-center justify-center flex-shrink-0">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   className="h-6 w-6 text-white"
@@ -58,10 +58,10 @@ export default function ContactPage() {
                 </svg>
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-black mb-1">Email</h3>
+                <h3 className="text-md font-semibold text-black mb-1">Email</h3>
                 <a
                   href="mailto:modoo.contact@gmail.com"
-                  className="text-zinc-600 hover:text-black transition-colors"
+                  className="text-zinc-600 hover:text-black transition-colors text-xs"
                 >
                   modoo.contact@gmail.com
                 </a>
@@ -69,8 +69,8 @@ export default function ContactPage() {
             </div>
 
             {/* Instagram */}
-            <Link href="https://www.instagram.com/direct/t/17846465175599603/" target="_blank" className="flex items-start gap-4 p-4 bg-zinc-50 rounded-lg border border-zinc-200">
-              <div className="w-12 h-12 bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 rounded-full flex items-center justify-center flex-shrink-0">
+            <Link href="https://www.instagram.com/modoo_goods/" target="_blank" className="flex items-start gap-4 p-3 bg-zinc-50 rounded-lg border border-zinc-200">
+              <div className="size-10 bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 rounded-full flex items-center justify-center flex-shrink-0">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   className="h-6 w-6 text-white"
@@ -81,11 +81,11 @@ export default function ContactPage() {
                 </svg>
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-black mb-1">
+                <h3 className="text-md font-semibold text-black mb-1">
                   Instagram
                 </h3>
                 <p
-                  className="text-zinc-600 hover:text-black transition-colors"
+                  className="text-zinc-600 hover:text-black transition-colors text-xs"
                 >
                   @modoo_goods
                 </p>
