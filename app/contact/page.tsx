@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 export default function ContactPage() {
@@ -59,16 +60,16 @@ export default function ContactPage() {
               <div>
                 <h3 className="text-lg font-semibold text-black mb-1">Email</h3>
                 <a
-                  href="mailto:contact@umeki.shop"
+                  href="mailto:modoo.contact@gmail.com"
                   className="text-zinc-600 hover:text-black transition-colors"
                 >
-                  contact@umeki.shop
+                  modoo.contact@gmail.com
                 </a>
               </div>
             </div>
 
             {/* Instagram */}
-            <div className="flex items-start gap-4 p-4 bg-zinc-50 rounded-lg border border-zinc-200">
+            <Link href="https://www.instagram.com/direct/t/17846465175599603/" target="_blank" className="flex items-start gap-4 p-4 bg-zinc-50 rounded-lg border border-zinc-200">
               <div className="w-12 h-12 bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 rounded-full flex items-center justify-center flex-shrink-0">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -83,16 +84,13 @@ export default function ContactPage() {
                 <h3 className="text-lg font-semibold text-black mb-1">
                   Instagram
                 </h3>
-                <a
-                  href="https://instagram.com/umeki.shop"
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <p
                   className="text-zinc-600 hover:text-black transition-colors"
                 >
-                  @umeki.shop
-                </a>
+                  @modoo_goods
+                </p>
               </div>
-            </div>
+            </Link>
           </div>
 
           {/* Additional Info */}
