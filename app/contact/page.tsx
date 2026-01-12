@@ -69,7 +69,7 @@ export default function ContactPage() {
             </div>
 
             {/* Instagram */}
-            <Link href="https://www.instagram.com/direct/t/17846465175599603/" target="_blank" className="flex items-start gap-4 p-4 bg-zinc-50 rounded-lg border border-zinc-200">
+            <Link href="https://www.instagram.com/modoo_goods/" target="_blank" className="flex items-start gap-4 p-4 bg-zinc-50 rounded-lg border border-zinc-200">
               <div className="w-12 h-12 bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 rounded-full flex items-center justify-center flex-shrink-0">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
