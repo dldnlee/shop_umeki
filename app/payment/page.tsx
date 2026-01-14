@@ -7,6 +7,7 @@ import Link from "next/link";
 import { AddressSearch } from "@/components/AddressSearch";
 import { loadScript } from "@paypal/paypal-js";
 import TossPaymentWidget from "@/components/TossPaymentWidget";
+import { sendDiscordMessage } from "@/lib/discord";
 
 type PaymentMethod = "paypal" | "toss";
 type PayPalCurrency = "USD" | "JPY";
@@ -349,6 +350,31 @@ export default function PaymentPage() {
               } catch (emailError) {
                 console.error('Email send error:', emailError);
                 // Don't fail order if email fails
+              }
+            }
+
+            // Send Discord notification for new orders
+            if (result.data?.order && !existingOrder) {
+              try {
+                const items = cartItems.map((item) =>
+                  `- ${item.productName}${item.option ? ` (${item.option})` : ''} x${item.quantity} - ${formatKRW(item.price * item.quantity)}`
+                ).join('\n') || 'No items';
+
+                const message = `🛒 **새로운 주문이 들어왔습니다!**\n\n` +
+                  `**주문번호:** ${result.data.order.id}\n` +
+                  `**결제 수단:** PayPal\n` +
+                  `**총 금액:** ${formatKRW(finalTotal)}\n\n` +
+                  `**고객 정보:**\n` +
+                  `- 이름: ${name || 'N/A'}\n` +
+                  `- 이메일: ${email || 'N/A'}\n` +
+                  `- 전화번호: ${phone || 'N/A'}\n\n` +
+                  `**주문 상품:**\n${items}\n\n` +
+                  `**주문 시간:** ${new Date().toLocaleString('ko-KR')}`;
+
+                await sendDiscordMessage({ message });
+              } catch (discordError) {
+                console.error('Discord notification error:', discordError);
+                // Don't fail order if Discord notification fails
               }
             }
 

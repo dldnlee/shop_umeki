@@ -1,15 +1,21 @@
 
 'use client'
 
-import { useEffect, Suspense } from "react";
+import { useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 function WidgetSuccessPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const isConfirming = useRef(false);
 
   useEffect(() => {
     async function confirm() {
+      // Prevent double execution (React StrictMode or rapid re-renders)
+      if (isConfirming.current) {
+        return;
+      }
+      isConfirming.current = true;
       try {
         // Get pending order data from sessionStorage first, then localStorage as fallback
         // localStorage is more reliable across redirects (Toss redirects can lose sessionStorage)

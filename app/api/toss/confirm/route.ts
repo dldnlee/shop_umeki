@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createOrder } from "@/lib/orders";
 import { CartItem } from "@/lib/cart";
 import { supabase } from "@/lib/supabase";
+import { sendDiscordMessage } from "@/lib/discord";
+import { formatKRW } from "@/lib/utils";
 
 
 const widgetSecretKey = process.env.TOSS_SECRET_KEY;
@@ -159,6 +161,35 @@ export async function POST(request: NextRequest) {
       } catch (emailError) {
         // Log email error but don't fail the order
         console.error('Failed to send order confirmation email:', emailError);
+      }
+    }
+
+    // Send Discord notification for new orders
+    if (orderResult.data?.order && orderResult.data?.items) {
+      try {
+        const items = orderResult.data.items.map((item) => {
+          const cartItem = (cartItems as CartItem[]).find((ci: CartItem) =>
+            ci.productId === item.product_id &&
+            (ci.option || null) === (item.option || null)
+          );
+          return `- ${cartItem?.productName || item.product_name || 'Unknown'}${item.option ? ` (${item.option})` : ''} x${item.quantity} - ${formatKRW(item.total_price)}`;
+        }).join('\n') || 'No items';
+
+        const message = `🛒 **새로운 주문이 들어왔습니다!**\n\n` +
+          `**주문번호:** ${orderResult.data.order.id}\n` +
+          `**결제 수단:** Toss\n` +
+          `**총 금액:** ${formatKRW(orderResult.data.order.total_amount)}\n\n` +
+          `**고객 정보:**\n` +
+          `- 이름: ${orderResult.data.order.name || 'N/A'}\n` +
+          `- 이메일: ${orderResult.data.order.email || 'N/A'}\n` +
+          `- 전화번호: ${orderResult.data.order.phone_num || 'N/A'}\n\n` +
+          `**주문 상품:**\n${items}\n\n` +
+          `**주문 시간:** ${new Date().toLocaleString('ko-KR')}`;
+
+        await sendDiscordMessage({ message });
+      } catch (discordError) {
+        // Log Discord error but don't fail the order
+        console.error('Failed to send Discord notification:', discordError);
       }
     }
 
