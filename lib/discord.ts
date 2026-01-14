@@ -20,7 +20,6 @@ export const sendDiscordMessage = async ({message} : DiscordMessageProps) => {
       });
     } catch (error) {
       console.error('Error sending webhook:', error);
-      alert('An error occurred.');
     }
 };
 

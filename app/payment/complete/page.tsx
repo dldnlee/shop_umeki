@@ -3,8 +3,6 @@
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { formatKRW, formatJPY, formatUSD } from "@/lib/utils";
-import { sendDiscordMessage } from "@/lib/discord";
 
 type Order = {
   id: string;
@@ -21,13 +19,6 @@ type Order = {
   delivery_method?: string;
 };
 
-type OrderItem = {
-  product_name: string;
-  option: string;
-  quantity: number;
-  total_price: number;
-};
-
 /**
  * Purchase Complete Page
  *
@@ -37,9 +28,7 @@ function PurchaseCompleteContent() {
   const searchParams = useSearchParams();
   const [orderId, setOrderId] = useState<string | null>(null);
   const [order, setOrder] = useState<Order | null>(null);
-  const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [notificationSent, setNotificationSent] = useState(false);
 
   useEffect(() => {
     const orderIdParam = searchParams.get('orderId');
@@ -54,7 +43,6 @@ function PurchaseCompleteContent() {
           if (result.success && result.data) {
             const orderData = result.data.order;
             setOrder(orderData as Order);
-            setOrderItems(result.data.items || []);
           }
         } catch (error) {
           console.error('Error fetching order:', error);
@@ -67,29 +55,6 @@ function PurchaseCompleteContent() {
       setLoading(false);
     }
   }, [searchParams]);
-
-  // Separate effect for sending Discord notification
-  useEffect(() => {
-    if (order && orderId && orderItems.length > 0 && !notificationSent) {
-      const items = orderItems.map((item) =>
-        `- ${item.product_name}${item.option ? ` (${item.option})` : ''} x${item.quantity} - ${formatKRW(item.total_price)}`
-      ).join('\n') || 'No items';
-
-      const message = `🛒 **새로운 주문이 들어왔습니다!**\n\n` +
-        `**주문번호:** ${orderId}\n` +
-        `**총 금액:** ${formatKRW(order.total_amount)}\n\n` +
-        `**고객 정보:**\n` +
-        `- 이름: ${order.name || 'N/A'}\n` +
-        `- 이메일: ${order.email || 'N/A'}\n` +
-        `- 전화번호: ${order.phone_num || 'N/A'}\n\n` +
-        `**주문 상품:**\n${items}\n\n` +
-        `**주문 시간:** ${new Date().toLocaleString('ko-KR')}`;
-
-      sendDiscordMessage({ message });
-      setNotificationSent(true);
-    }
-  }, [order, orderId, orderItems, notificationSent]);
-
 
   if (loading) {
     return (
