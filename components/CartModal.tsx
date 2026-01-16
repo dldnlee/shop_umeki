@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { getCart, addToCart, removeFromCart, getCartTotal, updateCartItemQuantity } from "@/lib/cart";
+import { getCart, addToCart, removeFromCart, getCartTotal, updateCartItemQuantity, fixCartInventory, clearCart } from "@/lib/cart";
 import { formatKRW } from "@/lib/utils";
 import { Product } from "@/models";
 import { supabase } from "@/lib/supabase";
@@ -33,6 +33,8 @@ export default function CartModal({ isOpen, onClose }: CartModalProps) {
   // Initialize selections from cart
   useEffect(() => {
     if (products.length > 0) {
+      // Remove out-of-stock items from cart before initializing
+      fixCartInventory(products);
       const cart = getCart();
       const newSelections: { [productId: number]: ProductSelection } = {};
 
@@ -161,6 +163,16 @@ export default function CartModal({ isOpen, onClose }: CartModalProps) {
     }
   };
 
+  const handleClearCart = () => {
+    clearCart();
+    // Reset all selections to empty
+    const emptySelections: { [productId: number]: ProductSelection } = {};
+    products.forEach(product => {
+      emptySelections[product.id] = {};
+    });
+    setSelections(emptySelections);
+  };
+
   const total = getCartTotal();
   const cart = getCart();
   const hasItems = cart.length > 0;
@@ -182,10 +194,18 @@ export default function CartModal({ isOpen, onClose }: CartModalProps) {
 
         <div className="p-3 sm:p-6 md:p-8">
           {/* Header */}
-          <div className="flex items-center justify-between mb-3 sm:mb-6">
+          <div className="flex items-center justify-between mb-3 sm:mb-6 pr-10 sm:pr-12">
             <h1 className="text-lg sm:text-2xl md:text-3xl font-semibold text-black">
               Shopping Cart
             </h1>
+            {hasItems && (
+              <button
+                onClick={handleClearCart}
+                className="text-xs sm:text-sm text-red-500 hover:text-red-700 font-medium transition-colors"
+              >
+                Clear Cart
+              </button>
+            )}
           </div>
 
           {loading ? (
