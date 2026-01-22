@@ -7,11 +7,18 @@ type Recipient = {
   orderId?: string;
 };
 
+type Attachment = {
+  filename: string;
+  contentType: string;
+  base64Content: string;
+};
+
 type SendCustomEmailRequest = {
   recipients: Recipient[];
   subject: string;
   htmlContent: string;
   textContent: string;
+  attachments?: Attachment[];
 };
 
 /**
@@ -194,7 +201,7 @@ export async function POST(request: NextRequest) {
 
     // Parse request body
     const body: SendCustomEmailRequest = await request.json();
-    const { recipients, subject, htmlContent, textContent } = body;
+    const { recipients, subject, htmlContent, textContent, attachments } = body;
 
     console.log('Received request body:', {
       recipientCount: recipients?.length,
@@ -202,6 +209,7 @@ export async function POST(request: NextRequest) {
       hasHtmlContent: !!htmlContent,
       hasTextContent: !!textContent,
       sampleRecipient: recipients?.[0],
+      attachmentCount: attachments?.length || 0,
     });
 
     // Validate inputs
@@ -279,7 +287,9 @@ export async function POST(request: NextRequest) {
         // Generate plain text fallback from HTML content for clients that don't support HTML
         const personalizedTextContent = generatePlainTextFromHtml(personalizedRawContent);
 
-        const message = {
+        // Build Mailjet message object
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const message: Record<string, any> = {
           From: {
             Email: FROM_EMAIL,
             Name: FROM_NAME,
@@ -295,6 +305,15 @@ export async function POST(request: NextRequest) {
           HTMLPart: personalizedHtmlContent,
           CustomID: `custom-email-${Date.now()}-${i}-${recipient.email}`,
         };
+
+        // Add attachments if present
+        if (attachments && attachments.length > 0) {
+          message.Attachments = attachments.map(att => ({
+            ContentType: att.contentType,
+            Filename: att.filename,
+            Base64Content: att.base64Content,
+          }));
+        }
 
         // Send individual email via Mailjet API
         const response = await fetch('https://api.mailjet.com/v3.1/send', {
