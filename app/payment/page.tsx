@@ -240,7 +240,7 @@ export default function PaymentPage() {
 
             // Prepare address string (legacy field for backward compatibility)
             const fullAddress = deliveryMethod !== "팬미팅현장수령"
-              ? `[${zipCode}] ${address} ${addressDetail}`.trim()
+              ? `[${zipCode}] ${state} ${city} ${address} ${addressDetail}`.trim()
               : null;
 
             // Idempotency check: If order already exists with this paypal_id, use existing order
@@ -1006,7 +1006,7 @@ export default function PaymentPage() {
                         onBeforePaymentRequest={() => {
                           // Prepare address string (legacy field for backward compatibility)
                           const fullAddress = deliveryMethod !== "팬미팅현장수령"
-                            ? `[${zipCode}] ${address} ${addressDetail}`.trim()
+                            ? `[${zipCode}] ${state} ${city} ${address} ${addressDetail}`.trim()
                             : null;
                           // Prepare order data to be used after payment confirmation
                           const orderData = {
