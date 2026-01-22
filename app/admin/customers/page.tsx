@@ -541,6 +541,7 @@ export default function CustomerManagementPage() {
             >
               <option value="all">전체</option>
               <option value="paid">배송전</option>
+              <option value="packed">포장완료</option>
               <option value="delivered">배송중</option>
               <option value="complete">처리 완료</option>
             </select>
