@@ -52,7 +52,7 @@ type OrderWithItems = Order & {
 type DeliveryFilter = 'all' | '국내배송' | '해외배송';
 type PlatformTab = 'shop_umeki' | 'hypetown';
 type SortOrder = 'asc' | 'desc';
-type OrderStatusFilter = 'all' | 'cancel' | 'paid' | 'delivered' | 'complete';
+type OrderStatusFilter = 'all' | 'cancel' | 'standby' | 'paid' | 'delivered' | 'complete';
 
 type ProductOption = {
   productId: string;
@@ -313,6 +313,8 @@ export default function DeliveryPage() {
     switch (status) {
       case 'cancel':
         return 'bg-red-100 text-red-800';
+      case 'standby':
+        return 'bg-orange-100 text-orange-800';
       case 'paid':
         return 'bg-yellow-100 text-yellow-800';
       case 'delivered':
@@ -330,6 +332,8 @@ export default function DeliveryPage() {
     switch (status) {
       case 'waiting':
         return '대기중';
+      case 'standby':
+        return '대기';
       case 'paid':
         return '배송전';
       case 'delivered':
@@ -724,6 +728,7 @@ export default function DeliveryPage() {
               >
                 <option value="all">전체</option>
                 <option value="cancel">고객취소 ({orders.filter(o => o.order_status === 'cancel').length})</option>
+                <option value="standby">대기 ({orders.filter(o => o.order_status === 'standby').length})</option>
                 <option value="paid">배송전 ({orders.filter(o => o.order_status === 'paid').length})</option>
                 <option value="packed">포장완료 ({orders.filter(o => o.order_status === 'packed').length})</option>
                 <option value="delivered">배송중 ({orders.filter(o => o.order_status === 'delivered').length})</option>
@@ -895,6 +900,7 @@ export default function DeliveryPage() {
                           `}
                         >
                           <option value="cancel">고객취소</option>
+                          <option value="standby">대기</option>
                           <option value="paid">배송전</option>
                           <option value="packed">포장완료</option>
                           <option value="delivered">배송중</option>

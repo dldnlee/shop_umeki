@@ -26,6 +26,7 @@ export default function CustomerManagementPage() {
   const [selectedCustomers, setSelectedCustomers] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
 
   // Filters
   const [deliveryMethodFilter, setDeliveryMethodFilter] = useState<string>('all');
@@ -68,7 +69,8 @@ export default function CustomerManagementPage() {
         const { data: orderItems, error: itemsError } = await supabase
           .from('umeki_order_items')
           .select('order_id')
-          .eq('product_id', EMERGENCY_PRODUCT_ID);
+          .eq('product_id', EMERGENCY_PRODUCT_ID)
+          .lt('created_at', '2026-01-23');
 
         if (itemsError) throw itemsError;
 
@@ -236,6 +238,51 @@ export default function CustomerManagementPage() {
 
   const deselectAll = () => {
     setSelectedCustomers(new Set());
+  };
+
+  const handleBulkStatusChange = async (newStatus: string) => {
+    if (selectedCustomers.size === 0) {
+      alert('고객을 선택해주세요.');
+      return;
+    }
+
+    const statusLabel = getStatusLabel(newStatus);
+    const confirmed = confirm(
+      `선택한 ${selectedCustomers.size}명의 고객 주문 상태를 "${statusLabel}"(으)로 변경하시겠습니까?`
+    );
+
+    if (!confirmed) return;
+
+    setUpdatingStatus(true);
+    try {
+      const tableName = activeTab === 'hypetown' ? 'umeki_orders_hypetown' : 'umeki_orders';
+
+      // Get the selected customer IDs
+      const selectedIds = Array.from(selectedCustomers);
+
+      // Update all selected orders
+      const { error } = await supabase
+        .from(tableName)
+        .update({ order_status: newStatus })
+        .in('id', selectedIds);
+
+      if (error) throw error;
+
+      // Update local state
+      setCustomers(prev => prev.map(customer =>
+        selectedCustomers.has(customer.id)
+          ? { ...customer, order_status: newStatus }
+          : customer
+      ));
+
+      alert(`${selectedCustomers.size}명의 고객 주문 상태가 "${statusLabel}"(으)로 변경되었습니다.`);
+      setSelectedCustomers(new Set());
+    } catch (error) {
+      console.error('Error updating order status:', error);
+      alert('주문 상태 변경에 실패했습니다.');
+    } finally {
+      setUpdatingStatus(false);
+    }
   };
 
   const replaceVariables = (content: string, customerName: string, customerEmail: string, orderId?: string): string => {
@@ -466,6 +513,46 @@ export default function CustomerManagementPage() {
     }).format(amount);
   };
 
+  const getStatusLabel = (status?: string) => {
+    switch (status) {
+      case 'cancel':
+        return '고객취소';
+      case 'waiting':
+        return '대기중';
+      case 'standby':
+        return '대기';
+      case 'paid':
+        return '배송전';
+      case 'packed':
+        return '포장완료';
+      case 'delivered':
+        return '배송중';
+      case 'complete':
+        return '배송완료';
+      default:
+        return status || '알 수 없음';
+    }
+  };
+
+  const getStatusBadgeColor = (status?: string) => {
+    switch (status) {
+      case 'cancel':
+        return 'bg-red-100 text-red-800';
+      case 'standby':
+        return 'bg-orange-100 text-orange-800';
+      case 'paid':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'packed':
+        return 'bg-purple-100 text-purple-800';
+      case 'delivered':
+        return 'bg-blue-100 text-blue-800';
+      case 'complete':
+        return 'bg-green-100 text-green-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
   const handleFileAttachment = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -623,6 +710,7 @@ export default function CustomerManagementPage() {
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="all">전체</option>
+              <option value="standby">대기</option>
               <option value="paid">배송전</option>
               <option value="packed">포장완료</option>
               <option value="delivered">배송중</option>
@@ -674,7 +762,7 @@ export default function CustomerManagementPage() {
               선택됨: {selectedCustomers.size}명
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
             <button
               onClick={selectAll}
               className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
@@ -687,6 +775,34 @@ export default function CustomerManagementPage() {
             >
               선택 해제
             </button>
+            {selectedCustomers.size > 0 && (
+              <>
+                <div className="w-px h-6 bg-gray-300 mx-2"></div>
+                <label className="text-sm text-gray-600">주문 상태 일괄 변경:</label>
+                <select
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      handleBulkStatusChange(e.target.value);
+                      e.target.value = '';
+                    }
+                  }}
+                  disabled={updatingStatus}
+                  className="px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  defaultValue=""
+                >
+                  <option value="" disabled>상태 선택...</option>
+                  <option value="standby">대기</option>
+                  <option value="paid">배송전</option>
+                  <option value="packed">포장완료</option>
+                  <option value="delivered">배송중</option>
+                  <option value="complete">배송완료</option>
+                  <option value="cancel">고객취소</option>
+                </select>
+                {updatingStatus && (
+                  <span className="text-sm text-gray-500">변경 중...</span>
+                )}
+              </>
+            )}
           </div>
         </div>
 
@@ -720,6 +836,9 @@ export default function CustomerManagementPage() {
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     주문 횟수
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    주문 상태
                   </th>
                   {activeTab === 'hypetown' && (
                     <>
@@ -778,6 +897,11 @@ export default function CustomerManagementPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {customer.order_count}회
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeColor(customer.order_status)}`}>
+                        {getStatusLabel(customer.order_status)}
+                      </span>
                     </td>
                     {activeTab === 'hypetown' && (
                       <>
