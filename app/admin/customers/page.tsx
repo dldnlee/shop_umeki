@@ -19,7 +19,7 @@ type Customer = {
 
 export default function CustomerManagementPage() {
   // Tab state
-  const [activeTab, setActiveTab] = useState<'regular' | 'hypetown'>('regular');
+  const [activeTab, setActiveTab] = useState<'regular' | 'hypetown' | 'emergency'>('regular');
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([]);
@@ -51,6 +51,70 @@ export default function CustomerManagementPage() {
   const fetchCustomers = async () => {
     setLoading(true);
     try {
+      // Handle emergency tab separately - needs to filter by product
+      if (activeTab === 'emergency') {
+        const EMERGENCY_PRODUCT_ID = '3acdc3cb-ab1d-4e33-9afc-c240897dbc40';
+
+        // First, get all order IDs that contain the emergency product
+        const { data: orderItems, error: itemsError } = await supabase
+          .from('umeki_order_items')
+          .select('order_id')
+          .eq('product_id', EMERGENCY_PRODUCT_ID);
+
+        if (itemsError) throw itemsError;
+
+        const orderIds = [...new Set(orderItems?.map(item => item.order_id) || [])];
+
+        if (orderIds.length === 0) {
+          setCustomers([]);
+          setLoading(false);
+          return;
+        }
+
+        // Fetch orders that match those order IDs
+        const { data, error } = await supabase
+          .from('umeki_orders')
+          .select('id, name, email, phone_num, delivery_method, created_at, total_amount, order_status')
+          .in('id', orderIds)
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        // Group by email and aggregate data
+        const customerMap = new Map<string, Customer>();
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        data?.forEach((order: any) => {
+          const email = order.email;
+          if (customerMap.has(email)) {
+            const existing = customerMap.get(email)!;
+            existing.order_count += 1;
+            if (order.total_amount) {
+              existing.total_spent = (existing.total_spent || 0) + order.total_amount;
+            }
+            if (order.created_at > existing.created_at) {
+              existing.order_status = order.order_status;
+            }
+          } else {
+            customerMap.set(email, {
+              id: order.id,
+              name: order.name,
+              email: order.email,
+              phone_num: order.phone_num,
+              delivery_method: order.delivery_method,
+              created_at: order.created_at,
+              order_count: 1,
+              total_spent: order.total_amount || 0,
+              order_status: order.order_status,
+            });
+          }
+        });
+
+        setCustomers(Array.from(customerMap.values()));
+        setLoading(false);
+        return;
+      }
+
       const tableName = activeTab === 'regular' ? 'umeki_orders' : 'umeki_orders_hypetown';
 
       // Fetch all orders with customer info
@@ -388,7 +452,7 @@ export default function CustomerManagementPage() {
   };
 
   // Clear selections and filters when switching tabs
-  const handleTabChange = (tab: 'regular' | 'hypetown') => {
+  const handleTabChange = (tab: 'regular' | 'hypetown' | 'emergency') => {
     setActiveTab(tab);
     setSelectedCustomers(new Set());
     setDeliveryMethodFilter('all');
@@ -432,6 +496,16 @@ export default function CustomerManagementPage() {
               }`}
             >
               Hypetown 고객
+            </button>
+            <button
+              onClick={() => handleTabChange('emergency')}
+              className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'emergency'
+                  ? 'border-red-500 text-red-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Emergency
             </button>
           </nav>
         </div>
