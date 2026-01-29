@@ -112,6 +112,7 @@ export default function ImageCarouselPopup({
                   src={image.image_url}
                   alt={image.title || "Popup image"}
                   fill
+                  unoptimized
                   className="object-contain"
                   priority
                 />
