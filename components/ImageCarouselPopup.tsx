@@ -1,8 +1,12 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import { supabase } from "@/lib/supabase";
+import { Swiper, SwiperSlide } from "swiper/react";
+import { Pagination } from "swiper/modules";
+import "swiper/css";
+import "swiper/css/pagination";
 
 interface PopupImage {
   id: string;
@@ -26,7 +30,6 @@ export default function ImageCarouselPopup({
   onDontShowAgainChange,
 }: ImageCarouselPopupProps) {
   const [images, setImages] = useState<PopupImage[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -56,18 +59,9 @@ export default function ImageCarouselPopup({
     }
   };
 
-  const goToPrevious = useCallback(() => {
-    setCurrentIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
-  }, [images.length]);
-
-  const goToNext = useCallback(() => {
-    setCurrentIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
-  }, [images.length]);
-
-  const handleImageClick = () => {
-    const currentImage = images[currentIndex];
-    if (currentImage?.link_url) {
-      window.open(currentImage.link_url, "_blank");
+  const handleImageClick = (image: PopupImage) => {
+    if (image.link_url) {
+      window.open(image.link_url, "_blank");
     }
   };
 
@@ -81,8 +75,6 @@ export default function ImageCarouselPopup({
   if (!isOpen || loading || images.length === 0) {
     return null;
   }
-
-  const currentImage = images[currentIndex];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
@@ -102,79 +94,38 @@ export default function ImageCarouselPopup({
           </svg>
         </button>
 
-        {/* Image container */}
-        <div
-          className={`relative w-full aspect-square ${currentImage.link_url ? "cursor-pointer" : ""}`}
-          onClick={handleImageClick}
+        {/* Swiper Carousel */}
+        <Swiper
+          modules={[Pagination]}
+          pagination={{ clickable: true }}
+          spaceBetween={0}
+          slidesPerView={1}
+          className="rounded-t-lg"
         >
-          <Image
-            src={currentImage.image_url}
-            alt={currentImage.title || "Popup image"}
-            fill
-            className="object-contain rounded-t-lg"
-            priority
-          />
-
-          {/* Navigation arrows */}
-          {images.length > 1 && (
-            <>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  goToPrevious();
-                }}
-                className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white rounded-full p-2 text-gray-800 transition-colors"
+          {images.map((image) => (
+            <SwiperSlide key={image.id}>
+              <div
+                className={`relative w-full aspect-square ${image.link_url ? "cursor-pointer" : ""}`}
+                onClick={() => handleImageClick(image)}
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15 19l-7-7 7-7"
-                  />
-                </svg>
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  goToNext();
-                }}
-                className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white rounded-full p-2 text-gray-800 transition-colors"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 5l7 7-7 7"
-                  />
-                </svg>
-              </button>
-            </>
-          )}
+                <Image
+                  src={image.image_url}
+                  alt={image.title || "Popup image"}
+                  fill
+                  className="object-contain"
+                  priority
+                />
 
-          {/* Image title overlay */}
-          {currentImage.title && (
-            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-4">
-              <p className="text-white text-center font-medium">{currentImage.title}</p>
-            </div>
-          )}
-        </div>
-
-        {/* Dots indicator */}
-        {images.length > 1 && (
-          <div className="flex justify-center gap-2 py-3 bg-gray-50">
-            {images.map((_, index) => (
-              <button
-                key={index}
-                onClick={() => setCurrentIndex(index)}
-                className={`w-2 h-2 rounded-full transition-colors ${
-                  index === currentIndex ? "bg-blue-600" : "bg-gray-300 hover:bg-gray-400"
-                }`}
-              />
-            ))}
-          </div>
-        )}
+                {/* Image title overlay */}
+                {image.title && (
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-4">
+                    <p className="text-white text-center font-medium">{image.title}</p>
+                  </div>
+                )}
+              </div>
+            </SwiperSlide>
+          ))}
+        </Swiper>
 
         {/* Footer with checkbox */}
         <div className="flex items-center justify-between border-t px-4 py-3">
