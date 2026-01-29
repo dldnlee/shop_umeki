@@ -1,13 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Header from "@/components/Header";
 import Sidebar from "@/components/Sidebar";
 import BottomTabs from "@/components/BottomTabs";
 import { CartModalProvider } from "@/components/CartModalProvider";
 import { TabProvider } from "@/components/TabProvider";
+import ImageCarouselPopup from "@/components/ImageCarouselPopup";
 
 const POPUP_STORAGE_KEY = "homePopupDismissed";
+const CAROUSEL_POPUP_STORAGE_KEY = "carouselPopupDismissed";
 
 export default function HomeLayout({
   children,
@@ -17,6 +19,8 @@ export default function HomeLayout({
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showPopup, setShowPopup] = useState(false);
   const [dontShowAgain, setDontShowAgain] = useState(false);
+  const [showCarouselPopup, setShowCarouselPopup] = useState(false);
+  const [carouselDontShowAgain, setCarouselDontShowAgain] = useState(false);
 
   useEffect(() => {
     // Check if popup was dismissed today
@@ -30,6 +34,15 @@ export default function HomeLayout({
       }, 0);
 
       return () => clearTimeout(timer);
+    } else {
+      // If notice popup was already dismissed today, check carousel popup
+      const carouselDismissedDate = localStorage.getItem(CAROUSEL_POPUP_STORAGE_KEY);
+      if (carouselDismissedDate !== today) {
+        const timer = setTimeout(() => {
+          setShowCarouselPopup(true);
+        }, 0);
+        return () => clearTimeout(timer);
+      }
     }
   }, []);
 
@@ -39,7 +52,24 @@ export default function HomeLayout({
       localStorage.setItem(POPUP_STORAGE_KEY, today);
     }
     setShowPopup(false);
+
+    // Show carousel popup after notice popup closes
+    const carouselDismissedDate = localStorage.getItem(CAROUSEL_POPUP_STORAGE_KEY);
+    const today = new Date().toDateString();
+    if (carouselDismissedDate !== today) {
+      setTimeout(() => {
+        setShowCarouselPopup(true);
+      }, 300);
+    }
   };
+
+  const handleCloseCarouselPopup = useCallback(() => {
+    if (carouselDontShowAgain) {
+      const today = new Date().toDateString();
+      localStorage.setItem(CAROUSEL_POPUP_STORAGE_KEY, today);
+    }
+    setShowCarouselPopup(false);
+  }, [carouselDontShowAgain]);
 
   return (
     <TabProvider>
@@ -137,6 +167,14 @@ export default function HomeLayout({
             </div>
           </div>
         )}
+
+        {/* Image Carousel Popup */}
+        <ImageCarouselPopup
+          isOpen={showCarouselPopup}
+          onClose={handleCloseCarouselPopup}
+          dontShowAgain={carouselDontShowAgain}
+          onDontShowAgainChange={setCarouselDontShowAgain}
+        />
       </CartModalProvider>
     </TabProvider>
   );
