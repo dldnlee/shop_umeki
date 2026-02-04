@@ -104,11 +104,13 @@ export default function OrderDetailsPage() {
   const getStatusText = (status?: string) => {
     switch (status) {
       case "paid":
-        return "결제 완료";
+        return "결제 완료 (Paid)";
       case "delivered":
-        return "배송중";
+        return "배송중 (Delivery in process";
+      case "customs":
+        return "통관 중 (In Customs Clearance)"
       case "complete":
-        return "배송 완료";
+        return "배송 완료 (Delivery Complete)";
       case "cancel":
         return "주문 취소";
       default:
@@ -120,11 +122,13 @@ export default function OrderDetailsPage() {
   const getStatusColor = (status?: string) => {
     switch (status) {
       case "paid":
-        return "bg-green-100 text-green-800";
-      case "shipped":
         return "bg-blue-100 text-blue-800";
       case "delivered":
         return "bg-purple-100 text-purple-800";
+      case "customs":
+        return "bg-orange-100 text-orange-800";
+      case "complete":
+        return "bg-green-100 text-green-800";
       case "cancelled":
         return "bg-red-100 text-red-800";
       default:
