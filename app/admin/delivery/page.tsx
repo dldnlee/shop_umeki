@@ -481,9 +481,13 @@ export default function DeliveryPage() {
       }
     }
 
-    // Apply email search filter
+    // Apply search filter (email, name, or phone number)
     if (emailSearch.trim() !== '') {
-      if (!order.email.toLowerCase().includes(emailSearch.toLowerCase())) {
+      const searchTerm = emailSearch.toLowerCase();
+      const matchesEmail = order.email.toLowerCase().includes(searchTerm);
+      const matchesName = order.name.toLowerCase().includes(searchTerm);
+      const matchesPhone = order.phone_num?.toLowerCase().includes(searchTerm) ?? false;
+      if (!matchesEmail && !matchesName && !matchesPhone) {
         return false;
       }
     }
@@ -659,14 +663,14 @@ export default function DeliveryPage() {
           {/* Email Search Input */}
           <div className="mb-4">
             <label htmlFor="email-search" className="block text-sm font-medium text-gray-700 mb-2">
-              이메일로 주문 검색
+              주문 검색 (이메일, 이름, 전화번호)
             </label>
             <input
               id="email-search"
               type="text"
               value={emailSearch}
               onChange={(e) => setEmailSearch(e.target.value)}
-              placeholder="이메일 주소를 입력하세요..."
+              placeholder="이메일, 이름, 또는 전화번호를 입력하세요..."
               className="w-full max-w-md px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
             {emailSearch && (
