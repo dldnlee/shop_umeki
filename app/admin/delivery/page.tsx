@@ -304,11 +304,6 @@ export default function DeliveryPage() {
     }
   };
 
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return '';
-    return new Date(dateString).toLocaleString('ko-KR');
-  };
-
   const getStatusBadgeColor = (status?: string) => {
     switch (status) {
       case 'cancel':
@@ -321,27 +316,12 @@ export default function DeliveryPage() {
         return 'bg-blue-100 text-blue-800';
       case 'packed':
         return 'bg-purple-100 text-purple-800'
+      case 'customs':
+        return 'bg-black text-white'
       case 'complete':
         return 'bg-green-100 text-green-800';
       default:
         return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getStatusLabel = (status?: string) => {
-    switch (status) {
-      case 'waiting':
-        return '대기중';
-      case 'standby':
-        return '대기';
-      case 'paid':
-        return '배송전';
-      case 'delivered':
-        return '배송중';
-      case 'complete':
-        return '배송완료';
-      default:
-        return status || '알 수 없음';
     }
   };
 
@@ -731,6 +711,7 @@ export default function DeliveryPage() {
                 <option value="standby">대기 ({orders.filter(o => o.order_status === 'standby').length})</option>
                 <option value="paid">배송전 ({orders.filter(o => o.order_status === 'paid').length})</option>
                 <option value="packed">포장완료 ({orders.filter(o => o.order_status === 'packed').length})</option>
+                <option value="customs">통관중 ({orders.filter(o => o.order_status === 'customs').length})</option>
                 <option value="delivered">배송중 ({orders.filter(o => o.order_status === 'delivered').length})</option>
                 <option value="complete">배송완료 ({orders.filter(o => o.order_status === 'complete').length})</option>
               </select>
@@ -903,6 +884,7 @@ export default function DeliveryPage() {
                           <option value="standby">대기</option>
                           <option value="paid">배송전</option>
                           <option value="packed">포장완료</option>
+                          <option value="customs">통관중</option>
                           <option value="delivered">배송중</option>
                           <option value="complete">배송완료</option>
                         </select>
