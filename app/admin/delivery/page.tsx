@@ -304,11 +304,6 @@ export default function DeliveryPage() {
     }
   };
 
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return '';
-    return new Date(dateString).toLocaleString('ko-KR');
-  };
-
   const getStatusBadgeColor = (status?: string) => {
     switch (status) {
       case 'cancel':
@@ -321,27 +316,12 @@ export default function DeliveryPage() {
         return 'bg-blue-100 text-blue-800';
       case 'packed':
         return 'bg-purple-100 text-purple-800'
+      case 'customs':
+        return 'bg-black text-white'
       case 'complete':
         return 'bg-green-100 text-green-800';
       default:
         return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getStatusLabel = (status?: string) => {
-    switch (status) {
-      case 'waiting':
-        return '대기중';
-      case 'standby':
-        return '대기';
-      case 'paid':
-        return '배송전';
-      case 'delivered':
-        return '배송중';
-      case 'complete':
-        return '배송완료';
-      default:
-        return status || '알 수 없음';
     }
   };
 
@@ -501,9 +481,13 @@ export default function DeliveryPage() {
       }
     }
 
-    // Apply email search filter
+    // Apply search filter (email, name, or phone number)
     if (emailSearch.trim() !== '') {
-      if (!order.email.toLowerCase().includes(emailSearch.toLowerCase())) {
+      const searchTerm = emailSearch.toLowerCase();
+      const matchesEmail = order.email.toLowerCase().includes(searchTerm);
+      const matchesName = order.name.toLowerCase().includes(searchTerm);
+      const matchesPhone = order.phone_num?.toLowerCase().includes(searchTerm) ?? false;
+      if (!matchesEmail && !matchesName && !matchesPhone) {
         return false;
       }
     }
@@ -679,14 +663,14 @@ export default function DeliveryPage() {
           {/* Email Search Input */}
           <div className="mb-4">
             <label htmlFor="email-search" className="block text-sm font-medium text-gray-700 mb-2">
-              이메일로 주문 검색
+              주문 검색 (이메일, 이름, 전화번호)
             </label>
             <input
               id="email-search"
               type="text"
               value={emailSearch}
               onChange={(e) => setEmailSearch(e.target.value)}
-              placeholder="이메일 주소를 입력하세요..."
+              placeholder="이메일, 이름, 또는 전화번호를 입력하세요..."
               className="w-full max-w-md px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
             {emailSearch && (
@@ -731,6 +715,7 @@ export default function DeliveryPage() {
                 <option value="standby">대기 ({orders.filter(o => o.order_status === 'standby').length})</option>
                 <option value="paid">배송전 ({orders.filter(o => o.order_status === 'paid').length})</option>
                 <option value="packed">포장완료 ({orders.filter(o => o.order_status === 'packed').length})</option>
+                <option value="customs">통관중 ({orders.filter(o => o.order_status === 'customs').length})</option>
                 <option value="delivered">배송중 ({orders.filter(o => o.order_status === 'delivered').length})</option>
                 <option value="complete">배송완료 ({orders.filter(o => o.order_status === 'complete').length})</option>
               </select>
@@ -903,6 +888,7 @@ export default function DeliveryPage() {
                           <option value="standby">대기</option>
                           <option value="paid">배송전</option>
                           <option value="packed">포장완료</option>
+                          <option value="customs">통관중</option>
                           <option value="delivered">배송중</option>
                           <option value="complete">배송완료</option>
                         </select>

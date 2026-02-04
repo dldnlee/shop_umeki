@@ -525,6 +525,8 @@ export default function CustomerManagementPage() {
         return '배송전';
       case 'packed':
         return '포장완료';
+      case 'customs':
+        return '통관중';
       case 'delivered':
         return '배송중';
       case 'complete':
@@ -544,6 +546,8 @@ export default function CustomerManagementPage() {
         return 'bg-yellow-100 text-yellow-800';
       case 'packed':
         return 'bg-purple-100 text-purple-800';
+      case 'customs':
+        return 'bg-amber-100 text-amber-800';
       case 'delivered':
         return 'bg-blue-100 text-blue-800';
       case 'complete':
@@ -713,6 +717,7 @@ export default function CustomerManagementPage() {
               <option value="standby">대기</option>
               <option value="paid">배송전</option>
               <option value="packed">포장완료</option>
+              <option value="customs">통관중</option>
               <option value="delivered">배송중</option>
               <option value="complete">처리 완료</option>
             </select>
@@ -794,6 +799,7 @@ export default function CustomerManagementPage() {
                   <option value="standby">대기</option>
                   <option value="paid">배송전</option>
                   <option value="packed">포장완료</option>
+                  <option value="customs">통관중</option>
                   <option value="delivered">배송중</option>
                   <option value="complete">배송완료</option>
                   <option value="cancel">고객취소</option>
