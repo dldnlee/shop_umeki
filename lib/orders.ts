@@ -395,7 +395,9 @@ export async function getSalesAnalytics(startDate?: string, endDate?: string) {
             )
           )
         `)
-        .neq("order_status", "waiting");
+        .neq("order_status", "waiting")
+        .neq("order_status", "standby")
+        ;
 
       if (startDate) {
         query = query.gte("created_at", startDate);
